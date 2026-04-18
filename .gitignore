@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Environment & secrets
+.env
+*.env
+!.env.example
+
+# Logs & temp
+*.log
+*.tmp
+*.bak
+C:Users*
+backend/C*
+
+# Runtime config (not secrets but not needed in repo)
+backend/config.json
+
+# Neo4j / storage
+backend/storage/
+backend/sessions/
+backend/workspace/
+backend/memory/
+backend/knowledge/
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+backend/SKILLS_SNAPSHOT.md
+backend/skills_test.txt
