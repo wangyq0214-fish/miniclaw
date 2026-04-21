@@ -15,6 +15,7 @@ from config import settings
 from deepagents import create_deep_agent
 from deepagents.backends.filesystem import FilesystemBackend
 from deepagents.middleware.permissions import FilesystemPermission
+from agents.resource_agents import build_resource_subagents
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,10 @@ class AgentManager:
                 if skills_dir.exists():
                     skills_sources = ["/skills/"]
 
+            # Build resource-generation subagents (6 specialized roles) — system_prompts
+            # are loaded from workspace/roles/*.md, model/tools inherit from main agent
+            resource_subagents = build_resource_subagents(self.base_dir / "workspace") if self.base_dir else []
+
             # Create agent
             agent = create_deep_agent(
                 model=self._model,
@@ -114,14 +119,17 @@ class AgentManager:
                 backend=self._backend,
                 memory=memory_sources if memory_sources else None,
                 skills=skills_sources,
+                subagents=resource_subagents if resource_subagents else None,
                 permissions=[
                     # Default workspace: full read+write
                     FilesystemPermission(operations=["read", "write"], paths=["/workspace/**"]),
                     # Memory files: agent can update long-term memory
                     FilesystemPermission(operations=["read", "write"], paths=["/memory/**"]),
+                    # Knowledge dir: subagents write generated resources here
+                    FilesystemPermission(operations=["read", "write"], paths=["/knowledge/**"]),
                     # Allow read anywhere else (agent can browse project files)
                     FilesystemPermission(operations=["read"], paths=["/**"]),
-                    # Deny write outside workspace and memory
+                    # Deny write outside workspace / memory / knowledge
                     FilesystemPermission(operations=["write"], paths=["/**"], mode="deny"),
                 ],
             )

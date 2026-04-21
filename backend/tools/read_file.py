@@ -27,7 +27,7 @@ class SafeReadFileTool(BaseTool):
     The tool is restricted to allowed directories for security.
 
     Args:
-        path: Relative path to the file (e.g., 'memory/MEMORY.md', 'skills/get_weather/SKILL.md')
+        path: Relative path to the file (e.g., 'memory/MEMORY.md', 'skills/get-weather/SKILL.md')
 
     Returns:
         File contents as string
@@ -92,12 +92,7 @@ class SafeReadFileTool(BaseTool):
             return False, f"Access to '{filename}' is blocked for security"
 
         # Check allowed prefixes
-        # Allow if in allowed directories OR if it's a root file like SKILLS_SNAPSHOT.md
         is_allowed = any(relative_path.startswith(prefix) for prefix in self.allowed_prefixes)
-
-        # Allow root level SKILLS_SNAPSHOT.md
-        if relative_path == "SKILLS_SNAPSHOT.md":
-            is_allowed = True
 
         if not is_allowed:
             allowed_dirs = ", ".join(self.allowed_prefixes)

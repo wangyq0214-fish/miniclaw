@@ -51,6 +51,7 @@ export interface FileInfo {
   path: string;
   type: 'file' | 'directory';
   size: number;
+  category?: string;
 }
 
 export interface SkillInfo {
@@ -99,7 +100,8 @@ export async function sendMessage(request: ChatRequest): Promise<ChatResponse> {
 }
 
 export async function* streamChat(
-  request: ChatRequest
+  request: ChatRequest,
+  signal?: AbortSignal,
 ): AsyncGenerator<SSEEvent> {
   const response = await fetch(`${API_BASE}/api/chat`, {
     method: 'POST',
@@ -107,6 +109,7 @@ export async function* streamChat(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ ...request, stream: true }),
+    signal,
   });
 
   if (!response.ok) {

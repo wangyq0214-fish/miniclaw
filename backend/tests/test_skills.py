@@ -36,7 +36,7 @@ async def main():
     ls_result = await backend.als("/skills/")
     print(f"[skills dir] entries: {[e['path'] for e in ls_result.entries]}")
 
-    skill_result = await backend.aread("/skills/get_weather/SKILL.md")
+    skill_result = await backend.aread("/skills/get-weather/SKILL.md")
     if skill_result.error:
         print(f"[SKILL.md] ERROR: {skill_result.error}")
     else:

@@ -52,6 +52,7 @@ ALLOWED_PREFIXES = [
     "memory/",
     "skills/",
     "knowledge/",
+    "knowledge/source/",
 ]
 
 # Blocked sensitive files
@@ -102,10 +103,7 @@ def validate_path(path: Path, relative_path: str) -> tuple:
         if filename in BLOCKED_FILES:
             return False, f"Access to '{filename}' is blocked"
 
-        # Check allowed prefixes (except for SKILLS_SNAPSHOT.md at root)
-        if rel == "SKILLS_SNAPSHOT.md":
-            return True, "OK"
-
+        # Check allowed prefixes
         is_allowed = any(rel.startswith(prefix) for prefix in ALLOWED_PREFIXES)
         if not is_allowed:
             return False, f"Path must be in: {', '.join(ALLOWED_PREFIXES)}"
@@ -195,9 +193,67 @@ async def write_file(request: FileWriteRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def should_include_resource(path: Path, relative_path: str) -> bool:
+    """Check if a resource should be included in the resource library."""
+    name = path.name.lower()
+    rel = str(relative_path).replace("\\", "/").lower()
+
+    # Always include user.md and memory.md from memory folder
+    if rel.startswith("memory/") and name in ["user.md", "memory.md"]:
+        return True
+
+    # Include agent-generated resources from workspace
+    if rel.startswith("workspace/"):
+        # Exclude system/config files
+        if name.startswith(".") or name in ["readme.md", "claude.md"]:
+            return False
+        return True
+
+    # Include knowledge source files (only .md files, exclude images)
+    if rel.startswith("knowledge/source/"):
+        if name.startswith("."):
+            return False
+        # Only include markdown files
+        if path.suffix.lower() in ['.md', '.markdown']:
+            return True
+        return False
+
+    return False
+
+
+def categorize_resource(relative_path: str) -> Optional[str]:
+    """Categorize a resource file based on its name or path."""
+    name = Path(relative_path).name.lower()
+    rel = str(relative_path).replace("\\", "/").lower()
+
+    # Memory files
+    if name in ["user.md", "memory.md"]:
+        return "记忆"
+
+    # Knowledge source files
+    if rel.startswith("knowledge/source/"):
+        return "知识库"
+
+    # Categorize by keywords in filename
+    if any(kw in name for kw in ["lecture", "课程", "讲义"]):
+        return "课程讲义"
+    elif any(kw in name for kw in ["exercise", "练习", "习题"]):
+        return "练习题"
+    elif any(kw in name for kw in ["mindmap", "思维导图", "导图"]):
+        return "思维导图"
+    elif any(kw in name for kw in ["reading", "阅读", "书单"]):
+        return "阅读材料"
+    elif any(kw in name for kw in ["script", "脚本", "视频"]):
+        return "视频脚本"
+    elif any(kw in name for kw in ["case", "案例"]):
+        return "代码案例"
+
+    return "其他资源"
+
+
 @router.get("/files/list", response_model=FileListResponse)
 async def list_files(directory: str = Query("", description="Relative path to the directory")):
-    """List files in a directory."""
+    """List files in a directory, with filtering for resource library."""
     dir_path = resolve_path(directory)
 
     try:
@@ -219,12 +275,27 @@ async def list_files(directory: str = Query("", description="Relative path to th
         files = []
         for item in dir_path.iterdir():
             relative = item.relative_to(get_project_root())
-            files.append({
+            rel_str = str(relative).replace("\\", "/")
+
+            # Filter resources for workspace, memory, and knowledge/source directories
+            if directory in ["workspace", "memory", "knowledge/source"]:
+                if not should_include_resource(item, relative):
+                    continue
+
+            file_info = {
                 "name": item.name,
-                "path": str(relative),
+                "path": rel_str,
                 "type": "directory" if item.is_dir() else "file",
                 "size": item.stat().st_size if item.is_file() else 0
-            })
+            }
+
+            # Add category for files
+            if item.is_file():
+                category = categorize_resource(rel_str)
+                if category:
+                    file_info["category"] = category
+
+            files.append(file_info)
 
         return FileListResponse(
             files=files,

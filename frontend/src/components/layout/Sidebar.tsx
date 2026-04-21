@@ -1,13 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageSquare, Brain, Wrench, Plus, Trash2, Loader2, RefreshCw } from 'lucide-react';
+import {
+  Route,
+  Library,
+  BookMarked,
+  Plus,
+  Trash2,
+  Loader2,
+  Pencil,
+  Check,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SessionInfo } from '@/lib/api';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { TokenMeter } from '@/components/layout/TokenMeter';
+import { WorkspaceBrowser } from '@/components/inspector/WorkspaceBrowser';
+import { useApp } from '@/lib/store';
+import type { SessionInfo } from '@/lib/api';
+import type { TabId } from '@/lib/store';
 
 interface SidebarProps {
-  activeTab: 'chat' | 'memory' | 'skills';
-  onTabChange: (tab: 'chat' | 'memory' | 'skills') => void;
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
   sessions: SessionInfo[];
   activeSession: string;
   onSessionSelect: (sessionId: string) => void;
@@ -22,14 +37,16 @@ export function Sidebar({
   onSessionSelect,
   onNewSession,
 }: SidebarProps) {
+  const { state, actions } = useApp();
   const [isCreating, setIsCreating] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isReloadingSkills, setIsReloadingSkills] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<SessionInfo | null>(null);
 
-  const tabs = [
-    { id: 'chat' as const, icon: MessageSquare, label: '对话' },
-    { id: 'memory' as const, icon: Brain, label: '记忆' },
-    { id: 'skills' as const, icon: Wrench, label: '技能' },
+  const tabs: Array<{ id: TabId; icon: typeof Route; label: string }> = [
+    { id: 'learning-path', icon: Route, label: '学习路径' },
+    { id: 'resources', icon: Library, label: '资源库' },
+    { id: 'mistakes', icon: BookMarked, label: '错题本' },
   ];
 
   const formatDate = (dateStr: string) => {
@@ -51,144 +68,171 @@ export function Sidebar({
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, sessionId: string) => {
-    e.stopPropagation();
-    setDeletingId(sessionId);
-    try {
-      const { deleteSession } = await import('@/lib/api');
-      await deleteSession(sessionId);
-      // Reload sessions
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to delete session:', error);
-    } finally {
-      setDeletingId(null);
-    }
+  const startRename = (session: SessionInfo) => {
+    setRenamingId(session.session_id);
+    setRenameValue(session.title || session.session_id);
   };
 
-  const handleReloadSkills = async () => {
-    setIsReloadingSkills(true);
-    try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
-      const response = await fetch(`${API_BASE}/api/config/reload-skills`, {
-        method: 'POST',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`Skills reloaded: ${data.skills_count} skills`);
-      }
-    } catch (error) {
-      console.error('Failed to reload skills:', error);
-    } finally {
-      setIsReloadingSkills(false);
+  const commitRename = async () => {
+    if (renamingId && renameValue.trim()) {
+      await actions.renameSession(renamingId, renameValue.trim());
     }
+    setRenamingId(null);
+    setRenameValue('');
+  };
+
+  const cancelRename = () => {
+    setRenamingId(null);
+    setRenameValue('');
   };
 
   return (
-    <div className="h-full bg-white/80 backdrop-blur-xl border-r border-gray-200/50 flex flex-col">
+    <div className="h-full bg-sidebar text-sidebar-foreground backdrop-blur-xl border-r border-sidebar-border flex flex-col">
       {/* Navigation Tabs */}
-      <div className="p-4 border-b border-gray-200/50">
-        <div className="flex gap-2">
+      <div className="p-3 border-b border-sidebar-border">
+        <div className="grid grid-cols-3 gap-1">
           {tabs.map(({ id, icon: Icon, label }) => (
             <Button
               key={id}
               variant={activeTab === id ? 'default' : 'ghost'}
               size="sm"
               onClick={() => onTabChange(id)}
-              className="flex-1 flex flex-col items-center gap-1 h-auto py-2"
+              className="flex flex-col items-center gap-0.5 h-auto py-1.5 px-1"
             >
               <Icon className="w-4 h-4" />
-              <span className="text-xs">{label}</span>
+              <span className="text-[10px]">{label}</span>
             </Button>
           ))}
         </div>
       </div>
 
-      {/* Session List */}
+      {/* Content area: file tree or session list depending on tab */}
       <div className="flex-1 overflow-y-auto p-2">
-        {/* Skills reload button (only show when skills tab is active) */}
-        {activeTab === 'skills' && (
-          <div className="mb-2 p-2 bg-purple-50 rounded-lg">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReloadSkills}
-              disabled={isReloadingSkills}
-              className="w-full text-purple-700 border-purple-200 hover:bg-purple-100"
-            >
-              {isReloadingSkills ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              热重载技能
-            </Button>
-            <p className="text-xs text-purple-600 mt-1 text-center">
-              添加新技能后点击重载
-            </p>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between mb-2 px-2">
-          <span className="text-xs font-medium text-gray-500">会话列表</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleNewSession}
-            disabled={isCreating}
-            className="h-6 w-6 p-0"
-          >
-            {isCreating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Plus className="w-4 h-4" />
-            )}
-          </Button>
-        </div>
-
-        <div className="space-y-1">
-          {sessions.map((session) => (
-            <div
-              key={session.session_id}
-              className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
-                activeSession === session.session_id
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'hover:bg-gray-50'
-              }`}
-              onClick={() => onSessionSelect(session.session_id)}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">
-                  {session.title || session.session_id}
-                </div>
-                <div className="text-xs text-gray-500 flex gap-2">
-                  <span>{formatDate(session.updated_at || session.created_at)}</span>
-                  <span>{session.message_count} 条消息</span>
-                </div>
-              </div>
+        {activeTab === 'resources' ? (
+          <WorkspaceBrowser activePath={state.activeFilePath} onSelect={(path) => actions.setActiveFile(path)} />
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-2 px-2">
+              <span className="text-xs font-medium text-muted-foreground">会话列表</span>
               <Button
                 variant="ghost"
-                size="sm"
-                onClick={(e) => handleDelete(e, session.session_id)}
-                disabled={deletingId === session.session_id}
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                size="icon-xs"
+                onClick={handleNewSession}
+                disabled={isCreating}
+                aria-label="新建会话"
               >
-                {deletingId === session.session_id ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
-                ) : (
-                  <Trash2 className="w-3 h-3 text-gray-400 hover:text-red-500" />
-                )}
+                {isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               </Button>
             </div>
-          ))}
 
-          {sessions.length === 0 && (
-            <div className="text-center text-gray-400 text-sm py-4">
-              暂无会话
+            <div className="space-y-1">
+              {sessions.map((session) => {
+                const isActive = activeSession === session.session_id;
+                const isRenaming = renamingId === session.session_id;
+                return (
+                  <div
+                    key={session.session_id}
+                    className={`group relative flex items-center gap-1 p-2 rounded-lg cursor-pointer transition-colors ${
+                      isActive
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                        : 'hover:bg-sidebar-accent/50'
+                    }`}
+                    onClick={() => !isRenaming && onSessionSelect(session.session_id)}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      startRename(session);
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      {isRenaming ? (
+                        <input
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') commitRename();
+                            else if (e.key === 'Escape') cancelRename();
+                          }}
+                          autoFocus
+                          className="w-full text-sm font-medium bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      ) : (
+                        <>
+                          <div className="text-sm font-medium truncate">
+                            {session.title || session.session_id}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground flex gap-2">
+                            <span>{formatDate(session.updated_at || session.created_at)}</span>
+                            <span>{session.message_count} 条</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {isRenaming ? (
+                      <div className="flex items-center gap-0.5">
+                        <Button variant="ghost" size="icon-xs" onClick={(e) => { e.stopPropagation(); commitRename(); }}>
+                          <Check className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon-xs" onClick={(e) => { e.stopPropagation(); cancelRename(); }}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={(e) => { e.stopPropagation(); startRename(session); }}
+                          aria-label="重命名"
+                        >
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={(e) => { e.stopPropagation(); setPendingDelete(session); }}
+                          aria-label="删除会话"
+                        >
+                          <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {sessions.length === 0 && (
+                <div className="text-center text-muted-foreground text-sm py-4">
+                  暂无会话
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title="删除会话"
+        description={
+          pendingDelete ? (
+            <>
+              确认删除会话 <span className="font-medium text-foreground">{pendingDelete.title || pendingDelete.session_id}</span>？此操作不可撤销。
+            </>
+          ) : null
+        }
+        confirmLabel="删除"
+        variant="destructive"
+        onConfirm={async () => {
+          if (pendingDelete) {
+            await actions.deleteSession(pendingDelete.session_id);
+            setPendingDelete(null);
+          }
+        }}
+      />
+      <TokenMeter sessionId={activeSession} refreshKey={sessions.length} />
     </div>
   );
 }

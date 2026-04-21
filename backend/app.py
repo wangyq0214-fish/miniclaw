@@ -22,6 +22,7 @@ if str(backend_dir) not in sys.path:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -47,26 +48,6 @@ STORAGE_DIR = PROJECT_ROOT / "storage"
 # Ensure directories exist
 for dir_path in [MEMORY_DIR, LOGS_DIR, SESSIONS_DIR, SKILLS_DIR, WORKSPACE_DIR, KNOWLEDGE_DIR, STORAGE_DIR]:
     dir_path.mkdir(parents=True, exist_ok=True)
-
-
-async def scan_skills():
-    """
-    Scan skills directory and generate SKILLS_SNAPSHOT.md.
-    """
-    from skills import create_skills_manager
-
-    try:
-        manager = create_skills_manager()
-        snapshot = manager.get_skills_snapshot()
-
-        snapshot_path = PROJECT_ROOT / "SKILLS_SNAPSHOT.md"
-        with open(snapshot_path, 'w', encoding='utf-8') as f:
-            f.write(f"<!-- Skills Snapshot -->\n{snapshot}")
-
-        logger.info(f"Generated SKILLS_SNAPSHOT.md with {len(manager.skills)} skills")
-
-    except Exception as e:
-        logger.error(f"Error scanning skills: {str(e)}")
 
 
 async def initialize_agent():
@@ -110,10 +91,8 @@ async def lifespan(app: FastAPI):
     Application lifespan manager.
 
     Startup:
-    1. Scan skills and generate SKILLS_SNAPSHOT.md
-    2. Initialize AgentManager
-    3. Build memory index
-    4. Initialize daily log
+    1. Initialize AgentManager (skills injected at runtime by deepagents SkillsMiddleware)
+    2. Build memory index
 
     Shutdown:
     - Cleanup resources
@@ -121,7 +100,6 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Mini-OpenClaw...")
 
     # Startup
-    await scan_skills()
     await initialize_agent()
 
     logger.info("Mini-OpenClaw started successfully")
@@ -181,6 +159,10 @@ app.include_router(files_router, prefix="/api", tags=["files"])
 app.include_router(tokens_router, prefix="/api", tags=["tokens"])
 app.include_router(compress_router, prefix="/api", tags=["compress"])
 app.include_router(config_router, prefix="/api", tags=["config"])
+
+# Mount static files for knowledge assets (images, etc.)
+# Images should be stored in knowledge/assets/ folder
+app.mount("/static/knowledge", StaticFiles(directory=str(KNOWLEDGE_DIR)), name="knowledge")
 
 
 if __name__ == "__main__":

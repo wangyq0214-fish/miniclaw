@@ -1,5 +1,11 @@
 """
 Agent Skills System
+
+Provides a `SkillsManager` that scans the skills directory and parses each
+SKILL.md's frontmatter. Used by the `/api/skills` endpoint to list available
+skills for the frontend. Skill content is injected into the system prompt
+by deepagents SkillsMiddleware at runtime — this module does not generate
+a static SKILLS_SNAPSHOT.md anymore.
 """
 import os
 import re
@@ -33,14 +39,6 @@ class Skill:
         if self.tool:
             result["tool"] = self.tool
         return result
-
-    def to_markdown(self) -> str:
-        tool_line = f"<tool>{self.tool}</tool>\n" if self.tool else ""
-        return f"""<skill>
-<name>{self.name}</name>
-<description>{self.description}</description>
-{tool_line}<location>{self.location}</location>
-</skill>"""
 
 
 class SkillsManager:
@@ -94,17 +92,6 @@ class SkillsManager:
             except Exception as e:
                 logger.error(f"Error loading skill from {skill_md}: {str(e)}")
 
-    def get_skills_snapshot(self) -> str:
-        """Generate SKILLS_SNAPSHOT.md content."""
-        if not self.skills:
-            return "<available_skills>\n<skill>\n<name>no_custom_skills</name>\n<description>No custom skills loaded</description>\n<location></location>\n</skill>\n</available_skills>"
-
-        skills_xml = "\n".join([skill.to_markdown() for skill in self.skills])
-
-        return f"""<available_skills>
-{skills_xml}
-</available_skills>"""
-
     def reload(self):
         """Reload all skills."""
         self._load_skills()
@@ -132,9 +119,3 @@ def get_skills_manager() -> SkillsManager:
 def create_skills_manager() -> SkillsManager:
     """Create and return a SkillsManager instance."""
     return get_skills_manager()
-
-
-def get_skills_snapshot_content() -> str:
-    """Get the current skills snapshot content."""
-    manager = get_skills_manager()
-    return manager.get_skills_snapshot()

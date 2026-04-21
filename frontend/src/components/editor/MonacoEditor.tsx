@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import Editor, { OnMount, OnChange } from '@monaco-editor/react';
 import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,18 @@ interface MonacoEditorProps {
   title?: string;
 }
 
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const update = () => setIsDark(document.documentElement.classList.contains('dark'));
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+  return isDark;
+}
+
 export function MonacoEditor({
   value,
   onChange,
@@ -23,6 +35,7 @@ export function MonacoEditor({
   title,
 }: MonacoEditorProps) {
   const editorRef = useRef<unknown>(null);
+  const isDark = useIsDark();
 
   const handleEditorMount: OnMount = (editor) => {
     editorRef.current = editor;
@@ -41,10 +54,9 @@ export function MonacoEditor({
   }, [onSave, value]);
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-lg border border-gray-200/50 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200/50 bg-gray-50/80">
-        <span className="text-sm font-medium text-gray-600">
+    <div className="h-full flex flex-col bg-card rounded-lg border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/40">
+        <span className="text-sm font-medium text-muted-foreground truncate">
           {title || '编辑器'}
         </span>
         {!readOnly && onSave && (
@@ -55,7 +67,6 @@ export function MonacoEditor({
         )}
       </div>
 
-      {/* Editor */}
       <div className="flex-1">
         <Editor
           height="100%"
@@ -63,7 +74,7 @@ export function MonacoEditor({
           value={value}
           onChange={handleChange}
           onMount={handleEditorMount}
-          theme="vs"
+          theme={isDark ? 'vs-dark' : 'vs'}
           options={{
             readOnly,
             minimap: { enabled: false },
