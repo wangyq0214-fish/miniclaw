@@ -150,7 +150,8 @@ from api import (
     files_router,
     tokens_router,
     compress_router,
-    config_router
+    config_router,
+    courses_router
 )
 
 app.include_router(chat_router, prefix="/api", tags=["chat"])
@@ -159,6 +160,7 @@ app.include_router(files_router, prefix="/api", tags=["files"])
 app.include_router(tokens_router, prefix="/api", tags=["tokens"])
 app.include_router(compress_router, prefix="/api", tags=["compress"])
 app.include_router(config_router, prefix="/api", tags=["config"])
+app.include_router(courses_router, prefix="/api", tags=["courses"])
 
 # Mount static files for knowledge assets (images, etc.)
 # Images should be stored in knowledge/assets/ folder

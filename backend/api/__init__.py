@@ -8,6 +8,7 @@ Provides REST API endpoints for:
 - Tokens: Token statistics
 - Compress: Session compression
 - Config: Runtime configuration
+- Courses: Course content management
 """
 from .chat import router as chat_router
 from .sessions import router as sessions_router
@@ -15,6 +16,7 @@ from .files import router as files_router
 from .tokens import router as tokens_router
 from .compress import router as compress_router
 from .config_api import router as config_router
+from .courses import router as courses_router
 
 __all__ = [
     "chat_router",
@@ -23,4 +25,5 @@ __all__ = [
     "tokens_router",
     "compress_router",
     "config_router",
+    "courses_router",
 ]
