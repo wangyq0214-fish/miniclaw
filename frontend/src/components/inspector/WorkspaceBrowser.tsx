@@ -132,34 +132,16 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
 
   return (
     <div className="py-2">
-      {sortedCategories.map((category) => (
-        <div key={category} className="mb-3">
-          <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-            {category}
-          </div>
-          {categorizedFiles[category]?.length ? (
-            <div className="space-y-0.5">
-              {categorizedFiles[category].map((file) => (
-                <button
-                  key={file.path}
-                  onClick={() => onSelect(file.path)}
-                  className={`w-full flex items-center gap-1.5 py-1.5 px-3 text-xs text-left rounded ${
-                    activePath === file.path
-                      ? 'bg-primary/10 text-primary'
-                      : 'hover:bg-accent/50 text-foreground'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                  <span className="truncate">{file.name}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="px-3 py-1 text-xs text-muted-foreground/70">（空）</div>
-          )}
-        </div>
+      {roots.map((root) => (
+        <FileNode
+          key={root.path}
+          file={root}
+          depth={0}
+          activePath={activePath}
+          onSelect={onSelect}
+        />
       ))}
-      {sortedCategories.length === 0 && (
+      {roots.length === 0 && (
         <div className="text-center text-muted-foreground text-sm py-4">
           暂无资源
         </div>
