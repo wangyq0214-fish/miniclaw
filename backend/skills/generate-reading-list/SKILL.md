@@ -59,7 +59,7 @@ tavily-search 不是 tool,要通过 `terminal` 运行脚本:
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "knowledge/generated/<YYYY-MM-DD>/<topic-slug>/reading_list.md",
+  "path": "workspace/generated/<YYYY-MM-DD>/<topic-slug>/reading_list.md",
   "mode": "write",
   "content": "<完整 markdown>"
 }

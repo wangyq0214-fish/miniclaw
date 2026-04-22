@@ -69,7 +69,7 @@ graph TD
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "knowledge/generated/<YYYY-MM-DD>/<topic-slug>/mindmap.md",
+  "path": "workspace/generated/<YYYY-MM-DD>/<topic-slug>/mindmap.md",
   "mode": "write",
   "content": "<完整 markdown>"
 }

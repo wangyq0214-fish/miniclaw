@@ -103,7 +103,7 @@ if __name__ == "__main__":
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "knowledge/generated/<date>/<topic-slug>/code_cases/<NN>_<short_name>.py",
+  "path": "workspace/generated/<date>/<topic-slug>/code_cases/<NN>_<short_name>.py",
   "mode": "write",
   "content": "<代码>"
 }
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 ```python
 import sys, importlib.util
 spec = importlib.util.spec_from_file_location(
-    "m", "knowledge/generated/<date>/<topic-slug>/code_cases/01_minimal.py"
+    "m", "workspace/generated/<date>/<topic-slug>/code_cases/01_minimal.py"
 )
 m = importlib.util.module_from_spec(spec)
 try:
@@ -140,7 +140,7 @@ except Exception as e:
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "knowledge/generated/<date>/<topic-slug>/code_cases/requirements.txt",
+  "path": "workspace/generated/<date>/<topic-slug>/code_cases/requirements.txt",
   "mode": "write",
   "content": "numpy>=1.20\nmatplotlib>=3.5\n# torch>=2.0  # 仅 case 03 需要"
 }
@@ -153,7 +153,7 @@ except Exception as e:
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "knowledge/generated/<date>/<topic-slug>/code_cases/README.md",
+  "path": "workspace/generated/<date>/<topic-slug>/code_cases/README.md",
   "mode": "write",
   "content": "<README>"
 }

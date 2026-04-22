@@ -23,7 +23,7 @@ miniclaw 已有「画像维护」「即时答疑」「资源生成」三条独�
 | `workspace/USER.md` | 8 维画像当前快照 + `confidence_overall` |
 | `memory/profile_history.md` | mastery 变化轨迹 / 易错点增删记录(append-only diff) |
 | `memory/logs/*.md`(最近 3 天) | 交互日志,用于参与度 / 情感状态评估 |
-| `knowledge/generated/*/exercises.json` | 测验题目 + 学生画像 before 值 |
+| `workspace/generated/*/exercises.json` | 测验题目 + 学生画像 before 值 |
 
 ## 执行步骤(严格按顺序,每步用实际 tool)
 
@@ -58,17 +58,17 @@ miniclaw 已有「画像维护」「即时答疑」「资源生成」三条独�
 - 学生主动提问("?"结尾或含"为什么/怎么/什么是"的 user 消息)数
 - 出现的畏难词("好难""不懂""放弃""看不进去")频次 → 情感维度
 - 出现的兴奋词("哦原来""懂了""明白""有意思")频次 → 情感维度
-- 被生成的资源类型(看 `write_file knowledge/generated/...` 的路径)
+- 被生成的资源类型(看 `write_file workspace/generated/...` 的路径)
 
 **若 logs 目录为空或最近 3 天无文件**:`data_completeness` 至少降级为 `partial`。
 
 ### Step 4:读测验记录(可选,尽力而为)
 
-尝试按日期倒序读最近 3 天里 `knowledge/generated/<date>/<topic-slug>/exercises.json`。路径从 Step 3 logs 里的 write_file 记录反查得到;若 logs 里没提到过 exercises,跳过本步。
+尝试按日期倒序读最近 3 天里 `workspace/generated/<date>/<topic-slug>/exercises.json`。路径从 Step 3 logs 里的 write_file 记录反查得到;若 logs 里没提到过 exercises,跳过本步。
 
 对每个 exercises.json:
 
-**tool**: `read_file` · **input**: `{"path": "knowledge/generated/<date>/<topic-slug>/exercises.json"}`
+**tool**: `read_file` · **input**: `{"path": "workspace/generated/<date>/<topic-slug>/exercises.json"}`
 
 提取:
 - `topic`、`student_mastery_before`、`difficulty_mix`
@@ -273,7 +273,7 @@ planner: learning_evaluator
 1. `read_file` 工具(path=`workspace/USER.md`)→ 拿 8 维画像:计科大三,confidence_overall=0.45,反向传播 mastery=0.7,梯度消失 mastery=0.3,易错点有「反向传播 vs 梯度下降」混淆对。
 2. `read_file` 工具(path=`memory/profile_history.md`)→ 按 diff 切分,得到反向传播 mastery 轨迹 `[(2026-04-14, 0.3, 0.3, 首次), (2026-04-17, 0.3, 0.6, 答对第5题), (2026-04-19, 0.6, 0.7, 主动讲解清楚)]`。
 3. `read_file` 工具(path=`memory/logs/2026-04-19.md / 2026-04-18.md / 2026-04-17.md`)→ 统计 sessions=4、主动提问 12 次、畏难词 3 次、兴奋词 8 次。
-4. 从 logs 里看到 `knowledge/generated/2026-04-17/backpropagation/exercises.json` 被写过 → `read_file` 它 → 拿题目结构。
+4. 从 logs 里看到 `workspace/generated/2026-04-17/backpropagation/exercises.json` 被写过 → `read_file` 它 → 拿题目结构。
 5. `get_course_structure` 工具(chapter_id=null)→ 总概念数 24。
 6. 综合分析:生成 6 维评估内容。
 7. `write_file` 工具(path=`memory/evaluation/2026-04-19.md`, mode=write, content=<报告>)。

@@ -36,7 +36,7 @@ allowed-tools: read_file write_file get_entity_graph terminal python_repl
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "knowledge/generated/<YYYY-MM-DD>/<topic-slug>/storyboard.md",
+  "path": "workspace/generated/<YYYY-MM-DD>/<topic-slug>/storyboard.md",
   "mode": "write",
   "content": "<完整故事板>"
 }
@@ -131,7 +131,7 @@ class <SceneClassName>(Scene):
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "knowledge/generated/<date>/<topic-slug>/animation.py",
+  "path": "workspace/generated/<date>/<topic-slug>/animation.py",
   "mode": "write",
   "content": "<完整 python 脚本>"
 }
@@ -142,7 +142,7 @@ class <SceneClassName>(Scene):
 **tool**: `terminal` · **input**:
 ```json
 {
-  "command": "cd knowledge/generated/<date>/<topic-slug> && manim -pql animation.py <SceneClassName> --media_dir media 2>&1 | tail -30"
+  "command": "cd workspace/generated/<date>/<topic-slug> && manim -pql animation.py <SceneClassName> --media_dir media 2>&1 | tail -30"
 }
 ```
 
@@ -165,7 +165,7 @@ class <SceneClassName>(Scene):
   \`\`\`
   **解决方案**:
   - 缺 manim:`pip install manim`
-  - 装好后手动跑:`cd knowledge/generated/<date>/<topic-slug> && manim -pql animation.py <SceneClassName>`
+  - 装好后手动跑:`cd workspace/generated/<date>/<topic-slug> && manim -pql animation.py <SceneClassName>`
 
   storyboard.md 内容已保存,可以先用它手工制作。
   ```

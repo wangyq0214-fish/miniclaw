@@ -91,7 +91,7 @@ prerequisites: [<from entity_graph incoming>]
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "knowledge/generated/<YYYY-MM-DD>/<topic-slug>/lecture.md",
+  "path": "workspace/generated/<YYYY-MM-DD>/<topic-slug>/lecture.md",
   "mode": "write",
   "content": "<完整文档>"
 }
@@ -106,7 +106,7 @@ prerequisites: [<from entity_graph incoming>]
 - 必须对齐该主题 mastery 档位
 - 所有术语首次出现中文 + 英文括注
 - 不能编造论文引用(需要引用就让 reading_curator 去找)
-- 不能越权写到 `knowledge/generated/` 之外
+- 不能越权写到 `workspace/generated/` 之外
 
 ## 示例调用(子代理视角)
 
@@ -115,5 +115,5 @@ prerequisites: [<from entity_graph incoming>]
 1. read_file workspace/USER.md → 确认画像
 2. get_entity_graph(entity_name="反向传播") → 得到 incoming=["链式法则","偏导数"], outgoing=["梯度消失","BPTT"]
 3. 按入门档模板写 ≤ 1500 字,多给示例类比
-4. write_file knowledge/generated/2026-04-19/backpropagation/lecture.md
+4. write_file workspace/generated/2026-04-19/backpropagation/lecture.md
 5. 回报 "已生成 lecture.md(1200 字,7 节,含 2 个示例)"

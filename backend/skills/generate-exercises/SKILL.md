@@ -33,7 +33,7 @@ allowed-tools: read_file write_file get_entity_graph search_knowledge_base
 outgoing 的邻近实体是选择题干扰项的黄金来源(学生容易把它们和主题混淆)。
 
 ### Step 3:查已有题库避免重复
-**tool**: `read_file` · **input**: `{"path": "knowledge/generated/<YYYY-MM-DD>/<topic-slug>/exercises.json"}`
+**tool**: `read_file` · **input**: `{"path": "workspace/generated/<YYYY-MM-DD>/<topic-slug>/exercises.json"}`
 
 若今日已有,读出所有 stem 做去重(题干相似度 > 80% 判重)。若文件不存在(错误),说明是首次生成,跳过去重。
 
@@ -101,8 +101,8 @@ outgoing 的邻近实体是选择题干扰项的黄金来源(学生容易把它�
 ```
 
 **tool**: `write_file` · 两次调用:
-1. `{"path": "knowledge/generated/<date>/<topic-slug>/exercises.json", "mode": "write", "content": "<JSON 字符串>"}`
-2. `{"path": "knowledge/generated/<date>/<topic-slug>/exercises.md", "mode": "write", "content": "<从 JSON 派生的人读 Markdown>"}`
+1. `{"path": "workspace/generated/<date>/<topic-slug>/exercises.json", "mode": "write", "content": "<JSON 字符串>"}`
+2. `{"path": "workspace/generated/<date>/<topic-slug>/exercises.md", "mode": "write", "content": "<从 JSON 派生的人读 Markdown>"}`
 
 **exercises.md** 模板:
 ```markdown
