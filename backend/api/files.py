@@ -252,7 +252,10 @@ def categorize_resource(relative_path: str) -> Optional[str]:
 
 
 @router.get("/files/list", response_model=FileListResponse)
-async def list_files(directory: str = Query("", description="Relative path to the directory")):
+async def list_files(
+    directory: str = Query("", description="Relative path to the directory"),
+    recursive: bool = Query(False, description="Recursively list files in subdirectories")
+):
     """List files in a directory, with filtering for resource library."""
     dir_path = resolve_path(directory)
 
@@ -273,29 +276,66 @@ async def list_files(directory: str = Query("", description="Relative path to th
 
     try:
         files = []
-        for item in dir_path.iterdir():
-            relative = item.relative_to(get_project_root())
-            rel_str = str(relative).replace("\\", "/")
 
-            # Filter resources for workspace, memory, and knowledge/source directories
-            if directory in ["workspace", "memory", "knowledge/source"]:
-                if not should_include_resource(item, relative):
-                    continue
+        # For knowledge/source, always use recursive mode to get all course files
+        if directory == "knowledge/source":
+            recursive = True
 
-            file_info = {
-                "name": item.name,
-                "path": rel_str,
-                "type": "directory" if item.is_dir() else "file",
-                "size": item.stat().st_size if item.is_file() else 0
-            }
+        def collect_files(current_path: Path, depth: int = 0):
+            """Recursively collect files from directory."""
+            for item in current_path.iterdir():
+                relative = item.relative_to(get_project_root())
+                rel_str = str(relative).replace("\\", "/")
 
-            # Add category for files
-            if item.is_file():
-                category = categorize_resource(rel_str)
-                if category:
-                    file_info["category"] = category
+                # Filter resources for workspace, memory, and knowledge/source directories
+                if directory in ["workspace", "memory", "knowledge/source"]:
+                    if not should_include_resource(item, relative):
+                        continue
 
-            files.append(file_info)
+                if item.is_file():
+                    file_info = {
+                        "name": item.name,
+                        "path": rel_str,
+                        "type": "file",
+                        "size": item.stat().st_size
+                    }
+
+                    # Add category for files
+                    category = categorize_resource(rel_str)
+                    if category:
+                        file_info["category"] = category
+
+                    files.append(file_info)
+                elif item.is_dir() and recursive and depth < 10:  # Limit recursion depth
+                    collect_files(item, depth + 1)
+
+        if recursive:
+            collect_files(dir_path)
+        else:
+            # Non-recursive: only list direct children
+            for item in dir_path.iterdir():
+                relative = item.relative_to(get_project_root())
+                rel_str = str(relative).replace("\\", "/")
+
+                # Filter resources for workspace, memory, and knowledge/source directories
+                if directory in ["workspace", "memory", "knowledge/source"]:
+                    if not should_include_resource(item, relative):
+                        continue
+
+                file_info = {
+                    "name": item.name,
+                    "path": rel_str,
+                    "type": "directory" if item.is_dir() else "file",
+                    "size": item.stat().st_size if item.is_file() else 0
+                }
+
+                # Add category for files
+                if item.is_file():
+                    category = categorize_resource(rel_str)
+                    if category:
+                        file_info["category"] = category
+
+                files.append(file_info)
 
         return FileListResponse(
             files=files,
