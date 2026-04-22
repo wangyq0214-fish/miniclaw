@@ -287,12 +287,12 @@ async def list_files(
                 relative = item.relative_to(get_project_root())
                 rel_str = str(relative).replace("\\", "/")
 
-                # Filter resources for workspace, memory, and knowledge/source directories
-                if directory in ["workspace", "memory", "knowledge/source"]:
-                    if not should_include_resource(item, relative):
-                        continue
-
                 if item.is_file():
+                    # Filter resources for workspace, memory, and knowledge/source directories
+                    if directory in ["workspace", "memory", "knowledge/source"]:
+                        if not should_include_resource(item, relative):
+                            continue
+
                     file_info = {
                         "name": item.name,
                         "path": rel_str,
@@ -307,6 +307,7 @@ async def list_files(
 
                     files.append(file_info)
                 elif item.is_dir() and recursive and depth < 10:  # Limit recursion depth
+                    # Recurse into subdirectories without filtering
                     collect_files(item, depth + 1)
 
         if recursive:
