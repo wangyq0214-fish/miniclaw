@@ -129,19 +129,6 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
     );
   }
 
-  const categoryOrder = [
-    '记忆',
-    '知识库',
-    '课程讲义',
-    '练习题',
-    '思维导图',
-    '阅读材料',
-    '视频脚本',
-    '代码案例',
-    '其他资源',
-  ];
-
-  const sortedCategories = categoryOrder.filter((cat) => categorizedFiles[cat]);
 
   return (
     <div className="py-2">
