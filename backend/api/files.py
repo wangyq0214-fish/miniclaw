@@ -277,66 +277,31 @@ async def list_files(
     try:
         files = []
 
-        # For knowledge/source, always use recursive mode to get all course files
-        if directory == "knowledge/source":
-            recursive = True
+        # Non-recursive: only list direct children (show directory structure)
+        for item in dir_path.iterdir():
+            relative = item.relative_to(get_project_root())
+            rel_str = str(relative).replace("\\", "/")
 
-        def collect_files(current_path: Path, depth: int = 0):
-            """Recursively collect files from directory."""
-            for item in current_path.iterdir():
-                relative = item.relative_to(get_project_root())
-                rel_str = str(relative).replace("\\", "/")
-
-                if item.is_file():
-                    # Filter resources for workspace, memory, and knowledge/source directories
-                    if directory in ["workspace", "memory", "knowledge/source"]:
-                        if not should_include_resource(item, relative):
-                            continue
-
-                    file_info = {
-                        "name": item.name,
-                        "path": rel_str,
-                        "type": "file",
-                        "size": item.stat().st_size
-                    }
-
-                    # Add category for files
-                    category = categorize_resource(rel_str)
-                    if category:
-                        file_info["category"] = category
-
-                    files.append(file_info)
-                elif item.is_dir() and recursive and depth < 10:  # Limit recursion depth
-                    # Recurse into subdirectories without filtering
-                    collect_files(item, depth + 1)
-
-        if recursive:
-            collect_files(dir_path)
-        else:
-            # Non-recursive: only list direct children
-            for item in dir_path.iterdir():
-                relative = item.relative_to(get_project_root())
-                rel_str = str(relative).replace("\\", "/")
-
-                # Filter resources for workspace, memory, and knowledge/source directories
-                if directory in ["workspace", "memory", "knowledge/source"]:
+            # For files, apply filtering
+            if item.is_file():
+                if directory in ["workspace", "memory", "knowledge/source"] or directory.startswith("knowledge/source/"):
                     if not should_include_resource(item, relative):
                         continue
 
-                file_info = {
-                    "name": item.name,
-                    "path": rel_str,
-                    "type": "directory" if item.is_dir() else "file",
-                    "size": item.stat().st_size if item.is_file() else 0
-                }
+            file_info = {
+                "name": item.name,
+                "path": rel_str,
+                "type": "directory" if item.is_dir() else "file",
+                "size": item.stat().st_size if item.is_file() else 0
+            }
 
-                # Add category for files
-                if item.is_file():
-                    category = categorize_resource(rel_str)
-                    if category:
-                        file_info["category"] = category
+            # Add category for files
+            if item.is_file():
+                category = categorize_resource(rel_str)
+                if category:
+                    file_info["category"] = category
 
-                files.append(file_info)
+            files.append(file_info)
 
         return FileListResponse(
             files=files,

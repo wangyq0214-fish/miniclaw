@@ -96,37 +96,25 @@ interface WorkspaceBrowserProps {
 }
 
 export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps) {
-  const [categorizedFiles, setCategorizedFiles] = useState<Record<string, FileInfo[]>>({});
+  const [roots, setRoots] = useState<FileInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const allFiles: FileInfo[] = [];
+      const rootFiles: FileInfo[] = [];
 
-      // Load files from workspace and memory
+      // Load root directories
       for (const root of ROOTS) {
-        try {
-          const res = await listFiles(root.path);
-          allFiles.push(...res.files);
-        } catch {
-          // Ignore errors
-        }
+        rootFiles.push({
+          name: root.label,
+          path: root.path,
+          type: 'directory',
+          size: 0,
+        });
       }
 
-      // Categorize files
-      const categories: Record<string, FileInfo[]> = {};
-      for (const file of allFiles) {
-        if (file.type === 'file') {
-          const category = file.category || '其他资源';
-          if (!categories[category]) {
-            categories[category] = [];
-          }
-          categories[category].push(file);
-        }
-      }
-
-      setCategorizedFiles(categories);
+      setRoots(rootFiles);
       setLoading(false);
     };
     load();
