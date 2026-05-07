@@ -1,9 +1,57 @@
 'use client';
 
 import { useRef, useCallback, useEffect, useState } from 'react';
-import Editor, { OnMount, OnChange } from '@monaco-editor/react';
+import Editor, { OnMount, OnChange, loader } from '@monaco-editor/react';
 import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+// Monaco CDN config + suppress optional source-map dependency errors.
+// stackframe / error-stack-parser are non-critical and often fail from CDN.
+loader.config({
+  paths: {
+    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs',
+  },
+});
+if (typeof window !== 'undefined') {
+  const shouldSuppress = (msg: string) =>
+    msg.includes('stackframe') ||
+    msg.includes('error-stack-parser') ||
+    msg.includes('Duplicate definition of module') ||
+    msg.includes('Loading "stackframe" failed') ||
+    msg.includes('Loading "error-stack-parser" failed');
+
+  // 1. Suppress console.error / console.warn
+  const _origError = console.error.bind(console);
+  const _origWarn = console.warn.bind(console);
+  console.error = (...args: unknown[]) => {
+    if (shouldSuppress(String(args[0] ?? ''))) return;
+    _origError(...args);
+  };
+  console.warn = (...args: unknown[]) => {
+    if (shouldSuppress(String(args[0] ?? ''))) return;
+    _origWarn(...args);
+  };
+
+  // 2. Suppress uncaught errors from Monaco's AMD loader (script load failures)
+  window.addEventListener('error', (e) => {
+    if (shouldSuppress(e.message || '')) {
+      e.preventDefault();
+    }
+  }, true);
+
+  // 3. Suppress unhandled promise rejections from the loader
+  window.addEventListener('unhandledrejection', (e) => {
+    if (shouldSuppress(String(e.reason?.message || e.reason || ''))) {
+      e.preventDefault();
+    }
+  });
+
+  loader.init().then(() => {
+    setTimeout(() => { console.error = _origError; console.warn = _origWarn; }, 5000);
+  }).catch(() => {
+    console.error = _origError; console.warn = _origWarn;
+  });
+}
 
 interface MonacoEditorProps {
   value: string;

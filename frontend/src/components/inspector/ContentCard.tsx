@@ -14,6 +14,7 @@ import {
 import { DocCard } from './DocCard';
 import { StudentProfileCard } from './StudentProfileCard';
 import { MindmapCard } from './MindmapCard';
+import { CodeCaseCard } from './CodeCaseCard';
 
 interface ContentCardProps {
   path: string;
@@ -98,7 +99,7 @@ export function ContentCard({ path, content, onOpenInEditor }: ContentCardProps)
       );
     case 'code-case':
       return (
-        <DocCard
+        <CodeCaseCard
           icon={<ClipboardList className="w-4 h-4" />}
           label="代码案例"
           path={path}

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>梯度下降 — 可视化讲解</title>
+<style>
+:root {
+    --bg-color: #0f172a;
+    --primary: #3b82f6;
+    --secondary: #8b5cf6;
+    --accent: #f59e0b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --text-main: #f1f5f9;
+    --text-dim: #94a3b8;
+    --glow-blue: rgba(59, 130, 246, 0.4);
+    --glow-purple: rgba(139, 92, 246, 0.3);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: var(--bg-color);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--text-main);
+    overflow: hidden;
+}
+#viewport {
+    position: relative;
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+}
+#viewport::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+}
+#progress {
+    position: fixed; top: 0; left: 0;
+    height: 3px; width: 0;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    z-index: 100;
+    transition: width 0.3s;
+}
+#header {
+    position: absolute; top: 24px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center; z-index: 10;
+}
+#header h1 {
+    font-size: 28px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+#header p {
+    font-size: 13px; color: var(--text-dim);
+    margin-top: 4px;
+}
+#scene-indicator {
+    position: fixed; top: 16px; right: 24px;
+    display: flex; gap: 8px; z-index: 100;
+}
+.scene-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    transition: all 0.3s;
+}
+.scene-dot.active {
+    background: var(--primary);
+    box-shadow: 0 0 8px var(--glow-blue);
+}
+#stage {
+    position: absolute;
+    inset: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+[id^="scene-"] {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+    display: flex; align-items: center; justify-content: center;
+}
+[id^="scene-"].active {
+    opacity: 1; pointer-events: auto;
+}
+#subtitle-container {
+    position: fixed; bottom: 32px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    width: 680px; max-width: 90vw;
+}
+#subtitle-box {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 12px;
+    padding: 14px 24px;
+    text-align: center;
+}
+#subtitle-cn {
+    font-size: 16px; line-height: 1.6;
+    color: var(--text-main);
+}
+.concept-card {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 16px;
+    padding: 28px 32px;
+    text-align: center;
+    max-width: 500px;
+    animation: fadeUp 0.6s ease both;
+}
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.concept-card h2 {
+    font-size: 22px; margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.concept-card p {
+    font-size: 15px; color: var(--text-dim);
+    line-height: 1.7;
+}
+.formula-box {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin: 12px 0;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    color: var(--accent);
+}
+.step-item {
+    display: flex; align-items: flex-start; gap: 14px;
+    text-align: left;
+    padding: 10px 0;
+    animation: fadeUp 0.5s ease both;
+}
+.step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+}
+.step-text { font-size: 14px; line-height: 1.6; color: var(--text-dim); }
+.step-text strong { color: var(--text-main); }
+</style>
+</head>
+<body>
+<div id="viewport">
+    <div id="progress"></div>
+    <div id="header"><h1>梯度下降</h1><p>Gradient Descent — 优化算法的核心</p></div>
+    <div id="scene-indicator">
+        <div class="scene-dot active"></div>
+        <div class="scene-dot"></div>
+        <div class="scene-dot"></div>
+        <div class="scene-dot"></div>
+        <div class="scene-dot"></div>
+    </div>
+    <div id="stage">
+        <div id="scene-0"></div>
+        <div id="scene-1"></div>
+        <div id="scene-2"></div>
+        <div id="scene-3"></div>
+        <div id="scene-4"></div>
+    </div>
+    <div id="subtitle-container">
+        <div id="subtitle-box"><div id="subtitle-cn">准备开始...</div></div>
+    </div>
+</div>
+
+<script>
+const subtitles = [
+    { time: 0, cn: "梯度下降是深度学习中最核心的优化算法" },
+    { time: 3500, cn: "它的目标是找到让损失函数最小的参数值" },
+    { time: 7000, cn: "想象你蒙着眼睛站在山坡上，要走到谷底" },
+    { time: 10500, cn: "你会用脚感受哪个方向最陡，然后朝那个方向迈步" },
+    { time: 14000, cn: "这就是梯度下降的本质：沿最陡方向不断前进" },
+    { time: 17500, cn: "数学上，梯度就是函数在某点最陡上升方向" },
+    { time: 21000, cn: "负梯度就是最陡下降方向，我们沿此更新参数" },
+    { time: 24500, cn: "更新公式：新参数等于旧参数减去学习率乘以梯度" },
+    { time: 28000, cn: "学习率控制每一步迈多大，太大容易跨过谷底" },
+    { time: 31500, cn: "太小则收敛极慢，需要找到合适的平衡" },
+    { time: 35000, cn: "批量梯度下降用全部数据算梯度，精确但慢" },
+    { time: 38500, cn: "随机梯度下降只用一个样本，快但噪声大" },
+    { time: 42000, cn: "小批量梯度下降取折中，是最常用的方式" },
+    { time: 45500, cn: "动量法引入历史梯度，像小球滚下山坡带有惯性" },
+    { time: 49000, cn: "它能加速收敛并减少震荡，越过局部极小值" },
+    { time: 52500, cn: "梯度下降配合反向传播，让神经网络得以训练" }
+];
+
+const TOTAL_DURATION = 56000;
+const TOTAL_SCENES = 5;
+let startTime;
+
+function updateProgress() {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min(elapsed / TOTAL_DURATION * 100, 100);
+    document.getElementById('progress').style.width = pct + '%';
+}
+
+function updateSubtitle(elapsed) {
+    const cnEl = document.getElementById('subtitle-cn');
+    let current = subtitles[0].cn;
+    for (let i = subtitles.length - 1; i >= 0; i--) {
+        if (elapsed >= subtitles[i].time) {
+            current = subtitles[i].cn;
+            break;
+        }
+    }
+    if (cnEl.textContent !== current) cnEl.textContent = current;
+}
+
+function el(tag, attrs = {}, children = []) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+        if (k === 'style' && typeof v === 'object') {
+            Object.assign(e.style, v);
+        } else if (k === 'textContent') {
+            e.textContent = v;
+        } else if (k === 'innerHTML') {
+            e.innerHTML = v;
+        } else {
+            e.setAttribute(k, v);
+        }
+    }
+    for (const c of (Array.isArray(children) ? children : [children])) {
+        if (typeof c === 'string') e.appendChild(document.createTextNode(c));
+        else if (c) e.appendChild(c);
+    }
+    return e;
+}
+
+function makeSVG(w, h) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', h);
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    return svg;
+}
+
+function showScene(idx) {
+    const dots = document.querySelectorAll('.scene-dot');
+    dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    const s = document.getElementById('scene-' + idx);
+    if (s) s.classList.add('active');
+}
+
+function clearScene(idx) {
+    const s = document.getElementById('scene-' + idx);
+    if (s) { s.classList.remove('active'); s.innerHTML = ''; }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function waitForSubtitle(keyword) {
+    return new Promise(resolve => {
+        const check = setInterval(() => {
+            const cn = document.getElementById('subtitle-cn').textContent;
+            if (cn.includes(keyword)) { clearInterval(check); resolve(); }
+        }, 200);
+    });
+}
+
+/* ============ Scene 0: 概览 ============ */
+async function scene0() {
+    const container = document.getElementById('scene-0');
+    const card = el('div', { class: 'concept-card' }, [
+        el('h2', { textContent: '🎯 什么是梯度下降？' }),
+        el('p', { textContent: '一种通过迭代更新参数来最小化损失函数的优化算法' }),
+        el('div', { class: 'formula-box', textContent: 'θ ← θ − α · ∇L(θ)' }),
+        el('p', { style: { marginTop: '12px', fontSize: '13px', color: '#94a3b8' },
+            textContent: 'θ = 参数  α = 学习率  ∇L = 梯度' })
+    ]);
+    container.appendChild(card);
+}
+
+/* ============ Scene 1: 山谷类比 ============ */
+async function scene1() {
+    const container = document.getElementById('scene-1');
+    const svg = makeSVG(500, 320);
+
+    // 山谷曲线
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M 30 60 Q 100 30, 160 120 Q 220 220, 250 200 Q 280 180, 310 160 Q 340 140, 370 150 Q 400 160, 470 100');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', '#3b82f6');
+    path.setAttribute('stroke-width', '3');
+    path.setAttribute('opacity', '0.5');
+    svg.appendChild(path);
+
+    // 谷底标记
+    const valley = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    valley.setAttribute('cx', '310'); valley.setAttribute('cy', '160');
+    valley.setAttribute('r', '6');
+    valley.setAttribute('fill', '#10b981');
+    svg.appendChild(valley);
+    const vLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    vLabel.setAttribute('x', '310'); vLabel.setAttribute('y', '185');
+    vLabel.setAttribute('text-anchor', 'middle');
+    vLabel.setAttribute('fill', '#10b981');
+    vLabel.setAttribute('font-size', '12');
+    vLabel.textContent = '最小值';
+    svg.appendChild(vLabel);
+
+    // 小球
+    const ball = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ball.setAttribute('cx', '80'); ball.setAttribute('cy', '42');
+    ball.setAttribute('r', '10');
+    ball.setAttribute('fill', '#f59e0b');
+    ball.setAttribute('filter', 'url(#glow)');
+    svg.appendChild(ball);
+
+    // 箭头标记
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    arrow.setAttribute('x', '80'); arrow.setAttribute('y', '30');
+    arrow.setAttribute('text-anchor', 'middle');
+    arrow.setAttribute('fill', '#f59e0b');
+    arrow.setAttribute('font-size', '11');
+    arrow.textContent = '← 起点';
+    svg.appendChild(arrow);
+
+    // 动画：小球沿曲线滚动
+    const points = [
+        [80, 42], [120, 55], [160, 120], [200, 180], [250, 200],
+        [280, 180], [310, 160]
+    ];
+    let idx = 0;
+    const animate = setInterval(() => {
+        idx++;
+        if (idx >= points.length) { clearInterval(animate); return; }
+        ball.setAttribute('cx', points[idx][0]);
+        ball.setAttribute('cy', points[idx][1]);
+        // 轨迹
+        const trail = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        trail.setAttribute('cx', points[idx][0]);
+        trail.setAttribute('cy', points[idx][1]);
+        trail.setAttribute('r', '3');
+        trail.setAttribute('fill', '#f59e0b');
+        trail.setAttribute('opacity', '0.3');
+        svg.appendChild(trail);
+    }, 600);
+
+    container.appendChild(svg);
+    const label = el('p', { style: { color: '#94a3b8', fontSize: '14px', marginTop: '16px', textAlign: 'center' },
+        textContent: '蒙眼下山：每一步沿最陡方向走，直到谷底' });
+    container.appendChild(label);
+}
+
+/* ============ Scene 2: 更新公式详解 ============ */
+async function scene2() {
+    const container = document.getElementById('scene-2');
+    const card = el('div', { class: 'concept-card', style: { maxWidth: '520px' } }, [
+        el('h2', { textContent: '📐 更新公式' }),
+        el('div', { class: 'formula-box', style: { fontSize: '18px', textAlign: 'center' },
+            textContent: 'θ_new = θ_old − α · ∇L(θ)' }),
+        el('div', { style: { marginTop: '16px' } }, [
+            el('div', { class: 'step-item', style: { animationDelay: '0.2s' } }, [
+                el('div', { class: 'step-num', textContent: '1' }),
+                el('div', { class: 'step-text', innerHTML: '<strong>计算梯度 ∇L</strong>：用反向传播算出损失对每个参数的偏导数' })
+            ]),
+            el('div', { class: 'step-item', style: { animationDelay: '0.4s' } }, [
+                el('div', { class: 'step-num', textContent: '2' }),
+                el('div', { class: 'step-text', innerHTML: '<strong>乘以学习率 α</strong>：控制每步更新的幅度' })
+            ]),
+            el('div', { class: 'step-item', style: { animationDelay: '0.6s' } }, [
+                el('div', { class: 'step-num', textContent: '3' }),
+                el('div', { class: 'step-text', innerHTML: '<strong>更新参数 θ</strong>：旧参数减去梯度方向的步长' })
+            ])
+        ])
+    ]);
+    container.appendChild(card);
+}
+
+/* ============ Scene 3: 学习率对比 ============ */
+async function scene3() {
+    const container = document.getElementById('scene-3');
+    const svg = makeSVG(500, 300);
+
+    // 三条曲线代表损失函数
+    const curve = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    curve.setAttribute('d', 'M 50 240 Q 150 250, 200 120 Q 250 30, 300 80 Q 350 130, 450 60');
+    curve.setAttribute('fill', 'none');
+    curve.setAttribute('stroke', 'rgba(59,130,246,0.3)');
+    curve.setAttribute('stroke-width', '2');
+    svg.appendChild(curve);
+
+    // 太大：来回震荡
+    const bigSteps = [[80, 230], [300, 80], [120, 200], [350, 130], [100, 220]];
+    const bigG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    bigSteps.forEach((p, i) => {
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]);
+        c.setAttribute('r', '5'); c.setAttribute('fill', '#ef4444');
+        c.setAttribute('opacity', 0.3 + i * 0.15);
+        bigG.appendChild(c);
+        if (i > 0) {
+            const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            l.setAttribute('x1', bigSteps[i-1][0]); l.setAttribute('y1', bigSteps[i-1][1]);
+            l.setAttribute('x2', p[0]); l.setAttribute('y2', p[1]);
+            l.setAttribute('stroke', '#ef4444'); l.setAttribute('stroke-width', '1.5');
+            l.setAttribute('stroke-dasharray', '4,3'); l.setAttribute('opacity', '0.6');
+            bigG.appendChild(l);
+        }
+    });
+    svg.appendChild(bigG);
+    const bigLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    bigLabel.setAttribute('x', '50'); bigLabel.setAttribute('y', '280');
+    bigLabel.setAttribute('fill', '#ef4444'); bigLabel.setAttribute('font-size', '12');
+    bigLabel.textContent = 'α 太大 → 震荡发散';
+    svg.appendChild(bigLabel);
+
+    // 合适：稳步收敛
+    const goodSteps = [[80, 230], [140, 180], [200, 120], [240, 90], [260, 75]];
+    const goodG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    goodSteps.forEach((p, i) => {
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]);
+        c.setAttribute('r', '5'); c.setAttribute('fill', '#10b981');
+        c.setAttribute('opacity', 0.3 + i * 0.15);
+        goodG.appendChild(c);
+        if (i > 0) {
+            const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            l.setAttribute('x1', goodSteps[i-1][0]); l.setAttribute('y1', goodSteps[i-1][1]);
+            l.setAttribute('x2', p[0]); l.setAttribute('y2', p[1]);
+            l.setAttribute('stroke', '#10b981'); l.setAttribute('stroke-width', '1.5');
+            l.setAttribute('stroke-dasharray', '4,3'); l.setAttribute('opacity', '0.6');
+            goodG.appendChild(l);
+        }
+    });
+    svg.appendChild(goodG);
+    const goodLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    goodLabel.setAttribute('x', '230'); goodLabel.setAttribute('y', '55');
+    goodLabel.setAttribute('fill', '#10b981'); goodLabel.setAttribute('font-size', '12');
+    goodLabel.textContent = 'α 合适 → 稳定收敛 ✓';
+    svg.appendChild(goodLabel);
+
+    // 太小：龟速
+    const smallSteps = [[80, 230], [88, 228], [96, 226], [104, 224], [112, 222]];
+    const smallG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    smallSteps.forEach((p, i) => {
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]);
+        c.setAttribute('r', '4'); c.setAttribute('fill', '#f59e0b');
+        c.setAttribute('opacity', 0.3 + i * 0.15);
+        smallG.appendChild(c);
+    });
+    svg.appendChild(smallG);
+    const smallLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    smallLabel.setAttribute('x', '80'); smallLabel.setAttribute('y', '210');
+    smallLabel.setAttribute('fill', '#f59e0b'); smallLabel.setAttribute('font-size', '12');
+    smallLabel.textContent = 'α 太小 → 收敛极慢';
+    svg.appendChild(smallLabel);
+
+    container.appendChild(svg);
+}
+
+/* ============ Scene 4: 三种变体 + 总结 ============ */
+async function scene4() {
+    const container = document.getElementById('scene-4');
+    const card = el('div', { class: 'concept-card', style: { maxWidth: '560px' } }, [
+        el('h2', { textContent: '🔄 梯度下降的三种变体' }),
+        el('div', { style: { display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'center' } }, [
+            el('div', { style: {
+                flex: '1', padding: '14px', borderRadius: '10px',
+                background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)',
+                textAlign: 'center'
+            } }, [
+                el('div', { style: { fontSize: '20px', marginBottom: '6px' }, textContent: '📊' }),
+                el('div', { style: { fontSize: '13px', fontWeight: '600', color: '#3b82f6' }, textContent: '批量 GD' }),
+                el('div', { style: { fontSize: '11px', color: '#94a3b8', marginTop: '4px' }, textContent: '全量数据\n精确但慢' })
+            ]),
+            el('div', { style: {
+                flex: '1', padding: '14px', borderRadius: '10px',
+                background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)',
+                textAlign: 'center'
+            } }, [
+                el('div', { style: { fontSize: '20px', marginBottom: '6px' }, textContent: '🎲' }),
+                el('div', { style: { fontSize: '13px', fontWeight: '600', color: '#f59e0b' }, textContent: '随机 GD' }),
+                el('div', { style: { fontSize: '11px', color: '#94a3b8', marginTop: '4px' }, textContent: '单样本\n快但噪声大' })
+            ]),
+            el('div', { style: {
+                flex: '1', padding: '14px', borderRadius: '10px',
+                background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
+                textAlign: 'center'
+            } }, [
+                el('div', { style: { fontSize: '20px', marginBottom: '6px' }, textContent: '⚖️' }),
+                el('div', { style: { fontSize: '13px', fontWeight: '600', color: '#10b981' }, textContent: '小批量 GD' }),
+                el('div', { style: { fontSize: '11px', color: '#94a3b8', marginTop: '4px' }, textContent: '折中方案\n最常用 ✓' })
+            ])
+        ]),
+        el('div', { class: 'formula-box', style: { marginTop: '16px', fontSize: '13px', textAlign: 'center' },
+            innerHTML: '<strong style="color:#8b5cf6">动量法</strong>：v ← βv + ∇L &nbsp;&nbsp; θ ← θ − α·v<br><span style="font-size:11px;color:#94a3b8">引入惯性，加速收敛，减少震荡</span>' }),
+        el('p', { style: { marginTop: '14px', fontSize: '13px', color: '#94a3b8', lineHeight: '1.6' },
+            textContent: '梯度下降 + 反向传播 = 神经网络训练的两大基石' })
+    ]);
+    container.appendChild(card);
+}
+
+/* ============ Run Animation ============ */
+async function runAnimation() {
+    startTime = Date.now();
+    const timer = setInterval(() => {
+        updateProgress();
+        updateSubtitle(Date.now() - startTime);
+    }, 100);
+
+    showScene(0);
+    await scene0();
+    await waitForSubtitle('蒙着眼睛');
+    clearScene(0);
+
+    showScene(1);
+    await scene1();
+    await waitForSubtitle('数学上');
+    clearScene(1);
+
+    showScene(2);
+    await scene2();
+    await waitForSubtitle('学习率控制');
+    clearScene(2);
+
+    showScene(3);
+    await scene3();
+    await waitForSubtitle('小批量梯度');
+    clearScene(3);
+
+    showScene(4);
+    await scene4();
+
+    clearInterval(timer);
+    document.getElementById('progress').style.width = '100%';
+}
+window.onload = runAnimation;
+</script>
+</body>
+</html>

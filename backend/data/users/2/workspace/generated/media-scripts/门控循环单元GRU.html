@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>门控循环单元 GRU</title>
+<style>
+:root {
+    --bg-color: #0f172a;
+    --primary: #3b82f6;
+    --secondary: #8b5cf6;
+    --accent: #22d3ee;
+    --text-main: #f1f5f9;
+    --text-dim: #94a3b8;
+    --glow-blue: rgba(59, 130, 246, 0.4);
+    --glow-purple: rgba(139, 92, 246, 0.4);
+    --glow-cyan: rgba(34, 211, 238, 0.3);
+    --gate-reset: #f59e0b;
+    --gate-update: #10b981;
+    --danger: #ef4444;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg-color); color: var(--text-main); font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+#viewport {
+    position: relative; width: 100vw; height: 100vh; overflow: hidden;
+}
+#viewport::before {
+    content: ''; position: absolute; inset: 0; z-index: 0;
+    background-image:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+#progress {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    z-index: 100; transition: width 0.3s linear;
+}
+#header {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    text-align: center; z-index: 10;
+}
+#header h1 {
+    font-size: 1.1rem; font-weight: 600; letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+#header p { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+#scene-indicator {
+    position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 10;
+}
+.scene-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.2); transition: all 0.4s ease;
+}
+.scene-dot.active { background: var(--primary); box-shadow: 0 0 8px var(--glow-blue); transform: scale(1.3); }
+#stage {
+    position: absolute; inset: 0; z-index: 1;
+}
+[id^="scene-"] {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+    display: flex; align-items: center; justify-content: center;
+}
+[id^="scene-"].active { opacity: 1; pointer-events: auto; }
+#subtitle-container {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    z-index: 50; width: 80%; max-width: 700px;
+}
+#subtitle-box {
+    backdrop-filter: blur(12px); background: rgba(15,23,42,0.7);
+    border: 1px solid rgba(59,130,246,0.2); border-radius: 12px;
+    padding: 12px 20px; text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+#subtitle-cn { font-size: 1rem; color: var(--text-main); line-height: 1.6; }
+.fade-in { animation: fadeInUp 0.6s ease forwards; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes flowRight { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
+.gate-box { rx: 8; ry: 8; }
+</style>
+</head>
+<body>
+<div id="viewport">
+    <div id="progress"></div>
+    <div id="header"><h1>门控循环单元 GRU</h1><p>第 9 章 · 现代循环神经网络</p></div>
+    <div id="scene-indicator"></div>
+    <div id="stage">
+        <div id="scene-0"></div>
+        <div id="scene-1"></div>
+        <div id="scene-2"></div>
+        <div id="scene-3"></div>
+        <div id="scene-4"></div>
+        <div id="scene-5"></div>
+    </div>
+    <div id="subtitle-container">
+        <div id="subtitle-box"><div id="subtitle-cn"></div></div>
+    </div>
+</div>
+<script>
+const subtitles = [
+    { time: 0,    cn: "在循环神经网络中，梯度消失是一个严重的问题" },
+    { time: 4000, cn: "当序列很长时，早期的信息很难传递到最后" },
+    { time: 8000, cn: "门控循环单元GRU，通过引入两个门来解决这个问题" },
+    { time: 13000, cn: "重置门决定了如何将新输入与旧记忆结合" },
+    { time: 18000, cn: "重置门接近零时，旧记忆被忽略，模型关注当前输入" },
+    { time: 23000, cn: "重置门接近一时，旧记忆与新输入充分融合" },
+    { time: 28000, cn: "更新门控制保留多少旧状态，吸收多少新信息" },
+    { time: 33000, cn: "更新门接近一时，模型倾向于保留旧状态" },
+    { time: 38000, cn: "更新门接近零时，模型用候选隐状态替换旧状态" },
+    { time: 43000, cn: "最终隐状态是旧状态与候选状态的加权组合" },
+    { time: 48000, cn: "重置门帮助捕获序列中的短期依赖关系" },
+    { time: 53000, cn: "更新门帮助捕获序列中的长期依赖关系" },
+    { time: 58000, cn: "GRU用更简洁的结构达到了与LSTM相近的效果" }
+];
+const TOTAL_DURATION = 64000;
+const TOTAL_SCENES = 6;
+let startTime;
+
+function updateProgress() {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min((elapsed / TOTAL_DURATION) * 100, 100);
+    document.getElementById('progress').style.width = pct + '%';
+}
+function updateSubtitle(elapsed) {
+    const cnEl = document.getElementById('subtitle-cn');
+    let current = '';
+    for (let i = subtitles.length - 1; i >= 0; i--) {
+        if (elapsed >= subtitles[i].time) { current = subtitles[i].cn; break; }
+    }
+    if (cnEl.textContent !== current) cnEl.textContent = current;
+}
+function el(tag, attrs, children) {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    if (attrs) Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+    if (children) children.forEach(c => {
+        if (typeof c === 'string') e.textContent = c;
+        else e.appendChild(c);
+    });
+    return e;
+}
+function divEl(tag, attrs, children) {
+    const e = document.createElement(tag);
+    if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+        else if (k === 'className') e.className = v;
+        else e.setAttribute(k, v);
+    });
+    if (children) children.forEach(c => {
+        if (typeof c === 'string') e.appendChild(document.createTextNode(c));
+        else e.appendChild(c);
+    });
+    return e;
+}
+function makeSVG(w, h) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.style.maxWidth = w + 'px';
+    svg.style.maxHeight = h + 'px';
+    return svg;
+}
+function showScene(idx) {
+    const s = document.getElementById('scene-' + idx);
+    if (s) s.classList.add('active');
+    document.querySelectorAll('.scene-dot').forEach((d, i) => {
+        d.classList.toggle('active', i === idx);
+    });
+}
+function clearScene(idx) {
+    const s = document.getElementById('scene-' + idx);
+    if (s) { s.classList.remove('active'); s.innerHTML = ''; }
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function waitForSubtitle(keyword) {
+    return new Promise(resolve => {
+        const check = setInterval(() => {
+            const cn = document.getElementById('subtitle-cn').textContent;
+            if (cn.includes(keyword)) { clearInterval(check); resolve(); }
+        }, 200);
+        setTimeout(() => { clearInterval(check); resolve(); }, 15000);
+    });
+}
+
+// ============ Scene 0: Title ============
+async function scene0() {
+    const container = document.getElementById('scene-0');
+    const svg = makeSVG(800, 500);
+    // Big title
+    const title = el('text', { x: 400, y: 180, 'text-anchor': 'middle', 'font-size': '52', 'font-weight': 'bold', fill: 'url(#grad1)' }, ['门控循环单元']);
+    const title2 = el('text', { x: 400, y: 250, 'text-anchor': 'middle', 'font-size': '64', 'font-weight': 'bold', fill: 'url(#grad2)' }, ['GRU']);
+    const sub = el('text', { x: 400, y: 310, 'text-anchor': 'middle', 'font-size': '18', fill: '#94a3b8' }, ['Gated Recurrent Unit']);
+    const line = el('line', { x1: 250, y1: 340, x2: 550, y2: 340, stroke: 'rgba(59,130,246,0.3)', 'stroke-width': 1 });
+    const desc = el('text', { x: 400, y: 380, 'text-anchor': 'middle', 'font-size': '16', fill: '#64748b' }, ['解决 RNN 梯度消失问题的优雅方案']);
+    const defs = el('defs', null, [
+        el('linearGradient', { id: 'grad1', x1: '0%', y1: '0%', x2: '100%', y2: '0%' }, [
+            el('stop', { offset: '0%', 'stop-color': '#3b82f6' }),
+            el('stop', { offset: '100%', 'stop-color': '#22d3ee' })
+        ]),
+        el('linearGradient', { id: 'grad2', x1: '0%', y1: '0%', x2: '100%', y2: '0%' }, [
+            el('stop', { offset: '0%', 'stop-color': '#8b5cf6' }),
+            el('stop', { offset: '100%', 'stop-color': '#3b82f6' })
+        ])
+    ]);
+    svg.appendChild(defs);
+    [title, title2, sub, line, desc].forEach((e, i) => {
+        e.style.opacity = '0';
+        e.style.transition = `opacity 0.6s ease ${i * 0.3}s`;
+        svg.appendChild(e);
+        requestAnimationFrame(() => { e.style.opacity = '1'; });
+    });
+    container.appendChild(svg);
+    await sleep(1000);
+}
+
+// ============ Scene 1: RNN Gradient Vanishing Problem ============
+async function scene1() {
+    const container = document.getElementById('scene-1');
+    const svg = makeSVG(800, 500);
+    const defs = el('defs', null, [
+        el('marker', { id: 'arrowW', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, [
+            el('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#94a3b8' })
+        ])
+    ]);
+    svg.appendChild(defs);
+
+    // Title
+    svg.appendChild(el('text', { x: 400, y: 50, 'text-anchor': 'middle', 'font-size': '20', 'font-weight': 'bold', fill: '#f1f5f9' }, ['RNN 的梯度消失问题']));
+    svg.appendChild(el('text', { x: 400, y: 75, 'text-anchor': 'middle', 'font-size': '13', fill: '#64748b' }, ['矩阵连乘导致梯度指数级衰减']));
+
+    // RNN chain
+    const cells = ['t-2', 't-1', 't', 't+1', 't+2'];
+    const grads = ['1.0', '0.5', '0.25', '0.125', '0.06'];
+    const colors = ['#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#ef4444'];
+    const startX = 100;
+    const spacing = 150;
+
+    for (let i = 0; i < cells.length; i++) {
+        const cx = startX + i * spacing;
+        const cy = 220;
+        // Cell box
+        svg.appendChild(el('rect', { x: cx - 35, y: cy - 30, width: 70, height: 60, rx: 10, fill: 'rgba(30,41,59,0.8)', stroke: colors[i], 'stroke-width': 2 }));
+        svg.appendChild(el('text', { x: cx, y: cy + 5, 'text-anchor': 'middle', 'font-size': '14', 'font-weight': 'bold', fill: colors[i] }, ['h_' + cells[i]]));
+        // Gradient value below
+        svg.appendChild(el('text', { x: cx, y: cy + 65, 'text-anchor': 'middle', 'font-size': '13', fill: colors[i] }, ['∇ = ' + grads[i]]));
+        // Arrow to next
+        if (i < cells.length - 1) {
+            const arrow = el('line', { x1: cx + 40, y1: cy, x2: cx + spacing - 40, y2: cy, stroke: '#475569', 'stroke-width': 2, 'marker-end': 'url(#arrowW)', 'stroke-dasharray': '6,4' });
+            arrow.style.animation = 'flowRight 1s linear infinite';
+            svg.appendChild(arrow);
+        }
+    }
+
+    // Warning indicator
+    svg.appendChild(el('rect', { x: 520, y: 310, width: 240, height: 50, rx: 10, fill: 'rgba(239,68,68,0.1)', stroke: '#ef4444', 'stroke-width': 1, 'stroke-dasharray': '4,4' }));
+    svg.appendChild(el('text', { x: 640, y: 340, 'text-anchor': 'middle', 'font-size': '14', fill: '#ef4444' }, ['⚠ 梯度趋近于零']));
+    svg.appendChild(el('text', { x: 640, y: 355, 'text-anchor': 'middle', 'font-size': '11', fill: '#94a3b8' }, ['早期信息无法传递']));
+
+    // Arrow from last cell to warning
+    svg.appendChild(el('line', { x1: 700, y1: 260, x2: 680, y2: 310, stroke: '#ef4444', 'stroke-width': 1.5, 'stroke-dasharray': '4,3' }));
+
+    container.appendChild(svg);
+    await sleep(1000);
+}
+
+// ============ Scene 2: GRU Architecture Overview ============
+async function scene2() {
+    const container = document.getElementById('scene-2');
+    const svg = makeSVG(800, 500);
+    const defs = el('defs', null, [
+        el('marker', { id: 'arrB', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, [
+            el('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#3b82f6' })
+        ]),
+        el('marker', { id: 'arrG', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, [
+            el('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#10b981' })
+        ]),
+        el('marker', { id: 'arrY', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, [
+            el('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#f59e0b' })
+        ]),
+        el('linearGradient', { id: 'gCell', x1: '0%', y1: '0%', x2: '100%', y2: '100%' }, [
+            el('stop', { offset: '0%', 'stop-color': 'rgba(59,130,246,0.15)' }),
+            el('stop', { offset: '100%', 'stop-color': 'rgba(139,92,246,0.15)' })
+        ])
+    ]);
+    svg.appendChild(defs);
+
+    svg.appendChild(el('text', { x: 400, y: 40, 'text-anchor': 'middle', 'font-size': '20', 'font-weight': 'bold', fill: '#f1f5f9' }, ['GRU 单元结构']));
+    svg.appendChild(el('text', { x: 400, y: 62, 'text-anchor': 'middle', 'font-size': '13', fill: '#64748b' }, ['两个门控机制：重置门 + 更新门']));
+
+    // Main cell box
+    svg.appendChild(el('rect', { x: 200, y: 100, width: 400, height: 340, rx: 16, fill: 'url(#gCell)', stroke: 'rgba(59,130,246,0.3)', 'stroke-width': 2 }));
+
+    // Input x_t
+    svg.appendChild(el('text', { x: 120, y: 180, 'text-anchor': 'middle', 'font-size': '16', 'font-weight': 'bold', fill: '#22d3ee' }, ['x_t']));
+    svg.appendChild(el('line', { x1: 145, y1: 175, x2: 200, y2: 175, stroke: '#22d3ee', 'stroke-width': 2, 'marker-end': 'url(#arrB)' }));
+
+    // h_{t-1} input
+    svg.appendChild(el('text', { x: 100, y: 300, 'text-anchor': 'middle', 'font-size': '16', 'font-weight': 'bold', fill: '#3b82f6' }, ['h_{t-1}']));
+    svg.appendChild(el('line', { x1: 135, y1: 295, x2: 200, y2: 295, stroke: '#3b82f6', 'stroke-width': 2, 'marker-end': 'url(#arrB)' }));
+
+    // Reset Gate
+    svg.appendChild(el('rect', { x: 230, y: 130, width: 120, height: 50, rx: 10, fill: 'rgba(245,158,11,0.15)', stroke: '#f59e0b', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 290, y: 160, 'text-anchor': 'middle', 'font-size': '14', 'font-weight': 'bold', fill: '#f59e0b' }, ['重置门 r_t']));
+
+    // Update Gate
+    svg.appendChild(el('rect', { x: 450, y: 130, width: 120, height: 50, rx: 10, fill: 'rgba(16,185,129,0.15)', stroke: '#10b981', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 510, y: 160, 'text-anchor': 'middle', 'font-size': '14', 'font-weight': 'bold', fill: '#10b981' }, ['更新门 z_t']));
+
+    // Candidate hidden state
+    svg.appendChild(el('rect', { x: 250, y: 240, width: 160, height: 50, rx: 10, fill: 'rgba(139,92,246,0.15)', stroke: '#8b5cf6', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 330, y: 270, 'text-anchor': 'middle', 'font-size': '14', 'font-weight': 'bold', fill: '#8b5cf6' }, ['候选隐状态 h̃_t']));
+
+    // Final hidden state
+    svg.appendChild(el('rect', { x: 340, y: 350, width: 120, height: 50, rx: 10, fill: 'rgba(59,130,246,0.2)', stroke: '#3b82f6', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 400, y: 380, 'text-anchor': 'middle', 'font-size': '14', 'font-weight': 'bold', fill: '#3b82f6' }, ['h_t 输出']));
+
+    // Arrows inside
+    svg.appendChild(el('line', { x1: 290, y1: 180, x2: 290, y2: 240, stroke: '#f59e0b', 'stroke-width': 1.5, 'marker-end': 'url(#arrY)' }));
+    svg.appendChild(el('line', { x1: 330, y1: 290, x2: 400, y2: 350, stroke: '#8b5cf6', 'stroke-width': 1.5, 'marker-end': 'url(#arrB)' }));
+    svg.appendChild(el('line', { x1: 510, y1: 180, x2: 510, y2: 360, stroke: '#10b981', 'stroke-width': 1.5, 'marker-end': 'url(#arrG)', 'stroke-dasharray': '6,4' }));
+    svg.appendChild(el('line', { x1: 450, y1: 375, x2: 400, y2: 375, stroke: '#10b981', 'stroke-width': 1.5 }));
+
+    // h_t output arrow
+    svg.appendChild(el('line', { x1: 460, y1: 375, x2: 600, y2: 375, stroke: '#3b82f6', 'stroke-width': 2, 'marker-end': 'url(#arrB)' }));
+    svg.appendChild(el('text', { x: 640, y: 380, 'text-anchor': 'middle', 'font-size': '16', 'font-weight': 'bold', fill: '#3b82f6' }, ['h_t']));
+
+    // Formula at bottom
+    svg.appendChild(el('text', { x: 400, y: 470, 'text-anchor': 'middle', 'font-size': '13', fill: '#94a3b8' }, ['h_t = z_t ⊙ h_{t-1} + (1 - z_t) ⊙ h̃_t']));
+
+    container.appendChild(svg);
+    await sleep(1000);
+}
+
+// ============ Scene 3: Reset Gate Detail ============
+async function scene3() {
+    const container = document.getElementById('scene-3');
+    const svg = makeSVG(800, 500);
+    const defs = el('defs', null, [
+        el('marker', { id: 'a3', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, [
+            el('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#f59e0b' })
+        ]),
+        el('marker', { id: 'a3b', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, [
+            el('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#3b82f6' })
+        ])
+    ]);
+    svg.appendChild(defs);
+
+    svg.appendChild(el('text', { x: 400, y: 40, 'text-anchor': 'middle', 'font-size': '20', 'font-weight': 'bold', fill: '#f1f5f9' }, ['重置门 Reset Gate']));
+    svg.appendChild(el('text', { x: 400, y: 65, 'text-anchor': 'middle', 'font-size': '13', fill: '#64748b' }, ['r_t = σ(W_r · [h_{t-1}, x_t])']));
+
+    // Left side: r_t ≈ 0
+    svg.appendChild(el('rect', { x: 40, y: 110, width: 340, height: 330, rx: 14, fill: 'rgba(239,68,68,0.05)', stroke: 'rgba(239,68,68,0.2)', 'stroke-width': 1 }));
+    svg.appendChild(el('text', { x: 210, y: 145, 'text-anchor': 'middle', 'font-size': '16', 'font-weight': 'bold', fill: '#ef4444' }, ['r_t ≈ 0：忽略旧记忆']));
+
+    // h_{t-1} blocked
+    svg.appendChild(el('rect', { x: 70, y: 180, width: 100, height: 45, rx: 8, fill: 'rgba(59,130,246,0.1)', stroke: '#3b82f6', 'stroke-width': 1.5 }));
+    svg.appendChild(el('text', { x: 120, y: 208, 'text-anchor': 'middle', 'font-size': '13', fill: '#3b82f6' }, ['h_{t-1}']));
+    // X block
+    svg.appendChild(el('text', { x: 200, y: 208, 'text-anchor': 'middle', 'font-size': '24', 'font-weight': 'bold', fill: '#ef4444' }, ['✕']));
+    svg.appendChild(el('text', { x: 250, y: 208, 'text-anchor': 'middle', 'font-size': '12', fill: '#94a3b8' }, ['被阻断']));
+
+    // x_t flows through
+    svg.appendChild(el('rect', { x: 70, y: 260, width: 100, height: 45, rx: 8, fill: 'rgba(34,211,238,0.1)', stroke: '#22d3ee', 'stroke-width': 1.5 }));
+    svg.appendChild(el('text', { x: 120, y: 288, 'text-anchor': 'middle', 'font-size': '13', fill: '#22d3ee' }, ['x_t']));
+    svg.appendChild(el('line', { x1: 175, y1: 283, x2: 250, y2: 283, stroke: '#22d3ee', 'stroke-width': 2, 'marker-end': 'url(#a3b)' }));
+    svg.appendChild(el('text', { x: 310, y: 288, 'text-anchor': 'middle', 'font-size': '13', fill: '#22d3ee' }, ['→ h̃_t 仅基于当前输入']));
+
+    // Right side: r_t ≈ 1
+    svg.appendChild(el('rect', { x: 420, y: 110, width: 350, height: 330, rx: 14, fill: 'rgba(16,185,129,0.05)', stroke: 'rgba(16,185,129,0.2)', 'stroke-width': 1 }));
+    svg.appendChild(el('text', { x: 595, y: 145, 'text-anchor': 'middle', 'font-size': '16', 'font-weight': 'bold', fill: '#10b981' }, ['r_t ≈ 1：融合旧记忆']));
+
+    // h_{t-1} flows
+    svg.appendChild(el('rect', { x: 450, y: 180, width: 100, height: 45, rx: 8, fill: 'rgba(59,130,246,0.1)', stroke: '#3b82f6', 'stroke-width': 1.5 }));
+    svg.appendChild(el('text', { x: 500, y: 208, 'text-anchor': 'middle', 'font-size': '13', fill: '#3b82f6' }, ['h_{t-1}']));
+    svg.appendChild(el('line', { x1: 555, y1: 203, x2: 620, y2: 203, stroke: '#3b82f6', 'stroke-width': 2, 'marker-end': 'url(#a3b)' }));
+    svg.appendChild(el('text', { x: 680, y: 208, 'text-anchor': 'middle', 'font-size': '12', fill: '#10b981' }, ['✓ 保留']));
+
+    // x_t + h_{t-1} merge
+    svg.appendChild(el('rect', { x: 450, y: 260, width: 100, height: 45, rx: 8, fill: 'rgba(34,211,238,0.1)', stroke: '#22d3ee', 'stroke-width': 1.5 }));
+    svg.appendChild(el('text', { x: 500, y: 288, 'text-anchor': 'middle', 'font-size': '13', fill: '#22d3ee' }, ['x_t']));
+    svg.appendChild(el('text', { x: 595, y: 240, 'text-anchor': 'middle', 'font-size': '18', fill: '#f59e0b' }, ['⊕']));
+    svg.appendChild(el('line', { x1: 555, y1: 283, x2: 585, y2: 260, stroke: '#22d3ee', 'stroke-width': 1.5 }));
+    svg.appendChild(el('line', { x1: 500, y1: 225, x2: 585, y2: 245, stroke: '#3b82f6', 'stroke-width': 1.5 }));
+    svg.appendChild(el('text', { x: 670, y: 260, 'text-anchor': 'middle', 'font-size': '13', fill: '#8b5cf6' }, ['→ h̃_t 融合历史']));
+
+    // Key insight
+    svg.appendChild(el('rect', { x: 450, y: 340, width: 290, height: 55, rx: 10, fill: 'rgba(245,158,11,0.1)', stroke: '#f59e0b', 'stroke-width': 1 }));
+    svg.appendChild(el('text', { x: 595, y: 363, 'text-anchor': 'middle', 'font-size': '13', 'font-weight': 'bold', fill: '#f59e0b' }, ['重置门控制候选状态']));
+    svg.appendChild(el('text', { x: 595, y: 383, 'text-anchor': 'middle', 'font-size': '12', fill: '#94a3b8' }, ['是否参考旧的隐状态']));
+
+    container.appendChild(svg);
+    await sleep(1000);
+}
+
+// ============ Scene 4: Update Gate Detail ============
+async function scene4() {
+    const container = document.getElementById('scene-4');
+    const svg = makeSVG(800, 500);
+    const defs = el('defs', null, [
+        el('marker', { id: 'a4g', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, [
+            el('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#10b981' })
+        ]),
+        el('marker', { id: 'a4b', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, [
+            el('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#3b82f6' })
+        ]),
+        el('marker', { id: 'a4p', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, [
+            el('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#8b5cf6' })
+        ])
+    ]);
+    svg.appendChild(defs);
+
+    svg.appendChild(el('text', { x: 400, y: 40, 'text-anchor': 'middle', 'font-size': '20', 'font-weight': 'bold', fill: '#f1f5f9' }, ['更新门与最终隐状态']));
+    svg.appendChild(el('text', { x: 400, y: 65, 'text-anchor': 'middle', 'font-size': '13', fill: '#64748b' }, ['h_t = z_t ⊙ h_{t-1} + (1 - z_t) ⊙ h̃_t']));
+
+    // h_{t-1} on left
+    svg.appendChild(el('rect', { x: 60, y: 200, width: 110, height: 50, rx: 10, fill: 'rgba(59,130,246,0.15)', stroke: '#3b82f6', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 115, y: 230, 'text-anchor': 'middle', 'font-size': '15', 'font-weight': 'bold', fill: '#3b82f6' }, ['h_{t-1}']));
+    svg.appendChild(el('text', { x: 115, y: 190, 'text-anchor': 'middle', 'font-size': '12', fill: '#64748b' }, ['旧隐状态']));
+
+    // h̃_t on right
+    svg.appendChild(el('rect', { x: 630, y: 200, width: 110, height: 50, rx: 10, fill: 'rgba(139,92,246,0.15)', stroke: '#8b5cf6', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 685, y: 230, 'text-anchor': 'middle', 'font-size': '15', 'font-weight': 'bold', fill: '#8b5cf6' }, ['h̃_t']));
+    svg.appendChild(el('text', { x: 685, y: 190, 'text-anchor': 'middle', 'font-size': '12', fill: '#64748b' }, ['候选隐状态']));
+
+    // z_t gate in center-top
+    svg.appendChild(el('rect', { x: 330, y: 110, width: 140, height: 50, rx: 12, fill: 'rgba(16,185,129,0.15)', stroke: '#10b981', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 400, y: 140, 'text-anchor': 'middle', 'font-size': '15', 'font-weight': 'bold', fill: '#10b981' }, ['更新门 z_t']));
+
+    // Arrow from z_t to left path (z_t weight)
+    svg.appendChild(el('line', { x1: 350, y1: 160, x2: 170, y2: 210, stroke: '#10b981', 'stroke-width': 1.5, 'marker-end': 'url(#a4g)', 'stroke-dasharray': '6,4' }));
+    svg.appendChild(el('text', { x: 240, y: 175, 'text-anchor': 'middle', 'font-size': '14', 'font-weight': 'bold', fill: '#10b981' }, ['× z_t']));
+
+    // Arrow from z_t to right path ((1-z_t) weight)
+    svg.appendChild(el('line', { x1: 450, y1: 160, x2: 630, y2: 210, stroke: '#10b981', 'stroke-width': 1.5, 'marker-end': 'url(#a4g)', 'stroke-dasharray': '6,4' }));
+    svg.appendChild(el('text', { x: 560, y: 175, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 'bold', fill: '#10b981' }, ['× (1-z_t)']));
+
+    // Merge point
+    svg.appendChild(el('circle', { cx: 400, cy: 310, r: 18, fill: 'rgba(34,211,238,0.15)', stroke: '#22d3ee', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 400, y: 316, 'text-anchor': 'middle', 'font-size': '18', 'font-weight': 'bold', fill: '#22d3ee' }, ['+']));
+
+    // Arrows to merge
+    svg.appendChild(el('line', { x1: 170, y1: 225, x2: 382, y2: 310, stroke: '#3b82f6', 'stroke-width': 1.5, 'marker-end': 'url(#a4b)' }));
+    svg.appendChild(el('line', { x1: 630, y1: 225, x2: 418, y2: 310, stroke: '#8b5cf6', 'stroke-width': 1.5, 'marker-end': 'url(#a4p)' }));
+
+    // Output h_t
+    svg.appendChild(el('line', { x1: 400, y1: 328, x2: 400, y2: 380, stroke: '#22d3ee', 'stroke-width': 2, 'marker-end': 'url(#a4b)' }));
+    svg.appendChild(el('rect', { x: 340, y: 385, width: 120, height: 50, rx: 10, fill: 'rgba(59,130,246,0.2)', stroke: '#3b82f6', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 400, y: 415, 'text-anchor': 'middle', 'font-size': '15', 'font-weight': 'bold', fill: '#3b82f6' }, ['h_t 输出']));
+
+    // z_t value examples at bottom
+    svg.appendChild(el('rect', { x: 100, y: 440, width: 280, height: 40, rx: 8, fill: 'rgba(16,185,129,0.08)', stroke: 'rgba(16,185,129,0.3)', 'stroke-width': 1 }));
+    svg.appendChild(el('text', { x: 240, y: 465, 'text-anchor': 'middle', 'font-size': '12', fill: '#10b981' }, ['z_t → 1：保留旧状态，跳过当前时间步']));
+
+    svg.appendChild(el('rect', { x: 420, y: 440, width: 280, height: 40, rx: 8, fill: 'rgba(139,92,246,0.08)', stroke: 'rgba(139,92,246,0.3)', 'stroke-width': 1 }));
+    svg.appendChild(el('text', { x: 560, y: 465, 'text-anchor': 'middle', 'font-size': '12', fill: '#8b5cf6' }, ['z_t → 0：用候选状态替换旧状态']));
+
+    container.appendChild(svg);
+    await sleep(1000);
+}
+
+// ============ Scene 5: Summary ============
+async function scene5() {
+    const container = document.getElementById('scene-5');
+    const svg = makeSVG(800, 500);
+    const defs = el('defs', null, [
+        el('linearGradient', { id: 'gSum', x1: '0%', y1: '0%', x2: '100%', y2: '100%' }, [
+            el('stop', { offset: '0%', 'stop-color': 'rgba(59,130,246,0.1)' }),
+            el('stop', { offset: '100%', 'stop-color': 'rgba(139,92,246,0.1)' })
+        ])
+    ]);
+    svg.appendChild(defs);
+
+    svg.appendChild(el('text', { x: 400, y: 50, 'text-anchor': 'middle', 'font-size': '22', 'font-weight': 'bold', fill: '#f1f5f9' }, ['GRU 核心要点']));
+    svg.appendChild(el('line', { x1: 300, y1: 70, x2: 500, y2: 70, stroke: 'rgba(59,130,246,0.3)', 'stroke-width': 1 }));
+
+    // Card 1: Reset Gate
+    svg.appendChild(el('rect', { x: 80, y: 110, width: 300, height: 130, rx: 14, fill: 'url(#gSum)', stroke: 'rgba(245,158,11,0.3)', 'stroke-width': 1.5 }));
+    svg.appendChild(el('circle', { cx: 130, cy: 155, r: 22, fill: 'rgba(245,158,11,0.15)', stroke: '#f59e0b', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 130, y: 162, 'text-anchor': 'middle', 'font-size': '18', fill: '#f59e0b' }, ['r']));
+    svg.appendChild(el('text', { x: 250, y: 148, 'text-anchor': 'middle', 'font-size': '16', 'font-weight': 'bold', fill: '#f59e0b' }, ['重置门']));
+    svg.appendChild(el('text', { x: 250, y: 175, 'text-anchor': 'middle', 'font-size': '13', fill: '#94a3b8' }, ['捕获短期依赖']));
+    svg.appendChild(el('text', { x: 250, y: 200, 'text-anchor': 'middle', 'font-size': '12', fill: '#64748b' }, ['控制旧信息如何参与候选状态计算']));
+
+    // Card 2: Update Gate
+    svg.appendChild(el('rect', { x: 420, y: 110, width: 300, height: 130, rx: 14, fill: 'url(#gSum)', stroke: 'rgba(16,185,129,0.3)', 'stroke-width': 1.5 }));
+    svg.appendChild(el('circle', { cx: 470, cy: 155, r: 22, fill: 'rgba(16,185,129,0.15)', stroke: '#10b981', 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x: 470, y: 162, 'text-anchor': 'middle', 'font-size': '18', fill: '#10b981' }, ['z']));
+    svg.appendChild(el('text', { x: 590, y: 148, 'text-anchor': 'middle', 'font-size': '16', 'font-weight': 'bold', fill: '#10b981' }, ['更新门']));
+    svg.appendChild(el('text', { x: 590, y: 175, 'text-anchor': 'middle', 'font-size': '13', fill: '#94a3b8' }, ['捕获长期依赖']));
+    svg.appendChild(el('text', { x: 590, y: 200, 'text-anchor': 'middle', 'font-size': '12', fill: '#64748b' }, ['控制新旧状态的混合比例']));
+
+    // Core formula
+    svg.appendChild(el('rect', { x: 150, y: 280, width: 500, height: 60, rx: 12, fill: 'rgba(34,211,238,0.08)', stroke: 'rgba(34,211,238,0.3)', 'stroke-width': 1.5 }));
+    svg.appendChild(el('text', { x: 400, y: 305, 'text-anchor': 'middle', 'font-size': '15', 'font-weight': 'bold', fill: '#22d3ee' }, ['h_t = z_t ⊙ h_{t-1} + (1 - z_t) ⊙ h̃_t']));
+    svg.appendChild(el('text', { x: 400, y: 328, 'text-anchor': 'middle', 'font-size': '12', fill: '#64748b' }, ['核心公式：旧状态与候选状态的加权凸组合']));
+
+    // Comparison with LSTM
+    svg.appendChild(el('rect', { x: 150, y: 370, width: 500, height: 70, rx: 12, fill: 'rgba(139,92,246,0.08)', stroke: 'rgba(139,92,246,0.3)', 'stroke-width': 1 }));
+    svg.appendChild(el('text', { x: 400, y: 395, 'text-anchor': 'middle', 'font-size': '14', 'font-weight': 'bold', fill: '#8b5cf6' }, ['vs LSTM']));
+    svg.appendChild(el('text', { x: 400, y: 420, 'text-anchor': 'middle', 'font-size': '13', fill: '#94a3b8' }, ['GRU 用 2 个门替代 LSTM 的 3 个门，参数更少，效果相当']));
+
+    // Author
+    svg.appendChild(el('text', { x: 400, y: 475, 'text-anchor': 'middle', 'font-size': '12', fill: '#475569' }, ['Kyunghyun Cho et al., 2014']));
+
+    container.appendChild(svg);
+    await sleep(1000);
+}
+
+// ============ Init & Run ============
+(function init() {
+    const indicator = document.getElementById('scene-indicator');
+    for (let i = 0; i < TOTAL_SCENES; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'scene-dot';
+        indicator.appendChild(dot);
+    }
+})();
+
+async function runAnimation() {
+    startTime = Date.now();
+    const timer = setInterval(() => {
+        updateProgress();
+        updateSubtitle(Date.now() - startTime);
+    }, 100);
+
+    showScene(0);
+    await scene0();
+    await waitForSubtitle('梯度消失');
+    clearScene(0);
+
+    showScene(1);
+    await scene1();
+    await waitForSubtitle('门控循环单元');
+    clearScene(1);
+
+    showScene(2);
+    await scene2();
+    await waitForSubtitle('重置门决定了');
+    clearScene(2);
+
+    showScene(3);
+    await scene3();
+    await waitForSubtitle('更新门控制');
+    clearScene(3);
+
+    showScene(4);
+    await scene4();
+    await waitForSubtitle('重置门帮助');
+    clearScene(4);
+
+    showScene(5);
+    await scene5();
+
+    clearInterval(timer);
+    document.getElementById('progress').style.width = '100%';
+}
+window.onload = runAnimation;
+</script>
+</body>
+</html>

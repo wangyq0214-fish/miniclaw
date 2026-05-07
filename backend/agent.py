@@ -3,6 +3,7 @@ Mini-OpenClaw Agent Module
 
 Agent using DeepAgents framework with streaming support.
 """
+import asyncio
 import logging
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from pathlib import Path
@@ -15,7 +16,9 @@ from config import settings
 from deepagents import create_deep_agent
 from deepagents.backends.filesystem import FilesystemBackend
 from deepagents.middleware.permissions import FilesystemPermission
+from deepagents.middleware.subagents import _subagent_event_queue
 from agents.resource_agents import build_resource_subagents
+from storage.sync_backend import SyncFilesystemBackend
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +42,25 @@ class AgentManager:
         tools: List[BaseTool],
         session_manager,
         prompt_builder,
-        memory_indexer
+        memory_indexer,
+        user_id: Optional[int] = None
     ):
-        """Initialize the agent with tools and dependencies."""
+        """Initialize the agent with tools and dependencies.
+
+        Args:
+            base_dir: Base directory for agent files (used as fallback)
+            tools: List of tools available to agent
+            session_manager: Session manager instance
+            prompt_builder: Prompt builder instance
+            memory_indexer: Memory indexer instance
+            user_id: User ID for per-user path isolation (optional)
+        """
         self.base_dir = base_dir
         self.tools = tools or []
         self.session_manager = session_manager
         self.prompt_builder = prompt_builder
         self.memory_indexer = memory_indexer
+        self.user_id = user_id
 
         # Initialize model
         self._model = ChatOpenAI(
@@ -59,12 +73,42 @@ class AgentManager:
 
         logger.info(f"AgentManager initialized with model {settings.openai_model} at {settings.openai_api_base}")
 
-        # Initialize filesystem backend rooted at base_dir
-        # virtual_mode=True: maps POSIX "/" to root_dir, required for SkillsMiddleware path resolution
-        self._backend = FilesystemBackend(
-            root_dir=str(self.base_dir),
-            virtual_mode=True,
-        )
+        # Build shared resource paths
+        from config import get_skills_dir, get_workspace_dir, get_knowledge_dir
+        shared_resources = {
+            "/skills/": get_skills_dir(),
+            "/roles/": get_workspace_dir() / "roles",
+            "/knowledge/": get_knowledge_dir(),
+        }
+
+        # Initialize filesystem backend with per-user isolation
+        if user_id is not None:
+            # Local mode with per-user directories
+            from config import get_user_memory_dir, get_user_workspace_dir, get_user_sessions_dir
+
+            user_memory_dir = get_user_memory_dir(user_id)
+            user_workspace_dir = get_user_workspace_dir(user_id)
+
+            # Build path mappings for user-specific + shared resources
+            path_mappings = {
+                "/memory/": user_memory_dir,
+                "/workspace/": user_workspace_dir,
+                **shared_resources,
+            }
+
+            self._backend = SyncFilesystemBackend(
+                root_dir=str(user_workspace_dir),
+                virtual_mode=True,
+                path_mappings=path_mappings,
+            )
+            logger.info(f"Using FilesystemBackend for user {user_id}")
+        else:
+            # Legacy mode: no user isolation, use base_dir
+            self._backend = FilesystemBackend(
+                root_dir=str(self.base_dir),
+                virtual_mode=True,
+            )
+            logger.info(f"Using FilesystemBackend with root_dir={self.base_dir}")
 
     def set_rag_mode(self, rag_mode: bool):
         """Enable or disable RAG mode."""
@@ -94,22 +138,15 @@ class AgentManager:
             messages = self._build_messages(message, history)
 
             # Resolve memory sources (MEMORY.md injected via MemoryMiddleware)
-            memory_sources = []
-            if self.base_dir:
-                memory_file = self.base_dir / "memory" / "MEMORY.md"
-                if memory_file.exists():
-                    memory_sources.append("/memory/MEMORY.md")  # virtual POSIX path
+            # Always use virtual path - backend will resolve to correct user directory
+            memory_sources = ["/memory/MEMORY.md"]
 
             # Resolve skills sources (SkillsMiddleware reads from virtual POSIX paths)
-            skills_sources = None
-            if self.base_dir:
-                skills_dir = self.base_dir / "skills"
-                if skills_dir.exists():
-                    skills_sources = ["/skills/"]
+            skills_sources = ["/skills/"]
 
-            # Build resource-generation subagents (6 specialized roles) — system_prompts
-            # are loaded from workspace/roles/*.md, model/tools inherit from main agent
-            resource_subagents = build_resource_subagents(self.base_dir / "workspace") if self.base_dir else []
+            # Build resource-generation subagents (5 specialized roles) — system_prompts
+            # are loaded from /roles/*.md via backend, model/tools inherit from main agent
+            resource_subagents = build_resource_subagents(self._backend) if self._backend else []
 
             # Create agent
             agent = create_deep_agent(
@@ -140,6 +177,8 @@ class AgentManager:
 
         except Exception as e:
             logger.error(f"Error in astream: {str(e)}", exc_info=True)
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             yield {"type": "error", "error": str(e)}
 
     def _build_messages(
@@ -185,6 +224,23 @@ class AgentManager:
 
         return messages
 
+    # Tool name → Chinese status description for user-facing progress display
+    TOOL_STATUS_MAP: Dict[str, str] = {
+        "update_student_profile": "正在更新学习档案",
+        "read_file": "正在查阅资料",
+        "write_file": "正在保存内容",
+        "edit_file": "正在修改内容",
+        "generate_lecture": "正在生成讲义",
+        "generate_exercises": "正在出练习题",
+        "evaluate_learning": "正在评估学习",
+        "generate_mindmap": "正在生成思维导图",
+        "generate_code_case": "正在生成代码案例",
+        "generate_reading_list": "正在生成阅读清单",
+        "answer_question": "正在解答问题",
+        "task": "正在调度子代理",
+        "get_entity_graph": "正在查询知识图谱",
+    }
+
     async def _stream_and_convert(
         self,
         agent,
@@ -205,14 +261,36 @@ class AgentManager:
         """
         # confirmed_tool_calls: id -> name (set when "model" update arrives with tool_calls)
         confirmed_tool_calls: Dict[str, str] = {}
+        # Track write_file calls to media-scripts HTML for TTS post-processing
+        pending_media_html: Dict[str, str] = {}  # tool_call_id -> virtual path
         # emitted_tool_ends: set of tool_call_ids already emitted (dedup guard)
         emitted_tool_ends: set = set()
+        # Track whether we've emitted initial status
+        emitted_initial_status = False
+        # Track whether we've emitted first token status
+        emitted_first_token_status = False
+
+        # Set up subagent event queue for streaming subagent-internal events
+        subagent_queue: asyncio.Queue = asyncio.Queue(maxsize=500)
+        token = _subagent_event_queue.set(subagent_queue)
+
+        def drain_subagent_queue():
+            """Yield all subagent events currently in the queue."""
+            while not subagent_queue.empty():
+                try:
+                    yield subagent_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
 
         try:
             async for event in agent.astream(
                 {"messages": messages},
                 stream_mode=["messages", "updates"],
             ):
+                # Drain any subagent events queued by a running task tool
+                for sub_ev in drain_subagent_queue():
+                    yield sub_ev
+
                 if not isinstance(event, tuple):
                     continue
 
@@ -224,6 +302,9 @@ class AgentManager:
                     if isinstance(chunk, AIMessageChunk):
                         # Text token
                         if chunk.content:
+                            if not emitted_first_token_status:
+                                emitted_first_token_status = True
+                                yield {"type": "status", "message": "正在组织语言"}
                             yield {"type": "token", "content": chunk.content}
                         # tool_call_chunks: just track names/ids for fallback; tool_start comes from updates
 
@@ -231,6 +312,10 @@ class AgentManager:
                     # "model" update — emit tool_start with complete args
                     model_update = data.get("model")
                     if isinstance(model_update, dict):
+                        # Emit initial status on first model update (agent started thinking)
+                        if not emitted_initial_status:
+                            emitted_initial_status = True
+                            yield {"type": "status", "message": "正在分析你的问题"}
                         try:
                             msgs = list(model_update.get("messages", []))
                         except TypeError:
@@ -249,6 +334,22 @@ class AgentManager:
                                         "input": tool_args if isinstance(tool_args, dict) else {},
                                         "id": tool_id,
                                     }
+                                    # Emit status describing what the tool does
+                                    if tool_name == "task" and isinstance(tool_args, dict):
+                                        agent_type = tool_args.get("subagent_type", "")
+                                        status_msg = f"正在调度子代理: {agent_type}" if agent_type else "正在调度子代理"
+                                    else:
+                                        status_msg = self.TOOL_STATUS_MAP.get(
+                                            tool_name, f"正在调用 {tool_name}"
+                                        )
+                                    yield {"type": "status", "message": status_msg}
+                                    # Track write_file to media-scripts HTML for TTS post-processing
+                                    if tool_name == "write_file" and isinstance(tool_args, dict):
+                                        vp = tool_args.get("file_path", "") or tool_args.get("path", "")
+                                        logger.info("TTS track: tool_name=%s, file_path=%s", tool_name, vp)
+                                        if vp.endswith(".html") and "media-scripts" in vp:
+                                            pending_media_html[tool_id] = vp
+                                            logger.info("TTS: tracked media-scripts HTML: %s", vp)
 
                     # "tools" update — emit tool_end (canonical, avoids duplicate from messages mode)
                     tools_update = data.get("tools")
@@ -269,6 +370,47 @@ class AgentManager:
                                     "output": msg.content,
                                     "id": msg.tool_call_id,
                                 }
+                                yield {"type": "status", "message": "正在继续"}
+
+            # Final drain — catch any subagent events from the last task call
+            for sub_ev in drain_subagent_queue():
+                yield sub_ev
+
+            # TTS post-processing: enhance any HTML animations written to media-scripts
+            logger.info("TTS check: pending_media_html=%s, user_id=%s", list(pending_media_html.keys()), self.user_id)
+            if pending_media_html and self.user_id:
+                from api.tts import enhance_animation
+                from tools.utils import inject_date
+                from config import get_user_workspace_dir
+
+                user_ws = get_user_workspace_dir(self.user_id)
+                for tc_id, virtual_path in pending_media_html.items():
+                    try:
+                        raw_rel = virtual_path.lstrip("/").replace("workspace/", "", 1)
+                        dated = inject_date(virtual_path.lstrip("/")).replace("workspace/", "", 1)
+                        actual_path = user_ws / dated if (user_ws / dated).exists() else user_ws / raw_rel
+                        logger.info("TTS: virtual_path=%s, resolved=%s, exists=%s", virtual_path, actual_path, actual_path.exists())
+
+                        if not actual_path.exists():
+                            logger.warning("TTS: file not found: %s", actual_path)
+                            continue
+
+                        yield {"type": "tool_start", "tool": "enhance_animation", "input": {"path": virtual_path}, "id": f"tts_{tc_id}"}
+                        yield {"type": "status", "message": "正在生成动画语音"}
+
+                        html_content = actual_path.read_text(encoding="utf-8")
+                        html_filename = actual_path.name
+                        audio_dir = actual_path.parent / Path(html_filename).stem
+                        enhanced = await enhance_animation(html_content, html_filename, audio_dir, user_id=self.user_id)
+
+                        if enhanced != html_content:
+                            actual_path.write_text(enhanced, encoding="utf-8")
+                            yield {"type": "tool_end", "tool": "enhance_animation", "output": f"动画增强完成: {html_filename}", "id": f"tts_{tc_id}"}
+                        else:
+                            yield {"type": "tool_end", "tool": "enhance_animation", "output": "无字幕或增强跳过", "id": f"tts_{tc_id}"}
+                    except Exception as e:
+                        logger.error("TTS post-processing failed for %s: %s", virtual_path, e)
+                        yield {"type": "tool_end", "tool": "enhance_animation", "output": f"TTS error: {e}", "id": f"tts_{tc_id}"}
 
             # Stream complete
             yield {"type": "done"}
@@ -276,6 +418,8 @@ class AgentManager:
         except Exception as e:
             logger.error(f"Error in stream conversion: {e}", exc_info=True)
             yield {"type": "error", "error": str(e)}
+        finally:
+            _subagent_event_queue.reset(token)
 
 
 # Global singleton instance

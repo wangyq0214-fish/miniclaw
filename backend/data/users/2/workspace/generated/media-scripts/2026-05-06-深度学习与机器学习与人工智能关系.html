@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深度学习、机器学习与人工智能的关系</title>
+<style>
+:root {
+    --bg-color: #0f172a;
+    --primary: #3b82f6;
+    --secondary: #8b5cf6;
+    --accent: #f59e0b;
+    --green: #10b981;
+    --text-main: #f1f5f9;
+    --text-dim: #94a3b8;
+    --glow-blue: rgba(59, 130, 246, 0.4);
+    --glow-purple: rgba(139, 92, 246, 0.4);
+    --glow-amber: rgba(245, 158, 11, 0.4);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: var(--bg-color);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+}
+#viewport {
+    position: relative; width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+}
+#viewport::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+}
+#progress {
+    position: absolute; top: 0; left: 0;
+    height: 3px; background: linear-gradient(90deg, var(--primary), var(--secondary));
+    width: 0%; transition: width 0.3s linear; z-index: 100;
+}
+#header {
+    text-align: center; padding: 24px 20px 8px; z-index: 10;
+}
+#header h1 {
+    font-size: 1.6rem; font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--secondary), var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+#header p { font-size: 0.85rem; color: var(--text-dim); margin-top: 4px; }
+#scene-indicator {
+    display: flex; justify-content: center; gap: 8px;
+    padding: 6px 0; z-index: 10;
+}
+.scene-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(148,163,184,0.3); transition: all 0.3s ease;
+}
+.scene-dot.active {
+    background: var(--primary);
+    box-shadow: 0 0 8px var(--glow-blue);
+    transform: scale(1.3);
+}
+#stage {
+    flex: 1; position: relative; overflow: hidden;
+}
+[id^="scene-"] {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+    display: flex; align-items: center; justify-content: center;
+}
+[id^="scene-"].active {
+    opacity: 1; pointer-events: auto;
+}
+#subtitle-container {
+    padding: 12px 20px 20px; z-index: 10;
+}
+#subtitle-box {
+    max-width: 700px; margin: 0 auto;
+    background: rgba(15,23,42,0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 12px; padding: 12px 20px;
+    text-align: center; min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+}
+#subtitle-cn {
+    font-size: 0.95rem; color: var(--text-main);
+    line-height: 1.6; transition: opacity 0.3s;
+}
+/* Nested circles for set relationship */
+.set-circle {
+    position: absolute; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; transition: all 0.8s ease;
+}
+.set-label {
+    font-weight: 700; text-align: center;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+/* Timeline */
+.timeline {
+    display: flex; flex-direction: column; gap: 16px;
+    width: 100%; max-width: 600px; padding: 0 20px;
+}
+.timeline-item {
+    display: flex; align-items: center; gap: 16px;
+    opacity: 0; transform: translateX(-30px);
+    transition: all 0.5s ease;
+}
+.timeline-item.show {
+    opacity: 1; transform: translateX(0);
+}
+.timeline-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    flex-shrink: 0; box-shadow: 0 0 10px var(--glow-blue);
+}
+.timeline-line {
+    width: 2px; height: 20px; background: rgba(59,130,246,0.3);
+    margin-left: 6px;
+}
+.timeline-content {
+    background: rgba(30,41,59,0.8);
+    border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 10px; padding: 10px 16px;
+    flex: 1;
+}
+.timeline-content h3 { font-size: 0.95rem; margin-bottom: 2px; }
+.timeline-content p { font-size: 0.8rem; color: var(--text-dim); }
+/* App cards */
+.app-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; max-width: 650px; width: 100%; padding: 0 20px;
+}
+.app-card {
+    background: rgba(30,41,59,0.8);
+    border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 10px; padding: 14px 10px;
+    text-align: center; opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s ease;
+}
+.app-card.show { opacity: 1; transform: translateY(0); }
+.app-icon { font-size: 1.8rem; margin-bottom: 6px; }
+.app-card h4 { font-size: 0.85rem; margin-bottom: 2px; }
+.app-card p { font-size: 0.72rem; color: var(--text-dim); }
+.app-card .tag {
+    display: inline-block; font-size: 0.65rem;
+    padding: 2px 8px; border-radius: 10px;
+    margin-top: 4px; font-weight: 600;
+}
+.tag-ai { background: rgba(245,158,11,0.2); color: var(--accent); }
+.tag-ml { background: rgba(139,92,246,0.2); color: var(--secondary); }
+.tag-dl { background: rgba(59,130,246,0.2); color: var(--primary); }
+/* Feature comparison */
+.compare-table {
+    width: 100%; max-width: 650px;
+    border-collapse: collapse; font-size: 0.82rem;
+}
+.compare-table th {
+    padding: 10px 12px; text-align: left;
+    border-bottom: 2px solid rgba(59,130,246,0.3);
+    font-weight: 700;
+}
+.compare-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(59,130,246,0.1);
+    color: var(--text-dim);
+}
+.compare-table tr { opacity: 0; transform: translateY(10px); transition: all 0.4s ease; }
+.compare-table tr.show { opacity: 1; transform: translateY(0); }
+.compare-table .col-ai { color: var(--accent); }
+.compare-table .col-ml { color: var(--secondary); }
+.compare-table .col-dl { color: var(--primary); }
+</style>
+</head>
+<body>
+<div id="viewport">
+    <div id="progress"></div>
+    <div id="header">
+        <h1>深度学习、机器学习与人工智能的关系</h1>
+        <p>从宏观到微观，理解三层嵌套关系</p>
+    </div>
+    <div id="scene-indicator">
+        <div class="scene-dot active" id="dot-0"></div>
+        <div class="scene-dot" id="dot-1"></div>
+        <div class="scene-dot" id="dot-2"></div>
+        <div class="scene-dot" id="dot-3"></div>
+        <div class="scene-dot" id="dot-4"></div>
+    </div>
+    <div id="stage">
+        <div id="scene-0"></div>
+        <div id="scene-1"></div>
+        <div id="scene-2"></div>
+        <div id="scene-3"></div>
+        <div id="scene-4"></div>
+    </div>
+    <div id="subtitle-container">
+        <div id="subtitle-box"><div id="subtitle-cn">准备开始...</div></div>
+    </div>
+</div>
+
+<script>
+const TOTAL_DURATION = 75000;
+const TOTAL_SCENES = 5;
+let startTime;
+
+const subtitles = [
+    { time: 0,    cn: "今天我们来理清人工智能、机器学习和深度学习三者之间的关系" },
+    { time: 4500, cn: "这三个概念像俄罗斯套娃一样，一层包含一层" },
+    { time: 8500, cn: "最外层是人工智能，它是最广泛的概念" },
+    { time: 12000, cn: "人工智能诞生于1956年达特茅斯会议，目标是让机器模拟人类智能" },
+    { time: 17000, cn: "它包括推理、规划、自然语言理解等各种能力" },
+    { time: 21500, cn: "中间层是机器学习，它是实现人工智能的核心方法" },
+    { time: 26000, cn: "机器学习的核心思想是：从数据中自动学习规律，而非人工编写规则" },
+    { time: 31500, cn: "常见算法有决策树、支持向量机、随机森林等" },
+    { time: 36000, cn: "最内层是深度学习，它是机器学习中最强大的分支" },
+    { time: 40500, cn: "深度学习使用多层神经网络，自动提取数据中的特征" },
+    { time: 45500, cn: "2012年AlexNet在ImageNet上大幅领先，开启了深度学习的黄金时代" },
+    { time: 51000, cn: "三者在应用场景上也有明显差异" },
+    { time: 55000, cn: "人工智能涵盖最广：人脸识别、语音识别、自动驾驶都是它的子领域" },
+    { time: 60000, cn: "机器学习擅长结构化数据：推荐系统、信用评估、数据挖掘" },
+    { time: 65000, cn: "深度学习在感知任务上最强：图像识别、语音合成、大语言模型" },
+    { time: 70000, cn: "记住这个关系：人工智能包含机器学习，机器学习包含深度学习" }
+];
+
+function updateProgress() {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min(100, (elapsed / TOTAL_DURATION) * 100);
+    document.getElementById('progress').style.width = pct + '%';
+}
+
+function updateSubtitle(elapsed) {
+    const box = document.getElementById('subtitle-cn');
+    let current = subtitles[0].cn;
+    for (let i = subtitles.length - 1; i >= 0; i--) {
+        if (elapsed >= subtitles[i].time) { current = subtitles[i].cn; break; }
+    }
+    if (box.textContent !== current) {
+        box.style.opacity = '0';
+        setTimeout(() => { box.textContent = current; box.style.opacity = '1'; }, 200);
+    }
+}
+
+function el(tag, attrs, children) {
+    const e = document.createElement(tag);
+    if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+        else if (k === 'className') e.className = v;
+        else e.setAttribute(k, v);
+    });
+    if (children) {
+        if (typeof children === 'string') e.textContent = children;
+        else if (Array.isArray(children)) children.forEach(c => { if (c) e.appendChild(c); });
+        else e.appendChild(children);
+    }
+    return e;
+}
+
+function makeSVG(w, h) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', w); svg.setAttribute('height', h);
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    return svg;
+}
+
+function showScene(idx) {
+    document.getElementById('scene-' + idx).classList.add('active');
+    const dot = document.getElementById('dot-' + idx);
+    if (dot) { dot.classList.add('active'); }
+}
+
+function clearScene(idx) {
+    document.getElementById('scene-' + idx).classList.remove('active');
+    const dot = document.getElementById('dot-' + idx);
+    if (dot) { dot.classList.remove('active'); }
+    document.getElementById('scene-' + idx).innerHTML = '';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function waitForSubtitle(keyword) {
+    return new Promise(resolve => {
+        const check = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const box = document.getElementById('subtitle-cn').textContent;
+            if (box.includes(keyword)) { clearInterval(check); resolve(); }
+            if (elapsed > TOTAL_DURATION) { clearInterval(check); resolve(); }
+        }, 200);
+    });
+}
+
+// Scene 0: Overview - nested circles
+async function scene0() {
+    const s = document.getElementById('scene-0');
+    // Outer circle - AI
+    const ai = el('div', { className: 'set-circle', style: {
+        width: '340px', height: '340px',
+        background: 'radial-gradient(circle, rgba(245,158,11,0.08), rgba(245,158,11,0.02))',
+        border: '2px solid rgba(245,158,11,0.5)',
+        boxShadow: '0 0 30px rgba(245,158,11,0.15)',
+        top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+        opacity: '0', transition: 'opacity 0.8s ease'
+    }});
+    ai.appendChild(el('div', { className: 'set-label', style: {
+        position: 'absolute', top: '16px', fontSize: '1rem', color: 'var(--accent)'
+    }}, '🤖 人工智能 AI'));
+    s.appendChild(ai);
+    await sleep(300); ai.style.opacity = '1';
+
+    // Middle circle - ML
+    await sleep(800);
+    const ml = el('div', { className: 'set-circle', style: {
+        width: '240px', height: '240px',
+        background: 'radial-gradient(circle, rgba(139,92,246,0.1), rgba(139,92,246,0.02))',
+        border: '2px solid rgba(139,92,246,0.5)',
+        boxShadow: '0 0 25px rgba(139,92,246,0.15)',
+        top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+        opacity: '0', transition: 'opacity 0.8s ease'
+    }});
+    ml.appendChild(el('div', { className: 'set-label', style: {
+        position: 'absolute', top: '14px', fontSize: '0.9rem', color: 'var(--secondary)'
+    }}, '📊 机器学习 ML'));
+    s.appendChild(ml);
+    await sleep(300); ml.style.opacity = '1';
+
+    // Inner circle - DL
+    await sleep(800);
+    const dl = el('div', { className: 'set-circle', style: {
+        width: '140px', height: '140px',
+        background: 'radial-gradient(circle, rgba(59,130,246,0.15), rgba(59,130,246,0.03))',
+        border: '2px solid rgba(59,130,246,0.6)',
+        boxShadow: '0 0 25px rgba(59,130,246,0.2)',
+        top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+        opacity: '0', transition: 'opacity 0.8s ease'
+    }});
+    dl.appendChild(el('div', { className: 'set-label', style: {
+        fontSize: '0.85rem', color: 'var(--primary)'
+    }}, '🧠 深度学习 DL'));
+    s.appendChild(dl);
+    await sleep(300); dl.style.opacity = '1';
+
+    // Year labels
+    await sleep(600);
+    const yearAI = el('div', { style: {
+        position: 'absolute', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
+        fontSize: '0.75rem', color: 'var(--text-dim)',
+        opacity: '0', transition: 'opacity 0.5s ease'
+    }}, '1956 · 达特茅斯会议');
+    s.appendChild(yearAI);
+    await sleep(200); yearAI.style.opacity = '1';
+}
+
+// Scene 1: AI overview - what is AI
+async function scene1() {
+    const s = document.getElementById('scene-1');
+    const title = el('div', { style: {
+        fontSize: '1.1rem', fontWeight: '700', color: 'var(--accent)',
+        marginBottom: '16px', textAlign: 'center',
+        opacity: '0', transition: 'opacity 0.5s ease'
+    }}, '🤖 人工智能 Artificial Intelligence');
+    s.appendChild(title);
+    await sleep(200); title.style.opacity = '1';
+
+    const timeline = el('div', { className: 'timeline' });
+    const items = [
+        { color: 'var(--accent)', title: '1956 · 诞生', desc: '达特茅斯会议首次提出「人工智能」概念' },
+        { color: 'var(--green)', title: '核心目标', desc: '让机器模拟人类智能：推理、学习、感知、决策' },
+        { color: 'var(--secondary)', title: '两大流派', desc: '符号主义（规则推理）vs 连接主义（神经网络）' },
+        { color: 'var(--primary)', title: '涵盖范围', desc: '机器学习、专家系统、机器人、NLP、CV...' }
+    ];
+    items.forEach(item => {
+        const row = el('div', { className: 'timeline-item' });
+        const dotCol = el('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' }});
+        dotCol.appendChild(el('div', { className: 'timeline-dot', style: { background: item.color, boxShadow: `0 0 10px ${item.color}40` }}));
+        dotCol.appendChild(el('div', { className: 'timeline-line' }));
+        row.appendChild(dotCol);
+        const content = el('div', { className: 'timeline-content' });
+        content.appendChild(el('h3', { style: { color: item.color } }, item.title));
+        content.appendChild(el('p', null, item.desc));
+        row.appendChild(content);
+        timeline.appendChild(row);
+    });
+    s.appendChild(timeline);
+
+    for (let i = 0; i < items.length; i++) {
+        await sleep(800);
+        timeline.children[i].classList.add('show');
+    }
+}
+
+// Scene 2: ML - data-driven approach
+async function scene2() {
+    const s = document.getElementById('scene-2');
+    const title = el('div', { style: {
+        fontSize: '1.1rem', fontWeight: '700', color: 'var(--secondary)',
+        marginBottom: '16px', textAlign: 'center',
+        opacity: '0', transition: 'opacity 0.5s ease'
+    }}, '📊 机器学习 Machine Learning');
+    s.appendChild(title);
+    await sleep(200); title.style.opacity = '1';
+
+    // Comparison: traditional vs ML
+    const row = el('div', { style: {
+        display: 'flex', gap: '20px', maxWidth: '600px', width: '100%', padding: '0 20px'
+    }});
+
+    // Traditional
+    const trad = el('div', { style: {
+        flex: '1', background: 'rgba(30,41,59,0.8)',
+        border: '1px solid rgba(148,163,184,0.2)',
+        borderRadius: '12px', padding: '16px',
+        opacity: '0', transition: 'all 0.5s ease', transform: 'translateX(-20px)'
+    }});
+    trad.appendChild(el('div', { style: { fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-dim)', marginBottom: '10px' }}, '⚙️ 传统编程'));
+    trad.appendChild(el('div', { style: { fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: '1.8' }}, '输入：数据 + 规则\n↓\n输出：结果'));
+    row.appendChild(trad);
+
+    // ML
+    const mlBox = el('div', { style: {
+        flex: '1', background: 'rgba(30,41,59,0.8)',
+        border: '1px solid rgba(139,92,246,0.3)',
+        borderRadius: '12px', padding: '16px',
+        boxShadow: '0 0 20px rgba(139,92,246,0.1)',
+        opacity: '0', transition: 'all 0.5s ease', transform: 'translateX(20px)'
+    }});
+    mlBox.appendChild(el('div', { style: { fontSize: '0.9rem', fontWeight: '700', color: 'var(--secondary)', marginBottom: '10px' }}, '🧠 机器学习'));
+    mlBox.appendChild(el('div', { style: { fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: '1.8' }}, '输入：数据 + 结果\n↓\n输出：规则（模型）'));
+    row.appendChild(mlBox);
+    s.appendChild(row);
+
+    await sleep(400); trad.style.opacity = '1'; trad.style.transform = 'translateX(0)';
+    await sleep(400); mlBox.style.opacity = '1'; mlBox.style.transform = 'translateX(0)';
+
+    // Algorithms
+    await sleep(800);
+    const algos = el('div', { style: {
+        display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap',
+        justifyContent: 'center', maxWidth: '600px'
+    }});
+    const algoList = ['决策树', 'SVM', '随机森林', 'KNN', '朴素贝叶斯', '集成学习'];
+    algoList.forEach((name, i) => {
+        const chip = el('div', { style: {
+            background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)',
+            borderRadius: '20px', padding: '6px 14px', fontSize: '0.78rem', color: 'var(--secondary)',
+            opacity: '0', transition: `all 0.4s ease ${i * 0.1}s`
+        }}, name);
+        algos.appendChild(chip);
+        setTimeout(() => { chip.style.opacity = '1'; }, 100);
+    });
+    s.appendChild(algos);
+}
+
+// Scene 3: DL - neural networks
+async function scene3() {
+    const s = document.getElementById('scene-3');
+    const title = el('div', { style: {
+        fontSize: '1.1rem', fontWeight: '700', color: 'var(--primary)',
+        marginBottom: '16px', textAlign: 'center',
+        opacity: '0', transition: 'opacity 0.5s ease'
+    }}, '🧠 深度学习 Deep Learning');
+    s.appendChild(title);
+    await sleep(200); title.style.opacity = '1';
+
+    // Neural network visualization using SVG
+    const svgW = 320, svgH = 200;
+    const svg = makeSVG(svgW, svgH);
+    svg.style.opacity = '0';
+    svg.style.transition = 'opacity 0.8s ease';
+
+    const layers = [
+        { x: 40, nodes: 4, color: 'var(--green)' },
+        { x: 120, nodes: 5, color: 'var(--secondary)' },
+        { x: 200, nodes: 5, color: 'var(--secondary)' },
+        { x: 280, nodes: 3, color: 'var(--primary)' }
+    ];
+    const layerLabels = ['输入层', '隐藏层1', '隐藏层2', '输出层'];
+
+    // Draw connections
+    for (let l = 0; l < layers.length - 1; l++) {
+        const from = layers[l], to = layers[l + 1];
+        for (let i = 0; i < from.nodes; i++) {
+            for (let j = 0; j < to.nodes; j++) {
+                const y1 = (svgH / (from.nodes + 1)) * (i + 1);
+                const y2 = (svgH / (to.nodes + 1)) * (j + 1);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', from.x); line.setAttribute('y1', y1);
+                line.setAttribute('x2', to.x); line.setAttribute('y2', y2);
+                line.setAttribute('stroke', 'rgba(59,130,246,0.15)');
+                line.setAttribute('stroke-width', '1');
+                svg.appendChild(line);
+            }
+        }
+    }
+
+    // Draw nodes
+    layers.forEach((layer, l) => {
+        for (let i = 0; i < layer.nodes; i++) {
+            const y = (svgH / (layer.nodes + 1)) * (i + 1);
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', layer.x); circle.setAttribute('cy', y);
+            circle.setAttribute('r', '10');
+            circle.setAttribute('fill', layer.color);
+            circle.setAttribute('fill-opacity', '0.3');
+            circle.setAttribute('stroke', layer.color);
+            circle.setAttribute('stroke-width', '1.5');
+            svg.appendChild(circle);
+        }
+        // Layer label
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', layer.x); text.setAttribute('y', svgH - 5);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', 'var(--text-dim)');
+        text.setAttribute('font-size', '10');
+        text.textContent = layerLabels[l];
+        svg.appendChild(text);
+    });
+
+    s.appendChild(svg);
+    await sleep(400); svg.style.opacity = '1';
+
+    // Key features
+    await sleep(800);
+    const features = el('div', { style: {
+        display: 'flex', gap: '12px', marginTop: '12px', maxWidth: '600px', padding: '0 20px'
+    }});
+    const fList = [
+        { icon: '🔢', title: '多层网络', desc: '自动学习层次化特征', color: 'var(--primary)' },
+        { icon: '⚡', title: 'GPU加速', desc: '大规模并行计算', color: 'var(--accent)' },
+        { icon: '🎯', title: '端到端', desc: '原始数据→最终结果', color: 'var(--green)' }
+    ];
+    fList.forEach((f, i) => {
+        const card = el('div', { style: {
+            flex: '1', background: 'rgba(30,41,59,0.8)',
+            border: `1px solid ${f.color}30`,
+            borderRadius: '10px', padding: '12px', textAlign: 'center',
+            opacity: '0', transition: `all 0.5s ease ${i * 0.15}s`
+        }});
+        card.appendChild(el('div', { style: { fontSize: '1.4rem', marginBottom: '4px' } }, f.icon));
+        card.appendChild(el('div', { style: { fontSize: '0.85rem', fontWeight: '700', color: f.color } }, f.title));
+        card.appendChild(el('div', { style: { fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '2px' } }, f.desc));
+        features.appendChild(card);
+        setTimeout(() => { card.style.opacity = '1'; }, 100);
+    });
+    s.appendChild(features);
+}
+
+// Scene 4: Applications comparison + summary
+async function scene4() {
+    const s = document.getElementById('scene-4');
+    const title = el('div', { style: {
+        fontSize: '1rem', fontWeight: '700',
+        background: 'linear-gradient(135deg, var(--accent), var(--secondary), var(--primary))',
+        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        marginBottom: '14px', textAlign: 'center',
+        opacity: '0', transition: 'opacity 0.5s ease'
+    }}, '应用场景对比');
+    s.appendChild(title);
+    await sleep(200); title.style.opacity = '1';
+
+    const grid = el('div', { className: 'app-grid' });
+    const apps = [
+        { icon: '👤', name: '人脸识别', layer: 'AI', tagClass: 'tag-ai', tagText: 'AI' },
+        { icon: '🗣️', name: '语音识别', layer: 'AI', tagClass: 'tag-ai', tagText: 'AI' },
+        { icon: '🛒', name: '推荐系统', layer: 'ML', tagClass: 'tag-ml', tagText: 'ML' },
+        { icon: '💳', name: '信用评估', layer: 'ML', tagClass: 'tag-ml', tagText: 'ML' },
+        { icon: '🖼️', name: '图像识别', layer: 'DL', tagClass: 'tag-dl', tagText: 'DL' },
+        { icon: '🤖', name: '大语言模型', layer: 'DL', tagClass: 'tag-dl', tagText: 'DL' }
+    ];
+    apps.forEach(app => {
+        const card = el('div', { className: 'app-card' });
+        card.appendChild(el('div', { className: 'app-icon' }, app.icon));
+        card.appendChild(el('h4', null, app.name));
+        card.appendChild(el('span', { className: `tag ${app.tagClass}` }, app.tagText));
+        grid.appendChild(card);
+    });
+    s.appendChild(grid);
+
+    for (let i = 0; i < apps.length; i++) {
+        await sleep(400);
+        grid.children[i].classList.add('show');
+    }
+
+    // Summary formula
+    await sleep(800);
+    const summary = el('div', { style: {
+        marginTop: '16px', padding: '12px 24px',
+        background: 'rgba(59,130,246,0.1)',
+        border: '1px solid rgba(59,130,246,0.3)',
+        borderRadius: '10px', textAlign: 'center',
+        opacity: '0', transition: 'opacity 0.6s ease'
+    }});
+    summary.appendChild(el('div', { style: {
+        fontSize: '0.95rem', fontWeight: '700',
+        background: 'linear-gradient(90deg, var(--accent), var(--secondary), var(--primary))',
+        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+    }}, '🤖 AI ⊃ 📊 ML ⊃ 🧠 DL'));
+    summary.appendChild(el('div', { style: {
+        fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '4px'
+    }}, '人工智能 ⊃ 机器学习 ⊃ 深度学习'));
+    s.appendChild(summary);
+    await sleep(300); summary.style.opacity = '1';
+}
+
+async function runAnimation() {
+    startTime = Date.now();
+    const timer = setInterval(() => {
+        updateProgress();
+        updateSubtitle(Date.now() - startTime);
+    }, 100);
+
+    showScene(0);
+    await scene0();
+    await waitForSubtitle('俄罗斯套娃');
+    clearScene(0);
+
+    showScene(1);
+    await scene1();
+    await waitForSubtitle('机器学习');
+    clearScene(1);
+
+    showScene(2);
+    await scene2();
+    await waitForSubtitle('深度学习');
+    clearScene(2);
+
+    showScene(3);
+    await scene3();
+    await waitForSubtitle('应用场景');
+    clearScene(3);
+
+    showScene(4);
+    await scene4();
+
+    clearInterval(timer);
+    document.getElementById('progress').style.width = '100%';
+}
+window.onload = runAnimation;
+</script>
+</body>
+</html>

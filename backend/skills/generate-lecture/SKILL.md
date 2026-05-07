@@ -11,7 +11,7 @@ allowed-tools: read_file write_file get_entity_graph get_course_structure search
 ## 执行步骤
 
 ### Step 1:读学生画像
-**tool**: `read_file` · **input**: `{"path": "workspace/USER.md"}`
+**优先从 task description 中获取画像信息**（mastery、易错点、认知风格等）。如果 description 中缺少关键信息，才用 `read_file` 读 `workspace/USER.md` 补全。
 
 提取:
 - 专业、年级(作为文档前言的"读者画像")
@@ -20,6 +20,7 @@ allowed-tools: read_file write_file get_entity_graph get_course_structure search
 - 易错点(每节点后特别提示这些)
 
 ### Step 2:查知识图谱
+**优先从 task description 中获取实体信息**。如果 description 中没有，才用 `get_entity_graph` 查询。
 **tool**: `get_entity_graph` · **input**: `{"entity_name": "<task 里的主题>"}`
 
 拿到:
@@ -91,13 +92,13 @@ prerequisites: [<from entity_graph incoming>]
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "workspace/generated/<YYYY-MM-DD>/<topic-slug>/lecture.md",
+  "path": "workspace/generated/lectures/<中文主题名>.md",
   "mode": "write",
   "content": "<完整文档>"
 }
 ```
 
-其中 `<YYYY-MM-DD>` = 执行日期,`<topic-slug>` = 小写英文/拼音短横线形式(backpropagation、convolutional-layer、gradient-descent)。
+其中 `<中文主题名>` = 中文为主，专业术语可用英文，如 循环神经网络、RNN基础。
 
 ## 质量约束(硬性)
 
@@ -106,7 +107,7 @@ prerequisites: [<from entity_graph incoming>]
 - 必须对齐该主题 mastery 档位
 - 所有术语首次出现中文 + 英文括注
 - 不能编造论文引用(需要引用就让 reading_curator 去找)
-- 不能越权写到 `workspace/generated/` 之外
+- 不能越权写到 `workspace/generated/lectures/` 之外
 
 ## 示例调用(子代理视角)
 
@@ -115,5 +116,5 @@ prerequisites: [<from entity_graph incoming>]
 1. read_file workspace/USER.md → 确认画像
 2. get_entity_graph(entity_name="反向传播") → 得到 incoming=["链式法则","偏导数"], outgoing=["梯度消失","BPTT"]
 3. 按入门档模板写 ≤ 1500 字,多给示例类比
-4. write_file workspace/generated/2026-04-19/backpropagation/lecture.md
+4. write_file workspace/generated/lectures/反向传播.md
 5. 回报 "已生成 lecture.md(1200 字,7 节,含 2 个示例)"

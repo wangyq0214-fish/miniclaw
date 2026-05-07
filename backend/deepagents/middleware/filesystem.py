@@ -58,7 +58,7 @@ EMPTY_CONTENT_WARNING = "System reminder: File exists but has empty contents"
 GLOB_TIMEOUT = 20.0  # seconds
 LINE_NUMBER_WIDTH = 6
 DEFAULT_READ_OFFSET = 0
-DEFAULT_READ_LIMIT = 100
+DEFAULT_READ_LIMIT = 2000
 # Template for truncation message in read_file
 # {file_path} will be filled in at runtime
 READ_FILE_TRUNCATION_MSG = (
@@ -818,13 +818,19 @@ class FilesystemMiddleware(AgentMiddleware[FilesystemState, ContextT, ResponseT]
             runtime: ToolRuntime[None, FilesystemState],
         ) -> str:
             """Synchronous wrapper for write_file tool."""
+            from tools.utils import inject_date
+            import logging
+            logger = logging.getLogger(__name__)
             resolved_backend = self._get_backend(runtime)
+            dated_path = inject_date(file_path.lstrip("/"))
+            logger.info("write_file: original=%s, dated=%s", file_path, dated_path)
             try:
-                validated_path = validate_path(file_path)
+                validated_path = validate_path(dated_path)
             except ValueError as e:
                 return f"Error: {e}"
 
             res: WriteResult = resolved_backend.write(validated_path, content)
+            logger.info("write_file result: path=%s, error=%s", res.path, res.error)
             if res.error:
                 return res.error
             return f"Updated file {res.path}"
@@ -835,9 +841,10 @@ class FilesystemMiddleware(AgentMiddleware[FilesystemState, ContextT, ResponseT]
             runtime: ToolRuntime[None, FilesystemState],
         ) -> str:
             """Asynchronous wrapper for write_file tool."""
+            from tools.utils import inject_date
             resolved_backend = self._get_backend(runtime)
             try:
-                validated_path = validate_path(file_path)
+                validated_path = validate_path(inject_date(file_path.lstrip("/")))
             except ValueError as e:
                 return f"Error: {e}"
 

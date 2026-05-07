@@ -1,6 +1,7 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
+import { getApiBaseUrl } from '@/lib/auth';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
@@ -10,6 +11,7 @@ import 'katex/dist/katex.min.css';
 import type { Components } from 'react-markdown';
 import { CodeBlock } from './CodeBlock';
 import { MermaidBlock } from './MermaidBlock';
+import { AnimationBlock } from './AnimationBlock';
 
 // Extend sanitize schema to allow KaTeX's className attribute on common elements.
 const sanitizeSchema = {
@@ -22,14 +24,81 @@ const sanitizeSchema = {
   },
 };
 
+function AuthVideo({ src, className }: { src: string; className?: string }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const prevUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!src) return;
+    // Revoke previous blob URL
+    if (prevUrlRef.current) {
+      URL.revokeObjectURL(prevUrlRef.current);
+      prevUrlRef.current = null;
+    }
+    setBlobUrl(null);
+    setError(false);
+
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
+    fetch(src, { headers })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        prevUrlRef.current = url;
+        setBlobUrl(url);
+      })
+      .catch(() => setError(true));
+
+    return () => {
+      if (prevUrlRef.current) {
+        URL.revokeObjectURL(prevUrlRef.current);
+        prevUrlRef.current = null;
+      }
+    };
+  }, [src]);
+
+  if (error) {
+    return (
+      <div className="my-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-muted-foreground">
+        视频加载失败
+      </div>
+    );
+  }
+
+  return (
+    <video
+      src={blobUrl ?? undefined}
+      controls
+      playsInline
+      preload="metadata"
+      className={className ?? 'max-w-full h-auto rounded-lg my-3'}
+    />
+  );
+}
+
 const components: Components = {
   img: ({ src, alt, ...rest }) => {
+    const srcStr = typeof src === 'string' ? src : '';
+    // Detect video files by extension and render <video> instead of <img>
+    if (srcStr && /\.(mp4|webm|ogg)$/i.test(srcStr)) {
+      const apiBase = getApiBaseUrl();
+      // Encode each path segment individually — keep '/' intact for FastAPI :path route
+      const encodedPath = srcStr.startsWith('http')
+        ? srcStr
+        : `${apiBase}/api/videos/${srcStr.split('/').map(encodeURIComponent).join('/')}`;
+      return <AuthVideo src={encodedPath} />;
+    }
     // Transform relative image paths for knowledge assets
-    let imageSrc = src;
-    if (src && !src.startsWith('http') && !src.startsWith('data:')) {
+    let imageSrc = srcStr;
+    if (srcStr && !srcStr.startsWith('http') && !srcStr.startsWith('data:')) {
       // Images are stored in knowledge/assets directory
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
-      imageSrc = `${apiBase}/static/knowledge/assets/${src}`;
+      const apiBase = getApiBaseUrl();
+      imageSrc = `${apiBase}/static/knowledge/assets/${srcStr}`;
     }
     return (
       <img
@@ -111,6 +180,7 @@ const components: Components = {
 
     const lang = match?.[1]?.toLowerCase();
     if (lang === 'mermaid') return <MermaidBlock code={codeText} />;
+    if (lang === 'html-animation') return <AnimationBlock code={codeText} />;
 
     return <CodeBlock code={codeText} language={match?.[1]} />;
   },

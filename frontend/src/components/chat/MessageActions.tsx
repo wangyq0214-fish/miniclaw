@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Copy, RotateCcw } from 'lucide-react';
+import { Check, Copy, RotateCcw, BookmarkPlus } from 'lucide-react';
 
 interface MessageActionsProps {
   content: string;
   onRegenerate?: () => void;
+  onSaveToNote?: (content: string) => void;
 }
 
-export function MessageActions({ content, onRegenerate }: MessageActionsProps) {
+export function MessageActions({ content, onRegenerate, onSaveToNote }: MessageActionsProps) {
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -18,6 +20,14 @@ export function MessageActions({ content, onRegenerate }: MessageActionsProps) {
       setTimeout(() => setCopied(false), 1500);
     } catch {
       // silent
+    }
+  };
+
+  const handleSaveToNote = () => {
+    if (onSaveToNote) {
+      onSaveToNote(content);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
     }
   };
 
@@ -38,6 +48,23 @@ export function MessageActions({ content, onRegenerate }: MessageActionsProps) {
           </>
         )}
       </button>
+      {onSaveToNote && (
+        <button
+          onClick={handleSaveToNote}
+          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-teal-600 px-1.5 py-0.5 rounded"
+          aria-label="保存到笔记"
+        >
+          {saved ? (
+            <>
+              <Check className="w-3 h-3" /> 已保存
+            </>
+          ) : (
+            <>
+              <BookmarkPlus className="w-3 h-3" /> 保存到笔记
+            </>
+          )}
+        </button>
+      )}
       {onRegenerate && (
         <button
           onClick={onRegenerate}

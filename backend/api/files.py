@@ -3,17 +3,26 @@ Files API - File management endpoints
 
 Features:
 - Read/write files in allowed directories
-- Path whitelist security
+- Per-user path isolation
 - Memory index rebuild on MEMORY.md save
 - Skills listing
 """
 import logging
 from pathlib import Path
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 
-from config import get_project_root
+from config import (
+    get_project_root,
+    get_user_memory_dir,
+    get_user_workspace_dir,
+    get_skills_dir,
+    get_workspace_dir,
+    get_knowledge_dir,
+)
+from auth.security import get_current_user
+from models.complete_models import User
 
 logger = logging.getLogger(__name__)
 
@@ -65,17 +74,51 @@ BLOCKED_FILES = [
 ]
 
 
-def resolve_path(relative_path: str) -> Path:
-    """Resolve a relative path to an absolute path within project root."""
-    project_root = get_project_root()
-
+def resolve_path(relative_path: str, user_id: int) -> Path:
+    """Resolve a relative path to an absolute path with user isolation."""
     # Handle different path formats
     if relative_path.startswith("./"):
         relative_path = relative_path[2:]
     elif relative_path.startswith("/"):
         relative_path = relative_path[1:]
 
-    return project_root / relative_path
+    # Normalize path separators
+    relative_path = relative_path.replace("\\", "/")
+
+    # Map virtual paths to physical paths
+    if relative_path.startswith("workspace/") or relative_path == "workspace":
+        # User-specific workspace
+        base = get_user_workspace_dir(user_id)
+        sub_path = relative_path[10:] if len(relative_path) > 10 else ""
+        return base / sub_path if sub_path else base
+
+    elif relative_path.startswith("memory/") or relative_path == "memory":
+        # User-specific memory
+        base = get_user_memory_dir(user_id)
+        sub_path = relative_path[7:] if len(relative_path) > 7 else ""
+        return base / sub_path if sub_path else base
+
+    elif relative_path.startswith("knowledge/source/") or relative_path == "knowledge/source":
+        # Shared knowledge source
+        base = get_knowledge_dir() / "source"
+        sub_path = relative_path[17:] if len(relative_path) > 17 else ""
+        return base / sub_path if sub_path else base
+
+    elif relative_path.startswith("knowledge/"):
+        # Other knowledge paths (shared)
+        base = get_knowledge_dir()
+        sub_path = relative_path[10:] if len(relative_path) > 10 else ""
+        return base / sub_path if sub_path else base
+
+    elif relative_path.startswith("skills/"):
+        # Shared skills (read-only)
+        base = get_skills_dir()
+        sub_path = relative_path[7:] if len(relative_path) > 7 else ""
+        return base / sub_path if sub_path else base
+
+    else:
+        # Fallback to project root (legacy)
+        return get_project_root() / relative_path
 
 
 def validate_path(path: Path, relative_path: str) -> tuple:
@@ -115,9 +158,12 @@ def validate_path(path: Path, relative_path: str) -> tuple:
 
 
 @router.get("/files", response_model=FileReadResponse)
-async def read_file(path: str = Query(..., description="Relative path to the file")):
+async def read_file(
+    path: str = Query(..., description="Relative path to the file"),
+    current_user: User = Depends(get_current_user)
+):
     """Read a file from the project directory."""
-    file_path = resolve_path(path)
+    file_path = resolve_path(path, current_user.id)
 
     valid, reason = validate_path(file_path, path)
     if not valid:
@@ -152,13 +198,16 @@ async def read_file(path: str = Query(..., description="Relative path to the fil
 
 
 @router.post("/files")
-async def write_file(request: FileWriteRequest):
+async def write_file(
+    request: FileWriteRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Write content to a file in the project directory.
 
     Triggers memory index rebuild if writing to MEMORY.md.
     """
-    file_path = resolve_path(request.path)
+    file_path = resolve_path(request.path, current_user.id)
 
     valid, reason = validate_path(file_path, request.path)
     if not valid:
@@ -251,13 +300,45 @@ def categorize_resource(relative_path: str) -> Optional[str]:
     return "其他资源"
 
 
+@router.delete("/files")
+async def delete_file(
+    path: str = Query(..., description="Relative path to the file or directory"),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a file or directory in the project directory."""
+    import shutil
+
+    file_path = resolve_path(path, current_user.id)
+
+    valid, reason = validate_path(file_path, path)
+    if not valid:
+        raise HTTPException(status_code=403, detail=f"Access denied: {reason}")
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File or directory not found")
+
+    try:
+        if file_path.is_dir():
+            shutil.rmtree(file_path)
+        else:
+            file_path.unlink()
+
+        return {"success": True, "path": path, "message": "Deleted successfully"}
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    except Exception as e:
+        logger.error(f"Error deleting {path}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/files/list", response_model=FileListResponse)
 async def list_files(
     directory: str = Query("", description="Relative path to the directory"),
-    recursive: bool = Query(False, description="Recursively list files in subdirectories")
+    recursive: bool = Query(False, description="Recursively list files in subdirectories"),
+    current_user: User = Depends(get_current_user)
 ):
     """List files in a directory, with filtering for resource library."""
-    dir_path = resolve_path(directory)
+    dir_path = resolve_path(directory, current_user.id)
 
     try:
         project_root = get_project_root().resolve()
@@ -279,13 +360,31 @@ async def list_files(
 
         # Non-recursive: only list direct children (show directory structure)
         for item in dir_path.iterdir():
-            relative = item.relative_to(get_project_root())
-            rel_str = str(relative).replace("\\", "/")
+            # Calculate relative path based on the virtual path prefix
+            if directory.startswith("workspace"):
+                base = get_user_workspace_dir(current_user.id)
+                relative = item.relative_to(base)
+                rel_str = f"workspace/{relative}".replace("\\", "/")
+            elif directory.startswith("memory"):
+                base = get_user_memory_dir(current_user.id)
+                relative = item.relative_to(base)
+                rel_str = f"memory/{relative}".replace("\\", "/")
+            elif directory.startswith("knowledge/source"):
+                base = get_knowledge_dir() / "source"
+                relative = item.relative_to(base)
+                rel_str = f"knowledge/source/{relative}".replace("\\", "/")
+            elif directory.startswith("knowledge"):
+                base = get_knowledge_dir()
+                relative = item.relative_to(base)
+                rel_str = f"knowledge/{relative}".replace("\\", "/")
+            else:
+                relative = item.relative_to(get_project_root())
+                rel_str = str(relative).replace("\\", "/")
 
             # For files, apply filtering
             if item.is_file():
                 if directory in ["workspace", "memory", "knowledge/source"] or directory.startswith("knowledge/source/"):
-                    if not should_include_resource(item, relative):
+                    if not should_include_resource(item, rel_str):
                         continue
 
             file_info = {

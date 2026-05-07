@@ -6,18 +6,33 @@ Core endpoint for AI chat with tool calling and RAG support.
 import json
 import logging
 from typing import AsyncGenerator, Optional, List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from memory import system_prompt_builder, session_manager
+from memory.hybrid_session import HybridSessionManager
+from memory.redis_session import RedisSessionManager
+from database import get_db, get_redis
 from agent import agent_manager
 from tools import get_all_tools
+from models.complete_models import User
+from auth.security import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def get_hybrid_manager(
+    db: AsyncSession = Depends(get_db),
+    redis_client = Depends(get_redis),
+    current_user: User = Depends(get_current_user)
+) -> HybridSessionManager:
+    redis_manager = RedisSessionManager(redis_client, ttl_days=7)
+    return HybridSessionManager(redis_manager, db, user_id=current_user.id)
 
 
 class ChatRequest(BaseModel):
@@ -70,7 +85,9 @@ async def generate_title(message: str, session_id: str) -> str:
 
 async def stream_chat_response(
     message: str,
-    session_id: str
+    session_id: str,
+    user_id: int,
+    hybrid_manager: HybridSessionManager
 ) -> AsyncGenerator[str, None]:
     """
     Stream chat response using AgentManager.
@@ -85,16 +102,24 @@ async def stream_chat_response(
     - title: Auto-generated title (first message only)
     - error: Error occurred
     """
+    logger.info(f"stream_chat_response called with user_id={user_id}, session_id={session_id}")
     try:
-        # Get or create session
-        session = session_manager.get_or_create_session(session_id)
+        # Check if session exists, if not create it
+        session = await hybrid_manager.get_session(session_id)
+        if not session:
+            # Create new session in HybridSessionManager
+            await hybrid_manager.create_session(
+                session_id=session_id,
+                user_id=user_id,
+                metadata={"title": "新对话"}
+            )
 
-        # Check if first message (for title generation)
-        existing_messages = session.get("messages", [])
+        # Get messages for checking if first message
+        existing_messages = await hybrid_manager.get_messages(session_id)
         is_first_message = len(existing_messages) == 0
 
-        # Get history for agent (optimized format)
-        history = session_manager.load_session_for_agent(session_id)
+        # Get history for agent from HybridSessionManager
+        history = await hybrid_manager.load_session_for_agent(session_id)
 
         # Load RAG mode from config
         try:
@@ -105,6 +130,25 @@ async def stream_chat_response(
             rag_mode = False
 
         agent_manager.set_rag_mode(rag_mode)
+
+        # Re-initialize agent with user context for this request
+        from config import get_project_root
+        from tools import get_all_tools
+        from memory import session_manager as mem_session_manager, system_prompt_builder
+
+        # Initialize agent first to create backend
+        await agent_manager.initialize(
+            base_dir=get_project_root(),
+            tools=[],  # Will be set after backend is ready
+            session_manager=mem_session_manager,
+            prompt_builder=system_prompt_builder,
+            memory_indexer=None,
+            user_id=user_id
+        )
+
+        # Now create tools with backend
+        tools = get_all_tools(base_dir=get_project_root(), user_id=user_id, backend=agent_manager._backend)
+        agent_manager.tools = tools
 
         # Build system prompt
         system_prompt = system_prompt_builder.build(rag_mode=rag_mode)
@@ -139,6 +183,10 @@ async def stream_chat_response(
                 # Tool call started
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
+            elif event_type == "status":
+                # Agent status update (thinking, processing, etc.)
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
             elif event_type == "tool_end":
                 # Tool call finished
                 tool_call = {
@@ -164,45 +212,34 @@ async def stream_chat_response(
                 if current_segment["content"] or current_segment["tool_calls"]:
                     segments.append(current_segment)
 
-                # Save user message
-                session_manager.add_message(session_id, "user", message)
+                # Save user message to HybridSessionManager (Redis + PostgreSQL)
+                await hybrid_manager.add_message(
+                    session_id=session_id,
+                    role="user",
+                    content=message
+                )
 
                 # Save assistant segments
                 for segment in segments:
-                    session_manager.add_message(
-                        session_id,
-                        "assistant",
-                        segment.get("content", ""),
-                        tool_calls=segment.get("tool_calls") if segment.get("tool_calls") else None
+                    # Save to HybridSessionManager
+                    await hybrid_manager.add_message(
+                        session_id=session_id,
+                        role="assistant",
+                        content=segment.get("content", ""),
+                        metadata={"tool_calls": segment.get("tool_calls")} if segment.get("tool_calls") else None
                     )
 
                 # Auto compression check
-                if settings.auto_compress_enabled:
+                # TODO: Implement compression for HybridSessionManager
+                # Currently disabled as HybridSessionManager doesn't have compress_session method
+                if False and settings.auto_compress_enabled:
                     try:
-                        updated_session = session_manager.get_session(session_id)
-                        message_count = len(updated_session.get("messages", []))
+                        messages = await hybrid_manager.get_messages(session_id)
+                        message_count = len(messages)
 
                         if message_count >= settings.auto_compress_threshold:
                             logger.info(f"Auto compressing session {session_id}: {message_count} messages")
-
-                            # Calculate archive count
-                            archive_count = max(4, int(message_count * settings.auto_compress_ratio))
-
-                            # Get messages to archive
-                            messages_to_archive = updated_session.get("messages", [])[:archive_count]
-
-                            # Generate summary
-                            from api.compress import generate_summary
-                            summary = await generate_summary(messages_to_archive)
-
-                            # Compress
-                            session_manager.compress_history(
-                                session_id=session_id,
-                                summary=summary,
-                                n=archive_count
-                            )
-
-                            logger.info(f"Auto compressed {archive_count} messages from session {session_id}")
+                            # Compression logic to be implemented
 
                     except Exception as e:
                         logger.warning(f"Auto compression failed: {str(e)}")
@@ -213,7 +250,11 @@ async def stream_chat_response(
                 # Generate title for first message
                 if is_first_message:
                     title = await generate_title(message, session_id)
-                    session_manager.update_title(session_id, title)
+                    # Update title in HybridSessionManager
+                    await hybrid_manager.update_session_metadata(
+                        session_id=session_id,
+                        metadata={"title": title}
+                    )
                     title_event = {
                         "type": "title",
                         "session_id": session_id,
@@ -234,7 +275,11 @@ async def stream_chat_response(
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    hybrid_manager: HybridSessionManager = Depends(get_hybrid_manager)
+):
     """
     Send a message and get a streaming response.
 
@@ -249,7 +294,7 @@ async def chat(request: ChatRequest):
     """
     if request.stream:
         return StreamingResponse(
-            stream_chat_response(request.message, request.session_id),
+            stream_chat_response(request.message, request.session_id, current_user.id, hybrid_manager),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -260,13 +305,20 @@ async def chat(request: ChatRequest):
     else:
         # Non-streaming response
         try:
-            # Get session
-            session = session_manager.get_or_create_session(request.session_id)
-            existing_messages = session.get("messages", [])
+            # Check if session exists, if not create it
+            session = await hybrid_manager.get_session(request.session_id)
+            if not session:
+                await hybrid_manager.create_session(
+                    session_id=request.session_id,
+                    user_id=current_user.id,
+                    metadata={"title": "新对话"}
+                )
+
+            existing_messages = await hybrid_manager.get_messages(request.session_id)
             is_first_message = len(existing_messages) == 0
 
-            # Get history
-            history = session_manager.load_session_for_agent(request.session_id)
+            # Get history from HybridSessionManager
+            history = await hybrid_manager.load_session_for_agent(request.session_id)
 
             # Build system prompt
             system_prompt = system_prompt_builder.build()
@@ -275,12 +327,14 @@ async def chat(request: ChatRequest):
             full_content = ""
             tool_calls = []
 
+            logger.info(f"Starting agent stream for session {request.session_id}")
             async for event in agent_manager.astream(
                 message=request.message,
                 history=history,
                 system_prompt=system_prompt,
                 session_id=request.session_id
             ):
+                logger.debug(f"Received event: {event.get('type')}")
                 if event.get("type") == "token":
                     full_content += event.get("content", "")
                 elif event.get("type") == "tool_end":
@@ -289,14 +343,28 @@ async def chat(request: ChatRequest):
                         "output": event.get("output")
                     })
 
-            # Save messages
-            session_manager.add_message(request.session_id, "user", request.message)
-            session_manager.add_message(request.session_id, "assistant", full_content)
+            logger.info(f"Agent stream completed. Content length: {len(full_content)}")
+
+            # Save messages to HybridSessionManager only
+            await hybrid_manager.add_message(
+                session_id=request.session_id,
+                role="user",
+                content=request.message
+            )
+            await hybrid_manager.add_message(
+                session_id=request.session_id,
+                role="assistant",
+                content=full_content,
+                metadata={"tool_calls": tool_calls} if tool_calls else None
+            )
 
             # Generate title if first message
             if is_first_message:
                 title = await generate_title(request.message, request.session_id)
-                session_manager.update_title(request.session_id, title)
+                await hybrid_manager.update_session_metadata(
+                    session_id=request.session_id,
+                    metadata={"title": title}
+                )
 
             return ChatResponse(
                 message=full_content,

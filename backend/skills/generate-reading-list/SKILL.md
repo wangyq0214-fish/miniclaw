@@ -11,7 +11,7 @@ allowed-tools: read_file write_file search_knowledge_base fetch_url terminal
 ## 执行步骤
 
 ### Step 1:读画像
-**tool**: `read_file` · **input**: `{"path": "workspace/USER.md"}`
+**优先从 task description 中获取画像信息**（mastery、易错点、认知风格等）。如果 description 中缺少关键信息，才用 `read_file` 读 `workspace/USER.md` 补全。
 
 提取:
 - 维度 2:驱动动机(保研 → 偏学术;就业 → 偏工程博客;兴趣 → 通识科普)
@@ -19,6 +19,7 @@ allowed-tools: read_file write_file search_knowledge_base fetch_url terminal
 - 维度 8:语言偏好(中英文比例)
 
 ### Step 2:检索组合(按序尝试,前者够用可停)
+**优先从 task description 中获取实体/主题信息**。如果 description 中没有，才用 `search_knowledge_base` 查询。
 
 #### 2.1 先搜项目知识库
 **tool**: `search_knowledge_base` · **input**: `{"query": "<主题>"}`
@@ -59,7 +60,7 @@ tavily-search 不是 tool,要通过 `terminal` 运行脚本:
 **tool**: `write_file` · **input**:
 ```json
 {
-  "path": "workspace/generated/<YYYY-MM-DD>/<topic-slug>/reading_list.md",
+  "path": "workspace/generated/reading-lists/<中文主题名>.md",
   "mode": "write",
   "content": "<完整 markdown>"
 }

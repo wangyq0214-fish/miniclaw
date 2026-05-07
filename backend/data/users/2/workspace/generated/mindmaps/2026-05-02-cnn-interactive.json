@@ -1,0 +1,113 @@
+{
+  "title": "卷积神经网络",
+  "topic_slug": "cnn-interactive",
+  "node_count": 14,
+  "max_depth": 3,
+  "generated_at": "2026-05-02T15:00:00Z",
+  "generated_by": "mindmap_designer",
+  "tree": {
+    "title": "CNN 卷积神经网络",
+    "summary": "通过卷积操作提取空间特征的深度学习模型",
+    "details": ["局部感受野提取特征", "参数共享减少计算量", "层次化特征表示"],
+    "children": [
+      {
+        "title": "卷积层",
+        "summary": "用卷积核扫描输入提取局部特征的核心层",
+        "details": ["滑动卷积核做点积", "共享权重减少参数", "保留空间结构信息"],
+        "children": [
+          {
+            "title": "卷积核 ✅",
+            "summary": "小尺寸权重矩阵，负责提取特定特征",
+            "details": ["常见 3x3 或 5x5", "每个核检测一种模式", "多核提取多种特征"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "步长与填充 🔶",
+            "summary": "控制输出特征图尺寸的两个关键参数",
+            "details": ["步长决定滑动距离", "填充保持输出尺寸", "常用 same 填充"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "特征图 ❓",
+            "summary": "卷积操作后生成的激活响应图",
+            "details": ["反映特征分布", "尺寸随层数缩小", "通道数逐层增加"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "池化层",
+        "summary": "降低特征图分辨率的下采样操作",
+        "details": ["减少计算量和参数", "增强平移不变性", "常用 2x2 窗口"],
+        "children": [
+          {
+            "title": "最大池化 ✅",
+            "summary": "取窗口内最大值作为输出",
+            "details": ["保留最强激活信号", "2x2 步长2 减半尺寸", "最常用的池化方式"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "平均池化 🔶",
+            "summary": "取窗口内平均值作为输出",
+            "details": ["保留整体特征信息", "比最大池化更平滑", "常用于全局池化"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "激活函数",
+        "summary": "引入非线性变换的关键组件",
+        "details": ["让网络学习非线性关系", "逐元素作用于特征图", "ReLU 是主流选择"],
+        "children": [
+          {
+            "title": "ReLU ✅",
+            "summary": "负值归零，正值不变的激活函数",
+            "details": ["计算简单高效", "缓解梯度消失", "稀疏激活特性"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "Sigmoid 🔶",
+            "summary": "将输出压缩到 0~1 的 S 形函数",
+            "details": ["输出可当概率", "易梯度消失", "二分类输出层用"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "经典架构",
+        "summary": "推动 CNN 发展的里程碑模型",
+        "details": ["从浅到深逐步演进", "残差连接解决退化", "各有适用场景"],
+        "children": [
+          {
+            "title": "LeNet ❓",
+            "summary": "最早的 CNN 之一，用于手写数字识别",
+            "details": ["5 层卷积+全连接", "1998 年提出", "奠定了 CNN 基本结构"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "ResNet ❓",
+            "summary": "引入残差连接的超深网络",
+            "details": ["跳跃连接解决退化", "可训练 100+ 层", "2015 年 ImageNet 冠军"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "VGG ❓",
+            "summary": "用小卷积核堆叠的简洁架构",
+            "details": ["统一用 3x3 卷积核", "结构规则易理解", "参数量较大"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,22 +1,22 @@
 """
 Resource-generation subagents.
 
-Six role-specialized subagents that collaborate under the main agent (orchestrator)
+Five role-specialized subagents that collaborate under the main agent (orchestrator)
 to produce multi-modal learning materials for a student. Each subagent's
-`system_prompt` is loaded from `workspace/roles/<name>.md` — so role identity is
+`system_prompt` is loaded from `/roles/<name>.md` via backend — so role identity is
 fully file-driven. Execution protocol for each role lives in a matching
 `skills/<generate_*>/SKILL.md` that the subagent reads on entry.
 
 Design:
 - Main agent = orchestrator (uses built-in `task` tool to dispatch these)
-- 6 subagents cover: lecture, mindmap, exercises, reading list, media, code cases
+- 5 subagents cover: lecture, mindmap, exercises, reading list, code cases
+- HTML animation generation is handled directly by the main agent (reads SKILL.md, uses write_file)
 - model / tools are inherited from the main agent (deepagents graph.py fills defaults)
 - English `name` keeps `task(subagent_type="...")` argument stable across models
 """
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -35,28 +35,23 @@ RESOURCE_ROLES: list[tuple[str, str]] = [
     ),
     (
         "mindmap_designer",
-        "Generate a Mermaid mindmap + dependency graph that visualizes the hierarchy "
-        "and prerequisites of a topic, with per-node mastery markers. Use when the "
+        "Generate an interactive knowledge tree as JSON for the MindmapCard "
+        "visualization. Each node has title/summary/details/children. Writes "
+        "to workspace/generated/mindmaps/<中文主题名>.json (system auto-injects date prefix). Use when the "
         "student asks for 思维导图 / 概念图 / 知识梳理 / 一张图看懂.",
     ),
     (
         "exercise_composer",
-        "Generate 5-8 mixed-type exercises (choice/true-false/short/coding) with "
-        "difficulty distribution matched to student mastery, plus structured JSON "
-        "for downstream consumption. Use when the student asks for 题 / 练习 / 测验 / 自测.",
+        "Generate 5-8 exercises as JSON (choice + true/false only). CRITICAL JSON RULES: "
+        "(1) each option gets its own explanation_md, (2) Chinese quotes must use 「」 "
+        "corner brackets, NEVER ASCII double quotes inside JSON strings. Use when the "
+        "student asks for 题 / 练习 / 测验 / 自测.",
     ),
     (
         "reading_curator",
         "Search and curate 5-8 external reading materials (project KB + web via "
         "tavily-search) with summary, difficulty tier, and personalized recommendation "
         "reason. Use when the student asks for 拓展阅读 / 资料 / 参考 / 推荐书单.",
-    ),
-    (
-        "media_director",
-        "Generate a Markdown teaching storyboard (5-8 scenes with narration and "
-        "visuals). When the request explicitly mentions 视频/动画/MP4/animation, also "
-        "produce a manim Python script and attempt MP4 render (graceful fallback on "
-        "failure). Use when the student asks for 视频 / 动画 / 演示 / 讲给我看.",
     ),
     (
         "code_case_builder",
@@ -67,38 +62,51 @@ RESOURCE_ROLES: list[tuple[str, str]] = [
 ]
 
 
-def _load_role_prompt(name: str, workspace_dir: Path) -> str:
-    """Load a subagent's `system_prompt` from workspace/roles/<name>.md.
+def _load_role_prompt(name: str, backend) -> str:
+    """Load a subagent's `system_prompt` from /roles/<name>.md via backend.
 
     Returns empty string if the file is missing — caller treats that as "skip this role".
+
+    Args:
+        name: Role name (e.g., "lecture_writer")
+        backend: Backend instance to use for file operations
     """
-    p = workspace_dir / "roles" / f"{name}.md"
-    if not p.exists():
-        logger.warning("Role prompt missing: %s — skipping this subagent", p)
-        return ""
+    role_path = f"/roles/{name}.md"
     try:
-        return p.read_text(encoding="utf-8")
+        result = backend.read(role_path)
+        if result.error:
+            logger.warning("Role prompt missing: %s — skipping this subagent", role_path)
+            return ""
+
+        # Handle file_data as dict or object
+        if result.file_data:
+            if isinstance(result.file_data, dict):
+                return result.file_data.get('content', '')
+            elif hasattr(result.file_data, 'content'):
+                return result.file_data.content
+
+        return ""
     except Exception as e:
-        logger.error("Failed to read role prompt %s: %s", p, e)
+        logger.error("Failed to read role prompt %s: %s", role_path, e)
         return ""
 
 
-def build_resource_subagents(workspace_dir: Path) -> list[dict[str, Any]]:
-    """Build `SubAgent` specs for the 6 resource-generation roles.
+def build_resource_subagents(backend) -> list[dict[str, Any]]:
+    """Build `SubAgent` specs for the 5 resource-generation roles.
 
     Each returned spec is a dict matching deepagents.middleware.subagents.SubAgent.
     `model` and `tools` are intentionally omitted — `create_deep_agent` fills in
     the main agent's values as defaults (graph.py lines 492-534).
 
     Args:
-        workspace_dir: absolute path to `backend/workspace/`
+        backend: Backend instance to use for loading role prompts
 
     Returns:
         List of SubAgent dicts, one per role whose role file exists.
     """
     specs: list[dict[str, Any]] = []
     for name, description in RESOURCE_ROLES:
-        prompt = _load_role_prompt(name, workspace_dir)
+        prompt = _load_role_prompt(name, backend)
         if not prompt:
             continue
         specs.append(

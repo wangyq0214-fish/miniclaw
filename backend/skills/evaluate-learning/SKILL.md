@@ -166,7 +166,7 @@ graph LR
 ## 推荐调整(动态策略)
 1. **节奏**:每日 session 从 23 min 提到 30-45 min
 2. **主题优先级**:反向传播已毕业,主攻「BPTT」「Dropout」
-3. **资源组合**:示例 + 视觉驱动 → `media_director` / `code_case_builder` 权重调高,`reading_curator` 权重调低
+3. **资源组合**:示例 + 视觉驱动 → 动画生成 + `code_case_builder` 权重调高,`reading_curator` 权重调低
 4. **易错点专项**:专测「反向传播 vs 梯度下降」区分度的 5 道题
 
 ## 下一步
@@ -213,7 +213,7 @@ planner: learning_evaluator
 
 ### 1. BPTT
 - **mastery 起点 → 本周目标**: ~0.0 → 0.5
-- **推荐资源组合**: `lecture_writer` + `media_director`(storyboard 模式)+ `code_case_builder`
+- **推荐资源组合**: `lecture_writer` + 动画生成 + `code_case_builder`
 - **深度档**: 入门档(≤ 1500 字讲解 + 2 个最小代码案例)
 - **画像对齐**: 示例驱动 + 视觉 → 故事板权重高;数学推导简化
 

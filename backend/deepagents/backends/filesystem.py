@@ -89,6 +89,7 @@ class FilesystemBackend(BackendProtocol):
         root_dir: str | Path | None = None,
         virtual_mode: bool | None = None,  # noqa: FBT001
         max_file_size_mb: int = 10,
+        path_mappings: dict[str, str | Path] | None = None,
     ) -> None:
         """Initialize filesystem backend.
 
@@ -122,6 +123,10 @@ class FilesystemBackend(BackendProtocol):
                 grep's Python fallback search.
 
                 Files exceeding this limit are skipped during search. Defaults to 10 MB.
+
+            path_mappings: Optional dict mapping virtual path prefixes to physical directories.
+                Example: {"/memory/": "/path/to/user/memory", "/skills/": "/path/to/shared/skills"}
+                When provided, virtual paths are resolved by matching the longest prefix.
         """
         self.cwd = Path(root_dir).resolve() if root_dir else Path.cwd()
         if virtual_mode is None:
@@ -138,6 +143,18 @@ class FilesystemBackend(BackendProtocol):
             virtual_mode = False
         self.virtual_mode = virtual_mode
         self.max_file_size_bytes = max_file_size_mb * 1024 * 1024
+
+        # Store path mappings sorted by prefix length (longest first for correct matching)
+        self.path_mappings: list[tuple[str, Path]] = []
+        if path_mappings:
+            for virt_prefix, phys_path in path_mappings.items():
+                # Normalize virtual prefix to start with / and end with /
+                normalized_prefix = virt_prefix if virt_prefix.startswith("/") else "/" + virt_prefix
+                if not normalized_prefix.endswith("/"):
+                    normalized_prefix += "/"
+                self.path_mappings.append((normalized_prefix, Path(phys_path).resolve()))
+            # Sort by prefix length descending for longest-match-first resolution
+            self.path_mappings.sort(key=lambda x: len(x[0]), reverse=True)
 
     def _resolve_path(self, key: str) -> Path:
         """Resolve a file path with security checks.
@@ -164,6 +181,23 @@ class FilesystemBackend(BackendProtocol):
             if ".." in vpath or vpath.startswith("~"):
                 msg = "Path traversal not allowed"
                 raise ValueError(msg)
+
+            # Check path mappings first (longest prefix match)
+            if self.path_mappings:
+                for virt_prefix, phys_root in self.path_mappings:
+                    if vpath.startswith(virt_prefix):
+                        # Map virtual path to physical path
+                        relative_part = vpath[len(virt_prefix):].lstrip("/")
+                        full = (phys_root / relative_part).resolve()
+                        # Verify resolved path stays within the mapped physical root
+                        try:
+                            full.relative_to(phys_root)
+                        except ValueError:
+                            msg = f"Path:{full} outside mapped directory: {phys_root}"
+                            raise ValueError(msg) from None
+                        return full
+
+            # Fallback to default root_dir if no mapping matches
             full = (self.cwd / vpath.lstrip("/")).resolve()
             try:
                 full.relative_to(self.cwd)

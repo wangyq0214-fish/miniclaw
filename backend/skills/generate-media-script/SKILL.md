@@ -1,187 +1,176 @@
 ---
 name: generate-media-script
-description: Generate a Markdown storyboard (5-8 scenes with narration, visuals, timing) for teaching a concept. When the task description mentions 视频 / 动画 / MP4 / animation / 跑起来, also produce a manim Python script and attempt to render MP4. Use when the student asks for 视频 / 动画 / 演示 / 讲给我看.
-allowed-tools: read_file write_file get_entity_graph terminal python_repl
+description: Generate a self-contained HTML animation file with CSS+JS, scene-by-scene visual elements, timed narration subtitles. Use when the student asks for 动画 / 视频 / 动画脚本 / 可视化讲解.
+allowed-tools: read_file write_file get_entity_graph search_knowledge_base
 ---
 
-# 多模态教学脚本生成技能(双模)
+# HTML 动画生成技能
 
-> 指令文件,非 tool。被 `media_director` 子代理读取执行。
+> 指令文件，非 tool。主 agent 读取后按规范生成 HTML 动画。
 
-## 模式判定
+## 执行步骤
 
-**默认模式(storyboard only)**:只产出 `storyboard.md`。零依赖、秒级生成。
+1. 优先从 task description 中获取画像信息（mastery、易错点、认知风格等）。如果 description 中缺少关键信息，才用 `read_file` 读 `workspace/USER.md` 补全。
+2. 优先从 task description 中获取实体信息。如果 description 中没有，才用 `get_entity_graph` 查询。
+3. 按下方规范写 HTML 动画。
+4. 用 `write_file` 落盘到 `workspace/generated/media-scripts/<中文主题名>.html`（系统自动注入日期前缀）。
+5. write_file 成功后，简短确认即可。**不要再调用任何工具。**
 
-**升级模式(storyboard + manim)**:task 描述里含以下任一关键词时触发:
-- 视频、动画、MP4、animation、跑起来、生成影片、做个动画
+## 规模限制（超出会导致文件截断！）
 
-升级模式**额外**生成 `animation.py` + 尝试 manim 渲染 MP4。
+| 项目 | 限制 |
+|---|---|
+| 场景数 | **5-6 个** |
+| 字幕数 | **12-18 条** |
+| 每条字幕 | **15-35 个字** |
+| 总代码行数 [SKILL.md](SKILL.md)| **800-1000 行** |
 
-## 执行步骤(通用,先做)
+复杂度分布：
 
-### Step 1:读画像
-**tool**: `read_file` · **input**: `{"path": "workspace/USER.md"}`
+| mastery | 场景数 | 字幕数 |
+|---|---|---|
+| < 0.3 | 4 | 10-12 |
+| 0.3-0.6 | 5 | 12-15 |
+| 0.6-0.8 | 5-6 | 14-16 |
+| > 0.8 | 6 | 16-18 |
 
-关注:
-- 维度 4:视觉型偏好(决定镜头复杂度和颜色活跃度)
-- 维度 3:mastery(决定讲解深度 — 入门级多做直觉镜头,进阶级可上公式推导)
+## HTML 结构要求
 
-### Step 2:查实体依赖
-**tool**: `get_entity_graph` · **input**: `{"entity_name": "<主题>"}`
+文件必须包含以下结构（缺一不可）：
 
-拿到前置 → 本主题 → 后续 的概念链,作为故事叙事节奏的骨架。
-
-### Step 3:写 storyboard.md
-
-**tool**: `write_file` · **input**:
-```json
-{
-  "path": "workspace/generated/<YYYY-MM-DD>/<topic-slug>/storyboard.md",
-  "mode": "write",
-  "content": "<完整故事板>"
+### CSS 变量
+```css
+:root {
+    --bg-color: #0f172a;  /* 深色主题 */
+    --primary: #3b82f6;
+    --secondary: #8b5cf6;
+    --text-main: #f1f5f9;
+    --glow-blue: rgba(59, 130, 246, 0.4);
 }
 ```
 
-故事板模板:
-
-```markdown
----
-topic: <主题>
-topic_slug: <slug>
-scene_count: <N>
-total_duration_sec: <M>
-mode: storyboard | storyboard+manim
-generated_at: <ISO>
-generated_by: media_director
----
-
-# <主题> · 教学故事板
-
-## 总览
-- **叙事脉络**: 动机(引入问题) → 直觉(类比) → 机理(核心步骤) → 示例(走通一次) → 小结
-- **视觉风格**: <几何动画 / 代码 walkthrough / 数据可视化 / 思维导图演进>
-- **目标时长**: <N 秒>
-- **目标观众**: <专业/年级>,当前 mastery=<值>
-
-## 场景 1:开场引入(0-8 秒)
-- **画面**: 黑屏 → 浮现大字"<主题>" → 下方一行小字说"为什么要学?"
-- **动效**: 文字渐入(fade in 0.5s),缩放到位
-- **旁白**:「你有没有想过,一个神经网络是怎么知道自己哪里错了?这就是反向传播要解决的问题。」
-- **关键视觉元素**: 主标题用蓝色 #1E88E5,副标题用灰色 #757575
-
-## 场景 2:直觉(类比)(8-20 秒)
-- **画面**: 右侧出现一个简单的"前向传播"流水线(3 个节点连线),左侧出现 label "预测错了"
-- **动效**: 错误从输出端沿着连线**反向**流回来,每到一个节点就高亮一下
-- **旁白**:「就像工厂流水线出了次品,你得顺着工序反推回去,找到哪一步出了问题。」
-- **关键视觉元素**: 节点用圆形,错误用红色流动箭头
-
-## 场景 3:机理(20-40 秒)
-...
-
-(5-8 个场景)
-
-## 小节 & 制作提示
-- **剪辑节奏**: 入门级推荐 8 秒/镜头(不赶);进阶级可 5 秒/镜头
-- **推荐工具**: manim(数学动画)/ Adobe After Effects(通用)/ Figma Motion(简洁 UI)
-- **音乐**: 轻量环境音,不超过 -20dB
-- **字幕**: 旁白重点术语同步打字幕
-```
-
-## 升级模式额外步骤(仅在判定为升级时)
-
-### Step 4:生成 manim 脚本
-
-按故事板场景顺序写 manim Python 脚本,模板:
-
-```python
-"""
-<主题> · Manim 动画
-
-对应 storyboard.md 的场景 1-N
-运行方式:
-    manim -pql animation.py <SceneClassName>
-输出:
-    media/videos/animation/480p15/<SceneClassName>.mp4
-"""
-from manim import *
-
-
-class <SceneClassName>(Scene):
-    def construct(self):
-        # Scene 1: 开场引入 (0-8s)
-        title = Text("<主题>", font_size=60, color=BLUE)
-        subtitle = Text("为什么要学?", font_size=30, color=GREY).next_to(title, DOWN)
-        self.play(FadeIn(title, shift=DOWN * 0.5), run_time=1.0)
-        self.play(FadeIn(subtitle, shift=DOWN * 0.3), run_time=0.8)
-        self.wait(1.5)
-        self.play(FadeOut(title), FadeOut(subtitle))
-
-        # Scene 2: 直觉(类比) (8-20s)
-        # <代码对应场景 2>
-        ...
-
-        # Scene N: ...
-
-        self.wait(1.0)
-```
-
-**Class 命名**:CamelCase,紧扣主题,如 `BackpropDemo`、`GradientDescentIntuition`。
-
-写盘:
-**tool**: `write_file` · **input**:
-```json
-{
-  "path": "workspace/generated/<date>/<topic-slug>/animation.py",
-  "mode": "write",
-  "content": "<完整 python 脚本>"
+### 场景容器 CSS（必须有）
+```css
+[id^="scene-"] {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+[id^="scene-"].active {
+    opacity: 1; pointer-events: auto;
 }
 ```
 
-### Step 5:尝试渲染 MP4(只试 1 次)
+### HTML 结构
+```html
+<div id="viewport">
+    <div id="progress"></div>
+    <div id="header"><h1>标题</h1><p>副标题</p></div>
+    <div id="scene-indicator"><!-- scene-dot 元素 --></div>
+    <div id="stage">
+        <div id="scene-0"></div>
+        <div id="scene-1"></div>
+        <!-- ... -->
+    </div>
+    <div id="subtitle-container">
+        <div id="subtitle-box"><div id="subtitle-cn"></div></div>
+    </div>
+</div>
+```
 
-**tool**: `terminal` · **input**:
-```json
-{
-  "command": "cd workspace/generated/<date>/<topic-slug> && manim -pql animation.py <SceneClassName> --media_dir media 2>&1 | tail -30"
+### 必须包含的 JS 函数（缺一不可）
+
+```javascript
+const TOTAL_DURATION = 180000; // 与实际时长匹配
+const TOTAL_SCENES = 5;       // 必须等于 sceneN() 函数数量
+let startTime;
+
+function updateProgress() { /* 更新进度条 */ }
+function updateSubtitle(elapsed) { /* 根据时间更新字幕 */ }
+function el(tag, attrs, children) { /* 创建 DOM 元素 */ }
+function makeSVG(w, h) { /* 创建 SVG 画布 */ }
+function showScene(idx) { /* 添加 active 类 */ }
+function clearScene(idx) { /* 清空 innerHTML */ }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function waitForSubtitle(keyword) {
+    return new Promise(resolve => {
+        const check = setInterval(() => {
+            const cn = document.getElementById('subtitle-cn').textContent;
+            if (cn.includes(keyword)) { clearInterval(check); resolve(); }
+        }, 200);
+        setTimeout(() => { clearInterval(check); resolve(); }, 15000);
+    });
 }
 ```
 
-**时限**:terminal 工具本身 30s 超时。低画质(`-pql`)一般够用。
+**重要**: `waitForSubtitle(keyword)` 的 keyword 必须是某条字幕 cn 的精确子串。请从 subtitles 数组中复制片段，不要自己编造关键词。超时 15 秒后自动跳过。
 
-### Step 6:处理渲染结果
+### runAnimation 模板（必须用 showScene/clearScene）
 
-- **成功**:在 storyboard.md 末尾追加一节:
-  ```
-  ## 动画生成状态
-  ✅ 已生成 MP4 → `media/videos/animation/480p15/<SceneClassName>.mp4`
-  手动播放命令:`manim -pqh animation.py <SceneClassName>` (改成高画质重渲)
-  ```
-- **失败**(manim 未安装 / 语法错 / 超时):在 storyboard.md 末尾追加:
-  ```
-  ## 动画生成状态
-  ⚠️ 动画渲染失败。错误摘要:
-  \`\`\`
-  <terminal 返回的最后 10 行错误>
-  \`\`\`
-  **解决方案**:
-  - 缺 manim:`pip install manim`
-  - 装好后手动跑:`cd workspace/generated/<date>/<topic-slug> && manim -pql animation.py <SceneClassName>`
+```javascript
+async function runAnimation() {
+    startTime = Date.now();
+    const timer = setInterval(() => {
+        updateProgress();
+        updateSubtitle(Date.now() - startTime);
+    }, 100);
 
-  storyboard.md 内容已保存,可以先用它手工制作。
-  ```
-- **禁止**无限重试。失败后直接降级到 storyboard-only。
+    showScene(0);
+    await scene0();
+    await waitForSubtitle('关键词1');
+    clearScene(0);
 
-## 硬性要求
+    showScene(1);
+    await scene1();
+    await waitForSubtitle('关键词2');
+    clearScene(1);
 
-- **storyboard.md 始终输出**(即使升级模式也要)
-- 场景数 5-8 个
-- 每个场景必须有:画面 / 动效 / 旁白 / 关键视觉元素
-- 总时长估算合理(每场景 5-15 秒)
-- 升级模式下 animation.py 里的 Scene class 名必须与 terminal 命令中传的一致
+    // 最后一个场景不需要 clearScene
+    showScene(2);
+    await scene2();
+
+    clearInterval(timer);
+    document.getElementById('progress').style.width = '100%';
+}
+window.onload = runAnimation;
+```
+
+## 字幕与音频
+
+系统会自动处理，**无需在 HTML 中实现**：
+1. 字幕文本会自动生成 TTS 语音
+2. `time` 字段会按 4.5 字/秒 语速自动重算
+3. 前端监听字幕变化自动播放音频
+
+字幕格式：
+```javascript
+const subtitles = [
+    { time: 0, cn: "第一段旁白" },
+    { time: 3500, cn: "第二段旁白" },
+];
+```
+
+## 视觉风格
+
+- **深色主题**：`--bg-color: #0f172a`
+- **渐变标题**：`background: linear-gradient` + `-webkit-background-clip: text`
+- **毛玻璃字幕**：`backdrop-filter: blur(12px)`
+- **网格背景**：`#viewport::before` 用 `linear-gradient`
+- **发光效果**：`box-shadow: 0 0 20px var(--glow-blue)`
+- **入场动画**：`translateY(20px)` → `translateY(0)`
 
 ## 禁止
 
-- 禁止场景描述空壳("场景 3: 讲解链式法则" 没画面 / 动效 / 旁白 → 不合格)
-- 禁止 manim 脚本里用联网、文件 I/O(安全)
-- 禁止重试 manim 超过 1 次
-- 禁止用奇葩 class 名导致 terminal 命令不对应
+- 禁止引用外部 CDN / 字体 / 库
+- 禁止用 innerHTML 拼接文本（用 `el()` 函数）
+- 禁止超过 6 个场景或 18 条字幕
+- 禁止遗漏 `showScene()` / `clearScene()` 调用
+- 禁止 `TOTAL_SCENES` 与实际场景数不一致
+
+## 生成检查清单
+
+- [ ] 文件有 `</script></body></html>` 关闭标签
+- [ ] `TOTAL_SCENES` 等于实际 `sceneN()` 函数数量
+- [ ] 每个场景前有 `showScene(N)`，切换时有 `clearScene(N)`
+- [ ] 包含所有必须的函数
+- [ ] 字幕数不超过 18 条

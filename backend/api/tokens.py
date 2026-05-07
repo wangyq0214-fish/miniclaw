@@ -6,15 +6,28 @@ Provides token counting for sessions and files using tiktoken.
 import logging
 from typing import List
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from memory import system_prompt_builder, session_manager
+from memory.hybrid_session import HybridSessionManager
+from database import get_db, get_redis
+from memory.redis_session import RedisSessionManager
 from config import get_project_root
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def get_hybrid_manager(
+    db: AsyncSession = Depends(get_db),
+    redis = Depends(get_redis)
+) -> HybridSessionManager:
+    """Dependency to get HybridSessionManager instance."""
+    redis_manager = RedisSessionManager(redis)
+    return HybridSessionManager(redis_manager, db)
 
 # Use tiktoken for token counting
 try:
@@ -63,7 +76,10 @@ class FileTokenResponse(BaseModel):
 
 
 @router.get("/tokens/session/{session_id}", response_model=TokenStatsResponse)
-async def get_session_tokens(session_id: str):
+async def get_session_tokens(
+    session_id: str,
+    hybrid_manager: HybridSessionManager = Depends(get_hybrid_manager)
+):
     """
     Get token statistics for a session.
 
@@ -73,8 +89,8 @@ async def get_session_tokens(session_id: str):
         - total_tokens: Combined total
     """
     try:
-        # Get session
-        session = session_manager.get_session(session_id)
+        # Get session from HybridSessionManager
+        session = await hybrid_manager.get_session(session_id)
         if session is None:
             raise HTTPException(status_code=404, detail="Session not found")
 
@@ -82,24 +98,25 @@ async def get_session_tokens(session_id: str):
         system_prompt = system_prompt_builder.build()
         system_tokens = count_tokens(system_prompt)
 
-        # Count message tokens
-        messages = session.get("messages", [])
+        # Get messages from HybridSessionManager
+        messages = await hybrid_manager.get_messages(session_id)
         message_tokens = 0
 
         for msg in messages:
-            content = msg.get("content", "")
+            # msg is a Message object from database
+            content = msg.content if hasattr(msg, 'content') else msg.get("content", "")
             message_tokens += count_tokens(content)
 
             # Include tool calls if present
-            tool_calls = msg.get("tool_calls", [])
-            for tc in tool_calls:
-                if isinstance(tc, dict):
-                    message_tokens += count_tokens(str(tc))
+            metadata = msg.metadata if hasattr(msg, 'metadata') else msg.get("metadata", {})
+            if metadata and isinstance(metadata, dict):
+                tool_calls = metadata.get("tool_calls", [])
+                for tc in tool_calls:
+                    if isinstance(tc, dict):
+                        message_tokens += count_tokens(str(tc))
 
-        # Include compressed context
-        compressed_context = session.get("compressed_context", "")
-        if compressed_context:
-            message_tokens += count_tokens(compressed_context)
+        # Note: compressed_context is not yet implemented in HybridSessionManager
+        # TODO: Add support for compressed context when implemented
 
         return TokenStatsResponse(
             system_tokens=system_tokens,

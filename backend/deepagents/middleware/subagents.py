@@ -1,8 +1,10 @@
 """Middleware for providing subagents to an agent via a `task` tool."""
 
+import asyncio
 import dataclasses
 import json
 from collections.abc import Awaitable, Callable, Sequence
+from contextvars import ContextVar
 from typing import Any, NotRequired, TypedDict, cast
 
 from langchain.agents import create_agent
@@ -20,6 +22,13 @@ from pydantic import BaseModel, Field
 from deepagents.backends.protocol import BackendFactory, BackendProtocol
 from deepagents.middleware._utils import append_to_system_message
 from deepagents.middleware.permissions import FilesystemPermission
+
+# Context variable for streaming subagent events to parent agent's SSE stream.
+# Set by AgentManager._stream_and_convert() before calling agent.astream().
+# Consumed by atask() to relay subagent-internal events (tool_start, tool_end, status).
+_subagent_event_queue: ContextVar[asyncio.Queue | None] = ContextVar(
+    "_subagent_event_queue", default=None
+)
 
 
 class SubAgent(TypedDict):
@@ -437,6 +446,72 @@ def _build_task_tool(  # noqa: C901
             value_error_msg = "Tool call ID is required for subagent invocation"
             raise ValueError(value_error_msg)
         subagent, subagent_state = _validate_and_prepare_state(subagent_type, description, runtime)
+
+        # Check if parent has a queue for relaying subagent events
+        queue = _subagent_event_queue.get(None)
+
+        if queue is not None:
+            # Phase 1: Stream subagent execution to relay events to parent
+            try:
+                async for mode, data in subagent.astream(
+                    subagent_state,
+                    stream_mode=["messages", "updates"],
+                    subgraphs=False,
+                ):
+                    if mode == "messages":
+                        chunk = data[0] if isinstance(data, tuple) else data
+                        if isinstance(chunk, AIMessageChunk) and chunk.content:
+                            try:
+                                queue.put_nowait({
+                                    "type": "subagent_token",
+                                    "subagent": subagent_type,
+                                    "content": chunk.content,
+                                })
+                            except asyncio.QueueFull:
+                                pass
+
+                    elif mode == "updates" and isinstance(data, dict):
+                        model_update = data.get("model")
+                        if isinstance(model_update, dict):
+                            try:
+                                msgs = list(model_update.get("messages", []))
+                            except TypeError:
+                                msgs = []
+                            for msg in msgs:
+                                tcs = getattr(msg, "tool_calls", None)
+                                if tcs:
+                                    for tc in tcs:
+                                        tool_name = tc.get("name", "unknown")
+                                        try:
+                                            queue.put_nowait({
+                                                "type": "subagent_tool_start",
+                                                "subagent": subagent_type,
+                                                "tool": tool_name,
+                                            })
+                                        except asyncio.QueueFull:
+                                            pass
+
+                        tools_update = data.get("tools")
+                        if isinstance(tools_update, dict):
+                            try:
+                                msgs = list(tools_update.get("messages", []))
+                            except TypeError:
+                                msgs = []
+                            for msg in msgs:
+                                if isinstance(msg, ToolMessage):
+                                    tool_name = getattr(msg, "name", None) or "unknown"
+                                    try:
+                                        queue.put_nowait({
+                                            "type": "subagent_tool_end",
+                                            "subagent": subagent_type,
+                                            "tool": tool_name,
+                                        })
+                                    except asyncio.QueueFull:
+                                        pass
+            except Exception:
+                pass  # Stream errors are non-fatal; invoke below will surface real errors
+
+        # Phase 2: Get final result via invoke
         result = await subagent.ainvoke(subagent_state)
         return _return_command_with_state_update(result, runtime.tool_call_id)
 
