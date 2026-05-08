@@ -50,6 +50,7 @@ frontend/out/
 # OS
 .DS_Store
 Thumbs.db
+__MACOSX/
 
 # Test artifacts
 backend/SKILLS_SNAPSHOT.md

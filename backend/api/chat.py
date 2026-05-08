@@ -229,20 +229,8 @@ async def stream_chat_response(
                         metadata={"tool_calls": segment.get("tool_calls")} if segment.get("tool_calls") else None
                     )
 
-                # Auto compression check
-                # TODO: Implement compression for HybridSessionManager
-                # Currently disabled as HybridSessionManager doesn't have compress_session method
-                if False and settings.auto_compress_enabled:
-                    try:
-                        messages = await hybrid_manager.get_messages(session_id)
-                        message_count = len(messages)
-
-                        if message_count >= settings.auto_compress_threshold:
-                            logger.info(f"Auto compressing session {session_id}: {message_count} messages")
-                            # Compression logic to be implemented
-
-                    except Exception as e:
-                        logger.warning(f"Auto compression failed: {str(e)}")
+                # TODO: Implement auto compression for HybridSessionManager
+                # HybridSessionManager currently lacks a compress_session method
 
                 # Send done event
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"

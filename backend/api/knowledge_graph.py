@@ -75,6 +75,18 @@ def _get_db():
     return settings.neo4j_database
 
 
+def close_driver():
+    """Close the Neo4j driver. Called during app shutdown."""
+    global _driver
+    if _driver is not None:
+        try:
+            _driver.close()
+        except Exception as e:
+            logger.warning(f"Error closing Neo4j driver: {e}")
+        finally:
+            _driver = None
+
+
 def _chapter_sort_key(ch_id: str) -> int:
     m = re.search(r"\d+", ch_id or "")
     return int(m.group()) if m else 999

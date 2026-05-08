@@ -126,7 +126,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     from database import close_redis
+    from api.knowledge_graph import close_driver as close_neo4j
     await close_redis()
+    close_neo4j()
     logger.info("Shutting down Mini-OpenClaw...")
 
 
