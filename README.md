@@ -24,11 +24,17 @@
 | RAG | LlamaIndex Core | 向量检索 + BM25 混合搜索 |
 | Embedding | OpenAI text-embedding-3-small | 通过 OPENAI_BASE_URL 可切换代理 |
 | Token 计数 | tiktoken cl100k_base | 精确 token 统计 |
-| 前端框架 | Next.js 14 App Router | TypeScript + React 18 |
+| 数据库 | PostgreSQL + SQLAlchemy | 用户数据、会话持久化（异步 ORM） |
+| 缓存 | Redis | Token 存储、会话缓存、速率限制 |
+| 认证 | JWT + bcrypt | 无状态认证，密码 bcrypt 加密 |
+| 知识图谱 | Neo4j | 实体关系存储，Cypher 查询 |
+| 限流 | Redis 滑动窗口 | 按用户速率限制，防止单用户耗尽资源 |
+| 前端框架 | Next.js 14 App Router | TypeScript + React 18，移动端响应式 |
 | UI | Tailwind CSS + Shadcn/UI | Apple 风毛玻璃效果 |
 | 代码编辑器 | Monaco Editor | 在线编辑 Memory/Skill 文件 |
 | 状态管理 | React Context | 无 Redux，单一 AppProvider |
-| 存储 | 本地文件系统 | 无 MySQL/Redis，JSON + Markdown 文件 |
+| 图可视化 | AntV G6 | 知识图谱交互式可视化 |
+| TTS | MiMo TTS API | 动画字幕语音生成 |
 
 ## 项目结构
 
@@ -37,104 +43,114 @@ mini-OpenClaw/
 ├── backend/
 │ ├── app.py # FastAPI 入口，路由注册，启动初始化
 │ ├── config.py # 全局配置管理（config.json 持久化）
+│ ├── database.py # PostgreSQL + Redis 连接管理
 │ ├── requirements.txt # Python 依赖
 │ ├── .env.example # 环境变量模板
 │ │
 │ ├── api/ # API 路由层
 │ │ ├── chat.py # POST /api/chat — SSE 流式对话
-│ │ ├── sessions.py # 会话 CRUD + 标题生成
-│ │ ├── files.py # 文件读写 + 技能列表
+│ │ ├── auth.py # 用户认证（注册/登录/登出）
+│ │ ├── sessions_v2.py # 会话 CRUD（PostgreSQL 版）
+│ │ ├── subagent.py # 子代理直接调用
+│ │ ├── knowledge_graph.py # 知识图谱查询（Neo4j）
+│ │ ├── notes.py # 笔记管理
+│ │ ├── sources.py # 来源管理
+│ │ ├── tts.py # TTS 语音生成
+│ │ ├── files.py # 文件读写
 │ │ ├── tokens.py # Token 统计
-│ │ ├── compress.py # 对话压缩
-│ │ └── config_api.py # RAG 模式开关
+│ │ └── compress.py # 对话压缩
 │ │
-│ ├── graph/ # Agent 核心逻辑
-│ │ ├── agent.py # AgentManager — 构建 & 流式调用
-│ │ ├── session_manager.py # 会话持久化（JSON 文件）
-│ │ ├── prompt_builder.py # System Prompt 组装器
-│ │ └── memory_indexer.py # MEMORY.md 向量索引（RAG）
+│ ├── auth/ # 认证模块
+│ │ └── security.py # JWT + bcrypt，密钥校验
 │ │
-│ ├── tools/ # 5 个核心工具
-│ │ ├── __init__.py # 工具注册工厂
-│ │ ├── terminal_tool.py # 沙箱终端
-│ │ ├── python_repl_tool.py # Python 解释器
-│ │ ├── fetch_url_tool.py # 网页抓取（HTML→Markdown）
-│ │ ├── read_file_tool.py # 沙箱文件读取
-│ │ ├── search_knowledge_tool.py # 知识库搜索
-│ │ └── skills_scanner.py # 技能目录扫描器
+│ ├── middleware/ # 中间件
+│ │ └── rate_limit.py # Redis 滑动窗口限流
 │ │
-│ ├── workspace/ # System Prompt 组件
-│ │ ├── SOUL.md # 人格、语气、边界
-│ │ ├── IDENTITY.md # 名称、风格、Emoji
-│ │ ├── USER.md # 用户画像
-│ │ └── AGENTS.md # 操作指南 & 记忆/技能协议
+│ ├── models/ # 数据库模型
+│ │ └── complete_models.py # User, Session, Message 等 ORM
 │ │
+│ ├── agent.py # AgentManager — 构建 & 流式调用
+│ ├── tools/ # LangChain 工具集
 │ ├── skills/ # 技能目录（每个技能一个子目录）
-
-
-│ │ └── get_weather/SKILL.md # 示例：天气查询技能
-│ ├── memory/MEMORY.md # 跨会话长期记忆
-│ ├── knowledge/ # 知识库文档（供 RAG 检索）
-│ ├── sessions/ # 会话 JSON 文件
-│ │ └── archive/ # 压缩归档
-│ ├── storage/ # LlamaIndex 持久化索引
-│ │ └── memory_index/ # MEMORY.md 专用索引
-│ └── SKILLS_SNAPSHOT.md # 技能快照（启动时自动生成）
+│ └── workspace/ # System Prompt 组件
 │
 └── frontend/
 └── src/
 ├── app/
-│ ├── layout.tsx # Next.js 根布局
-│ ├── page.tsx # 主页面（三栏布局）
-│ └── globals.css # 全局样式
-├── lib/
-│ ├── store.tsx # React Context 状态管理
-│ └── api.ts # 后端 API 客户端
-└── components/
-├── chat/
-│ ├── ChatPanel.tsx # 聊天面板（消息列表 + 输入框）
-│ ├── ChatMessage.tsx # 消息气泡（Markdown 渲染）
-│ ├── ChatInput.tsx # 输入框
-│ ├── ThoughtChain.tsx # 工具调用思维链（可折叠）
-│ └── RetrievalCard.tsx # RAG 检索结果卡片
-├── layout/
-│ ├── Navbar.tsx # 顶部导航栏
-│ ├── Sidebar.tsx # 左侧边栏（会话列表 + Raw Messages）
-│ └── ResizeHandle.tsx # 面板拖拽分隔条
-└── editor/
-└── InspectorPanel.tsx # 右侧检查器（Monaco 编辑器）
+│ ├── page.tsx # 主页面（响应式三栏布局）
+│ └── login/ # 登录/注册页面
+├── components/
+│ ├── chat/ # 聊天组件
+│ ├── pet/ # 桌面宠物（精灵动画）
+│ ├── graph/ # 知识图谱可视化（G6）
+│ ├── notes/ # 笔记系统
+│ └── settings/ # 用户设置
+└── lib/
+├── store.tsx # React Context 状态管理
+├── api.ts # 后端 API 客户端
+└── auth.ts # 认证 API + Token 管理
 ```
 
 ## 环境配置
 
-复制 `.env.example` 为 `.env` 并填入 API Key：
+复制 `.env.example` 为 `.env` 并填入配置：
 
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-配置环境变量：
+**必需配置：**
 
 ```bash
-# DeepSeek（Agent 主模型）
-DEEPSEEK_API_KEY=sk-xxx
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
-# OpenAI（Embedding 模型，用于知识库 & RAG 检索）
-OPENAI_API_KEY=sk-xxx
-OPENAI_BASE_URL=https://api.openai.com/v1
-EMBEDDING_MODEL=text-embedding-3-small
+# LLM API（Agent 主模型）
+OPENAI_API_BASE=https://your-api-base-url/v1
+OPENAI_API_KEY=your-api-key
+OPENAI_MODEL=your-model-name
+
+# JWT 密钥（必须设置，否则无法启动）
+SECRET_KEY=<生成命令: python -c "import secrets; print(secrets.token_urlsafe(64))">
 ```
 
-> OPENAI_BASE_URL 支持换成任意兼容 OpenAI Embedding 接口的代理地址。
+**数据库配置（PostgreSQL + Redis）：**
+
+```bash
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/miniclaw
+REDIS_URL=redis://localhost:6379/0
+```
+
+**可选配置：**
+
+```bash
+# 知识图谱（Neo4j）
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-password
+
+# TTS 语音合成
+TTS_API_BASE=https://your-tts-api/v1
+TTS_API_KEY=your-tts-key
+TTS_MODEL=mimo-v2.5-tts
+TTS_VOICE=冰糖
+
+# 速率限制（默认值）
+# 聊天: 10次/分钟/用户，子代理: 5次/分钟/用户
+```
+
+> SECRET_KEY 未设置时后端会直接报错，不会静默使用弱密钥。
 
 ## 启动方式
+
+**前置依赖：**
+- PostgreSQL 15+
+- Redis 7+
+- Neo4j（可选，知识图谱功能需要）
 
 ```bash
 # 后端（端口 8002）
 cd backend
 pip install -r requirements.txt
+# 确保 .env 中已配置 SECRET_KEY 和数据库连接
 uvicorn app:app --port 8002 --host 0.0.0.0 --reload
 
 # 前端（端口 3000）
@@ -144,6 +160,8 @@ npm run dev
 ```
 
 本机访问 http://localhost:3000，局域网内其他设备访问 `http://<本机IP>:3000`。
+
+首次启动会自动创建数据库表。
 
 ## 后端架构详解
 
@@ -821,23 +839,56 @@ skills/
 
 ## API 接口速查
 
+### 认证（无需 Token）
+
 | 路径 | 方法 | 说明 |
 |------|------|------|
-| /api/chat | POST | SSE 流式对话 |
-| /api/sessions | GET | 列出所有会话 |
-| /api/sessions | POST | 创建新会话 |
+| /api/auth/register | POST | 注册新用户 |
+| /api/auth/login | POST | 登录获取 JWT Token |
+
+### 对话（需要 Token，有速率限制）
+
+| 路径 | 方法 | 说明 | 限流 |
+|------|------|------|------|
+| /api/chat | POST | SSE 流式对话 | 10次/分钟 |
+| /api/subagent/invoke | POST | 直接调用子代理 | 5次/分钟 |
+
+### 用户 & 会话
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| /api/auth/me | GET | 获取当前用户信息 |
+| /api/auth/logout | POST | 登出（清除 Redis Token） |
+| /api/sessions/list | GET | 列出所有会话 |
+| /api/sessions/create | POST | 创建新会话 |
 | /api/sessions/{id} | PUT | 重命名会话 |
 | /api/sessions/{id} | DELETE | 删除会话 |
-| /api/sessions/{id}/messages | GET | 获取完整消息（含 System Prompt） |
-| /api/sessions/{id}/history | GET | 获取对话历史 |
-| /api/sessions/{id}/generate-title | POST | AI 生成标题 |
-| /api/sessions/{id}/compress | POST | 压缩对话历史 |
+
+### 知识图谱（需要 Neo4j）
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| /api/knowledge/graph/root | GET | 获取图谱根节点 |
+| /api/knowledge/graph/entity?name=... | GET | 实体关系查询 |
+| /api/knowledge/graph/children?node_id=... | GET | 获取子节点 |
+| /api/knowledge/graph/traceback?entity=... | GET | 知识溯源 |
+
+### 笔记 & 来源
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| /api/notes | GET | 获取笔记列表 |
+| /api/notes | POST | 创建笔记 |
+| /api/sources | GET | 获取来源列表 |
+| /api/sources | POST | 创建来源 |
+
+### 工具
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
 | /api/files?path=... | GET | 读取文件 |
 | /api/files | POST | 保存文件 |
-| /api/skills | GET | 列出技能 |
-| /api/tokens/session/{id} | GET | 会话 Token 统计 |
-| /api/tokens/files | POST | 文件 Token 统计 |
-| /api/config/rag-mode | GET | 获取 RAG 模式状态 |
-| /api/config/rag-mode | PUT | 切换 RAG 模式 |
+| /api/tts/generate | POST | TTS 语音生成 |
+| /api/config/rag-mode | GET/PUT | RAG 模式开关 |
 
 
