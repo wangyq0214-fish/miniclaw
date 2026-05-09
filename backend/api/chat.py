@@ -20,6 +20,7 @@ from agent import agent_manager
 from tools import get_all_tools
 from models.complete_models import User
 from auth.security import get_current_user
+from middleware.rate_limit import rate_limit_chat
 
 logger = logging.getLogger(__name__)
 
@@ -266,7 +267,8 @@ async def stream_chat_response(
 async def chat(
     request: ChatRequest,
     current_user: User = Depends(get_current_user),
-    hybrid_manager: HybridSessionManager = Depends(get_hybrid_manager)
+    hybrid_manager: HybridSessionManager = Depends(get_hybrid_manager),
+    _rate_limit=Depends(rate_limit_chat),
 ):
     """
     Send a message and get a streaming response.
@@ -287,7 +289,7 @@ async def chat(
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"
+                "X-Accel-Buffering": "no",
             }
         )
     else:

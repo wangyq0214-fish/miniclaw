@@ -19,6 +19,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, AIMe
 from config import settings, get_project_root, get_user_workspace_dir
 from models.complete_models import User
 from auth.security import get_current_user
+from middleware.rate_limit import rate_limit_subagent
 from agent import agent_manager
 from tools import get_all_tools
 from api.tts import enhance_animation
@@ -132,6 +133,7 @@ MIN_TEXT_BEFORE_EARLY_STOP = 200
 async def invoke_subagent(
     request: SubAgentRequest,
     current_user: User = Depends(get_current_user),
+    _rate_limit=Depends(rate_limit_subagent),
 ):
     """
     Directly invoke a sub-agent by name, bypassing the orchestrator.
