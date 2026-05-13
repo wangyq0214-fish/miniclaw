@@ -1,7 +1,7 @@
 """
 完整的数据库模型设计
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Enum as SQLEnum, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Enum as SQLEnum, Float, Date, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -289,3 +289,66 @@ class AsyncTask(Base):
 
     def __repr__(self):
         return f"<AsyncTask(id={self.id}, task_id={self.task_id}, status={self.status})>"
+
+
+# ==================== 学习效果评估 ====================
+
+class LearningEvent(Base):
+    """学习事件日志表 - 记录用户所有学习行为"""
+    __tablename__ = "learning_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # 事件信息
+    event_type = Column(String(50), nullable=False, comment="事件类型: quiz_complete/flashcard_review/chat_message/page_visit/graph_explore")
+    event_data = Column(JSONB, nullable=False, comment="事件数据: {score, topic, duration, is_correct, ...}")
+    session_id = Column(String(100), nullable=True, comment="关联的会话ID")
+
+    # 时间戳
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_learning_events_user_created", "user_id", "created_at"),
+        Index("ix_learning_events_user_type", "user_id", "event_type"),
+    )
+
+    def __repr__(self):
+        return f"<LearningEvent(id={self.id}, type={self.event_type}, user_id={self.user_id})>"
+
+
+class EvaluationReport(Base):
+    """AI 分析报告缓存表"""
+    __tablename__ = "evaluation_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    # 报告信息
+    report_date = Column(Date, nullable=False, comment="报告日期")
+    period_days = Column(Integer, default=7, comment="评估窗口天数")
+
+    # 核心数据
+    radar_scores = Column(JSONB, nullable=True, comment="雷达图分数: {memory, logic, application, innovation, breadth}")
+    trend_scores = Column(JSONB, nullable=True, comment="趋势数据: [{date, score}, ...]")
+    summary_score = Column(Float, nullable=True, comment="综合评分")
+    effective_hours = Column(Float, nullable=True, comment="有效学习时长(小时)")
+    mastered_points = Column(Integer, nullable=True, comment="掌握知识点数")
+
+    # AI 生成内容
+    insight_text = Column(Text, nullable=True, comment="AI 生成的洞察文本")
+    highlight_tags = Column(JSONB, nullable=True, comment="高亮标签: ['逻辑推演', '综合应用']")
+    action_item = Column(Text, nullable=True, comment="行动建议")
+
+    # 调试用
+    raw_input = Column(JSONB, nullable=True, comment="发送给 Agent 的原始数据")
+
+    # 时间戳
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_evaluation_reports_user_date", "user_id", "report_date", unique=True),
+    )
+
+    def __repr__(self):
+        return f"<EvaluationReport(id={self.id}, user_id={self.user_id}, date={self.report_date})>"

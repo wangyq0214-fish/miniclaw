@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { ChatView } from '@/components/chat/ChatView';
 import { Inspector } from '@/components/layout/Inspector';
 import { NotesView } from '@/components/notes/NotesView';
+import { DashboardView } from '@/components/dashboard/DashboardView';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { UserSettings } from '@/components/settings/UserSettings';
 import { useGlobalHotkeys } from '@/hooks/useHotkeys';
@@ -21,12 +22,14 @@ function Resizer({
   onWidthChange,
   minWidth = 180,
   maxWidth = 600,
+  invertDelta = false,
   className = '',
 }: {
   currentWidth: number;
   onWidthChange: (w: number) => void;
   minWidth?: number;
   maxWidth?: number;
+  invertDelta?: boolean;
   className?: string;
 }) {
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -35,7 +38,8 @@ function Resizer({
     const startWidth = currentWidth;
     const onMove = (ev: MouseEvent) => {
       const delta = ev.clientX - startX;
-      onWidthChange(Math.min(maxWidth, Math.max(minWidth, startWidth + delta)));
+      const adjusted = invertDelta ? -delta : delta;
+      onWidthChange(Math.min(maxWidth, Math.max(minWidth, startWidth + adjusted)));
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
@@ -168,7 +172,9 @@ function MainContent() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden relative">
-        {state.activeTab === 'notes' ? (
+        {state.activeTab === 'dashboard' ? (
+          <DashboardView />
+        ) : state.activeTab === 'notes' ? (
           <NotesView />
         ) : (
           <>
@@ -192,7 +198,7 @@ function MainContent() {
                     sessions={state.sessions}
                     activeSession={state.activeSessionId}
                     onSessionSelect={handleMobileSessionSelect}
-                    onNewSession={() => { actions.createNewSession(); setMobileSidebar(false); }}
+                    onNewSession={async () => { await actions.createNewSession(); setMobileSidebar(false); return state.activeSessionId ?? ''; }}
                   />
                 </div>
               </div>
@@ -259,6 +265,7 @@ function MainContent() {
                   onWidthChange={actions.setInspectorWidth}
                   minWidth={280}
                   maxWidth={1600}
+                  invertDelta
                   className="hidden lg:block"
                 />
 

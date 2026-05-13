@@ -871,3 +871,59 @@ export async function deleteNote(noteId: string): Promise<void> {
   });
   if (!response.ok) throw new Error(`API error: ${response.statusText}`);
 }
+
+// ── Evaluation API ──
+
+export interface RadarScores {
+  memory: number;
+  logic: number;
+  application: number;
+  innovation: number;
+  breadth: number;
+}
+
+export interface TrendPoint {
+  date: string;
+  score: number;
+}
+
+export interface DashboardData {
+  radar_scores: RadarScores;
+  trend_scores: TrendPoint[];
+  summary_score: number;
+  effective_hours: number;
+  mastered_points: number;
+  insight_text: string;
+  highlight_tags: string[];
+  action_item: string;
+  report_date: string;
+  cached: boolean;
+}
+
+export async function getDashboardData(days: number = 7): Promise<DashboardData> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(
+    `${getApiBase()}/api/evaluation/dashboard?days=${days}`,
+    { headers },
+  );
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getEvaluationHistory(limit: number = 30): Promise<{ reports: DashboardData[] }> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(
+    `${getApiBase()}/api/evaluation/history?limit=${limit}`,
+    { headers },
+  );
+  if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+  return response.json();
+}

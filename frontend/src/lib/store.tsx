@@ -28,6 +28,7 @@ import {
   type GraphNode,
   type GraphData,
 } from './api';
+import { logChatMessage } from './learningEvents';
 
 // LocalStorage keys
 const STORAGE_KEYS = {
@@ -59,7 +60,7 @@ function saveToStorage<T>(key: string, value: T): void {
 }
 
 // Types
-export type TabId = 'learning-path' | 'resources' | 'mistakes' | 'knowledge-graph' | 'notes';
+export type TabId = 'learning-path' | 'resources' | 'mistakes' | 'knowledge-graph' | 'notes' | 'dashboard';
 
 export interface NotesChatMessage {
   id: string;
@@ -530,6 +531,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const sendMessageImpl = useCallback(
     async (message: string) => {
       lastUserMessageRef.current = message;
+
+      // Log chat message for learning analytics
+      logChatMessage({
+        messageLength: message.length,
+        preview: message,
+        sessionId: state.activeSessionId,
+      });
 
       // Capture the session this stream belongs to (may differ from activeSessionId after switch)
       const streamSessionId = state.activeSessionId;

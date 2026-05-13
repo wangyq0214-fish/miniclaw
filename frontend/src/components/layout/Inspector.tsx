@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Target, FolderTree, BookMarked, Loader2, FileText, Video, Network, Code } from 'lucide-react';
+import { Target, FolderTree, BookMarked, Loader2, FileText, Video, Network, Code, BarChart3 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/auth';
 import { MonacoEditor } from '@/components/editor/MonacoEditor';
 import { ContentCard } from '@/components/inspector/ContentCard';
@@ -26,6 +26,7 @@ const TAB_META: Record<TabId, { icon: typeof Target; label: string }> = {
   mistakes: { icon: BookMarked, label: '错题本' },
   'knowledge-graph': { icon: Network, label: '知识图谱' },
   notes: { icon: FileText, label: '笔记' },
+  dashboard: { icon: BarChart3, label: '学习分析' },
 };
 
 function VideoPlayer({ filePath }: { filePath: string }) {

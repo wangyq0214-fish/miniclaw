@@ -63,12 +63,19 @@ class AgentManager:
         self.user_id = user_id
 
         # Initialize model
+        extra_body = {}
+        if not settings.thinking_mode:
+            extra_body = {
+                "think": False,  # disable thinking mode for faster streaming
+                "enable_thinking": False,  # alternative parameter for some models
+            }
+
         self._model = ChatOpenAI(
             model=settings.openai_model,
             api_key=settings.openai_api_key or "sk-dummy",
             base_url=settings.openai_api_base,
             temperature=0.7,
-            extra_body={"think": False},  # disable qwen3 thinking mode for faster streaming
+            extra_body=extra_body,
         )
 
         logger.info(f"AgentManager initialized with model {settings.openai_model} at {settings.openai_api_base}")

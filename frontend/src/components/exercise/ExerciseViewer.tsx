@@ -5,6 +5,7 @@ import { Check, X, ChevronRight, ChevronLeft, Sparkles, Send, RotateCcw, Eye } f
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { streamChat } from '@/lib/api';
 import { addMistake } from '@/lib/mistakeBook';
+import { logQuizAnswer, logQuizComplete } from '@/lib/learningEvents';
 
 interface Option {
   id: string;
@@ -219,11 +220,21 @@ ${optionsText}
     setUserAnswers(prev => ({ ...prev, [questionId]: optionId }));
     setLockedQuestions(prev => ({ ...prev, [questionId]: true }));
 
-    // 答错时自动添加到错题本
     const question = questions.find(q => q.question_id === questionId);
     if (question) {
       const correctOption = question.options.find(o => o.is_correct);
-      if (correctOption && optionId !== correctOption.id) {
+      const isCorrect = correctOption ? optionId === correctOption.id : false;
+
+      // Log learning event
+      logQuizAnswer({
+        questionId,
+        isCorrect,
+        difficulty: question.difficulty,
+        topic: data?.topic ?? '',
+      });
+
+      // 答错时自动添加到错题本
+      if (!isCorrect) {
         addMistake({
           question_id: question.question_id,
           question_text_md: question.question_text_md,
@@ -252,6 +263,17 @@ ${optionsText}
   const allAnswered = questions.length > 0 && questions.every(q => lockedQuestions[q.question_id]);
   const isLastQuestion = currentIndex === questions.length - 1;
   const showCompletion = allAnswered && isLastQuestion && lockedQuestions[currentQuestion?.question_id];
+
+  // Log quiz completion event when all questions are answered
+  useEffect(() => {
+    if (showCompletion && data) {
+      logQuizComplete({
+        score: correctCount,
+        total: questions.length,
+        topic: data.topic,
+      });
+    }
+  }, [showCompletion, data, correctCount, questions.length]);
 
   const handleRestart = () => {
     setUserAnswers({});

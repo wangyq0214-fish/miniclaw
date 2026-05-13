@@ -7,6 +7,7 @@ import {
   Sparkles, Eye, Lightbulb, Tag,
 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
+import { logFlashcardReview } from '@/lib/learningEvents';
 
 interface Flashcard {
   id: string;
@@ -111,6 +112,7 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
 
   const handleMarkMastered = useCallback((cardId: string) => {
     setMastered(prev => ({ ...prev, [cardId]: true }));
+    logFlashcardReview({ cardId, mastered: true, category: currentCard?.category ?? '' });
     // Auto advance
     if (currentIndex < cards.length - 1) {
       setTimeout(() => {
@@ -118,10 +120,11 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
         setIsFlipped(false);
       }, 300);
     }
-  }, [currentIndex, cards.length]);
+  }, [currentIndex, cards.length, currentCard?.category]);
 
   const handleMarkUnmastered = useCallback((cardId: string) => {
     setMastered(prev => ({ ...prev, [cardId]: false }));
+    logFlashcardReview({ cardId, mastered: false, category: currentCard?.category ?? '' });
     // Auto advance
     if (currentIndex < cards.length - 1) {
       setTimeout(() => {
@@ -129,7 +132,7 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
         setIsFlipped(false);
       }, 300);
     }
-  }, [currentIndex, cards.length]);
+  }, [currentIndex, cards.length, currentCard?.category]);
 
   const handleRestart = useCallback(() => {
     setCurrentIndex(0);

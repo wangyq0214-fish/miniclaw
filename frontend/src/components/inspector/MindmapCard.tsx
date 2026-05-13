@@ -26,15 +26,11 @@ interface TreeNode extends MindmapTreeNode {
 /** Node kept in DOM during exit animation */
 interface ExitingNode {
   id: string;
-  /** Node's CURRENT position (where animation STARTS) */
   startX: number;
   startY: number;
-  /** Parent's position (where animation ENDS) */
   targetX: number;
   targetY: number;
-  /** Depth for color */
   depth: number;
-  /** Title for display */
   title: string;
 }
 
@@ -43,19 +39,19 @@ interface ExitingNode {
 const NODE_W = 200;
 const NODE_H = 44;
 const NODE_RX = 10;
-const ANIM_DURATION = 450; // ms — 400~500ms range
-const EASE = 'cubic-bezier(0.65, 0, 0.35, 1)'; // ≈ d3.easeCubicInOut
+const ANIM_DURATION = 450;
+const EASE = 'cubic-bezier(0.65, 0, 0.35, 1)';
 
-// Morandi soft palette
+// Color palette matching reference design
 const DEPTH_COLORS = [
-  { bg: '#D0D7FF', text: '#1A1A1A' },  // root — light blue-purple
-  { bg: '#AEE5D1', text: '#1A1A1A' },  // depth 1 — light green
-  { bg: '#F5D5A0', text: '#1A1A1A' },  // depth 2 — light amber
-  { bg: '#D4B8E0', text: '#1A1A1A' },  // depth 3 — light violet
-  { bg: '#C8C8C8', text: '#1A1A1A' },  // depth 4+ — light gray
+  { bg: '#cdd4fd', text: '#1c2331' },  // root — purple-blue
+  { bg: '#c1d3f9', text: '#1c2331' },  // depth 1 — light blue
+  { bg: '#a4e2cc', text: '#1c2331' },  // depth 2 — light green
+  { bg: '#f5d5a0', text: '#1c2331' },  // depth 3 — light amber
+  { bg: '#d4d4d4', text: '#1c2331' },  // depth 4+ — light gray
 ];
 
-const LINK_COLOR = '#A4B4FF';
+const LINK_COLOR = '#8ba2e8';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -173,7 +169,7 @@ function collectDescendants(
       id: node._id,
       startX: layout ? layout.x : 0,
       startY: layout ? layout.y : 0,
-      targetX: 0, // filled in handleToggle
+      targetX: 0,
       targetY: 0,
       depth: idToDepth(node._id),
       title: node.title,
@@ -197,9 +193,9 @@ const linkGen = linkHorizontal<LayoutLink, { x: number; y: number }>()
 // ── Status Indicator ─────────────────────────────────────────────────────────
 
 function StatusDot({ title }: { title: string }) {
-  if (title.includes('✅')) return <circle cx={NODE_W - 12} cy={NODE_H / 2} r={3.5} fill="#8CC084" />;
-  if (title.includes('🔶')) return <circle cx={NODE_W - 12} cy={NODE_H / 2} r={3.5} fill="#D4B96A" />;
-  if (title.includes('❓')) return <circle cx={NODE_W - 12} cy={NODE_H / 2} r={3.5} fill="#B0B0B0" />;
+  if (title.includes('✅')) return <span className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#8CC084]" />;
+  if (title.includes('🔶')) return <span className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#D4B96A]" />;
+  if (title.includes('❓')) return <span className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#B0B0B0]" />;
   return null;
 }
 
@@ -318,36 +314,38 @@ function Header({
 }: {
   path: string; copied: boolean; onCopy: () => void; onDownload: () => void; onOpenInEditor?: () => void;
 }) {
+  const title = path.split('/').pop()?.replace(/\.json$/, '') || '知识导图';
   return (
-    <div className="flex items-center gap-2 px-4 py-2 border-b border-border shrink-0">
-      <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-        <Network className="w-4 h-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-foreground truncate">知识导图</div>
-        <div className="text-[11px] text-muted-foreground font-mono truncate">{path}</div>
+    <header className="h-14 border-b border-gray-100 flex items-center justify-between px-6 bg-white shrink-0 z-20 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="w-7 h-7 bg-blue-50 text-blue-600 rounded flex items-center justify-center border border-blue-100">
+          <Network className="w-4 h-4" />
+        </div>
+        <h1 className="text-[15px] font-bold text-gray-800">{title}</h1>
+        <div className="w-px h-4 bg-gray-200 mx-2" />
+        <span className="text-[12px] text-gray-400 font-mono">{path}</span>
       </div>
       <div className="flex items-center gap-1">
-        <button onClick={onCopy} className="p-1.5 rounded-md hover:bg-accent transition-colors">
-          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+        <button onClick={onCopy} className="p-1.5 rounded-md hover:bg-gray-50 transition-colors">
+          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
         </button>
-        <button onClick={onDownload} className="p-1.5 rounded-md hover:bg-accent transition-colors">
-          <Download className="w-3.5 h-3.5 text-muted-foreground" />
+        <button onClick={onDownload} className="p-1.5 rounded-md hover:bg-gray-50 transition-colors">
+          <Download className="w-3.5 h-3.5 text-gray-400" />
         </button>
         {onOpenInEditor && (
-          <button onClick={onOpenInEditor} className="p-1.5 rounded-md hover:bg-accent transition-colors">
-            <FileCode2 className="w-3.5 h-3.5 text-muted-foreground" />
+          <button onClick={onOpenInEditor} className="p-1.5 rounded-md hover:bg-gray-50 transition-colors">
+            <FileCode2 className="w-3.5 h-3.5 text-gray-400" />
           </button>
         )}
       </div>
-    </div>
+    </header>
   );
 }
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps) {
-  const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const panStart = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
   const isPanning = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -359,13 +357,13 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   const [loadingPath, setLoadingPath] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Exit animation: nodes kept in DOM during collapse, animated via FLIP
+  // Exit animation
   const [exitingNodes, setExitingNodes] = useState<ExitingNode[]>([]);
-  // Enter animation: new children animated from parent position to target
+  // Enter animation
   const [enteringNodes, setEnteringNodes] = useState<{ id: string; parentX: number; parentY: number }[]>([]);
   // Refs for FLIP animation
-  const exitRefs = useRef<Map<string, SVGGElement>>(new Map());
-  const enterRefs = useRef<Map<string, SVGGElement>>(new Map());
+  const exitRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const enterRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Pure React transform state
   const [tx, setTx] = useState(NODE_W / 2 + 40);
@@ -382,10 +380,10 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
     }
   }, [rawTree]);
 
-  // Set initial vertical center once SVG has layout
+  // Set initial vertical center once container has layout
   useEffect(() => {
     if (initialized.current) return;
-    const el = svgRef.current;
+    const el = containerRef.current;
     if (el && el.clientHeight > 0) {
       setTy(el.clientHeight / 2);
       initialized.current = true;
@@ -399,7 +397,6 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   }, [treeData]);
 
   // ── FLIP animation for exiting nodes ──────────────────────────────────
-  // Runs AFTER React commits new exiting nodes to DOM, BEFORE browser paints
   useLayoutEffect(() => {
     if (exitingNodes.length === 0) return;
 
@@ -410,23 +407,21 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
       const el = refMap.get(ex.id);
       if (!el) continue;
 
-      // Use snapshot positions from ExitingNode (captured BEFORE tree update)
-      const startX = ex.startY - NODE_W / 2;   // tree y → SVG x
-      const startY = ex.startX - NODE_H / 2;   // tree x → SVG y
+      const startX = ex.startY - NODE_W / 2;
+      const startY = ex.startX - NODE_H / 2;
 
-      // Step 1: Position at old position, NO transition (before browser paints)
       el.style.transition = 'none';
-      el.setAttribute('transform', `translate(${startX}, ${startY})`);
+      el.style.left = `${startX}px`;
+      el.style.top = `${startY}px`;
       el.style.opacity = '1';
 
-      // Step 2: Force synchronous layout — browser commits the old position
       el.getBoundingClientRect();
 
-      // Step 3: Animate to parent's position + fade out
       const targetX = ex.targetY - NODE_W / 2;
       const targetY = ex.targetX - NODE_H / 2;
-      el.style.transition = `transform ${ANIM_DURATION}ms ${EASE}, opacity ${ANIM_DURATION}ms ${EASE}`;
-      el.setAttribute('transform', `translate(${targetX}, ${targetY})`);
+      el.style.transition = `left ${ANIM_DURATION}ms ${EASE}, top ${ANIM_DURATION}ms ${EASE}, opacity ${ANIM_DURATION}ms ${EASE}`;
+      el.style.left = `${targetX}px`;
+      el.style.top = `${targetY}px`;
       el.style.opacity = '0';
 
       cleanups.push(() => {
@@ -441,7 +436,6 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   }, [exitingNodes]);
 
   // ── FLIP animation for entering nodes ─────────────────────────────────
-  // New children start at parent position, animate to their target
   useLayoutEffect(() => {
     if (enteringNodes.length === 0) return;
 
@@ -452,27 +446,24 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
       const el = refMap.get(en.id);
       if (!el) continue;
 
-      // Step 1: Read the target position from React's transform BEFORE overriding
-      const attr = el.getAttribute('transform') || '';
-      const match = attr.match(/translate\(\s*([^,\s]+)[\s,]+([^)\s]+)\s*\)/);
-      const targetX = match ? parseFloat(match[1]) : 0;
-      const targetY = match ? parseFloat(match[2]) : 0;
+      // Read target position from React's style
+      const targetX = parseFloat(el.style.left) || 0;
+      const targetY = parseFloat(el.style.top) || 0;
 
-      // Parent position in SVG coords (tree y → SVG x, tree x → SVG y)
-      const parentSvgX = en.parentY - NODE_W / 2;
-      const parentSvgY = en.parentX - NODE_H / 2;
+      // Parent position in SVG coords
+      const parentLeft = en.parentY - NODE_W / 2;
+      const parentTop = en.parentX - NODE_H / 2;
 
-      // Step 2: Place at parent position, no transition (use setAttribute for SVG)
       el.style.transition = 'none';
-      el.setAttribute('transform', `translate(${parentSvgX}, ${parentSvgY})`);
+      el.style.left = `${parentLeft}px`;
+      el.style.top = `${parentTop}px`;
       el.style.opacity = '0';
 
-      // Step 3: Force layout commit
       el.getBoundingClientRect();
 
-      // Step 4: Animate to target position + fade in
-      el.style.transition = `transform ${ANIM_DURATION}ms ${EASE}, opacity ${ANIM_DURATION}ms ${EASE}`;
-      el.setAttribute('transform', `translate(${targetX}, ${targetY})`);
+      el.style.transition = `left ${ANIM_DURATION}ms ${EASE}, top ${ANIM_DURATION}ms ${EASE}, opacity ${ANIM_DURATION}ms ${EASE}`;
+      el.style.left = `${targetX}px`;
+      el.style.top = `${targetY}px`;
       el.style.opacity = '1';
 
       cleanups.push(() => {
@@ -481,7 +472,6 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
       });
     }
 
-    // Clear entering state after animation
     const timer = setTimeout(() => setEnteringNodes([]), ANIM_DURATION + 50);
 
     return () => {
@@ -493,10 +483,10 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   // ── Zoom (wheel) ──────────────────────────────────────────────────────
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const svgEl = svgRef.current;
-    if (!svgEl) return;
+    const el = containerRef.current;
+    if (!el) return;
 
-    const rect = svgEl.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
@@ -541,7 +531,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
     setIsDragging(false);
   }, []);
 
-  // ── Node click (only fire if not a drag) ──────────────────────────────
+  // ── Node click ────────────────────────────────────────────────────────
   const handleNodeClick = useCallback((id: string, node: MindmapTreeNode) => {
     if (isPanning.current) return;
     setSelectedId(id);
@@ -552,7 +542,6 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   const handleToggle = useCallback((id: string) => {
     if (!treeData) return;
 
-    // Determine if collapsing
     const findNode = (n: TreeNode): TreeNode | null => {
       if (n._id === id) return n;
       for (const c of (n.children || []) as TreeNode[]) {
@@ -565,9 +554,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
     const isCollapsing = !!target?.children?.length;
 
     if (isCollapsing) {
-      // Collect descendants BEFORE tree update
       const exits = collectDescendants(treeData, id, nodes);
-      // Fill in parent's CURRENT position as the animation target
       const parentLayout = nodes.find((n) => n.data._id === id);
       if (parentLayout) {
         for (const ex of exits) {
@@ -579,7 +566,6 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
       setTimeout(() => setExitingNodes([]), ANIM_DURATION + 100);
     }
 
-    // When expanding, collect entering children with parent position
     if (!isCollapsing && target?._children?.length) {
       const parentLayout = nodes.find((n) => n.data._id === id);
       if (parentLayout) {
@@ -592,14 +578,13 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
       }
     }
 
-    // Update tree (triggers layout recomputation)
     setTreeData((prev) => {
       if (!prev) return prev;
       return toggleNodeInTree(prev, id);
     });
   }, [treeData, nodes]);
 
-  // Handle deep dive
+  // Deep dive
   const handleDeepDive = useCallback(async () => {
     if (!selectedNode || loadingPath) return;
     if (extraMap[selectedId]) return;
@@ -620,7 +605,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
 
   // Zoom controls
   const zoomIn = useCallback(() => {
-    const el = svgRef.current;
+    const el = containerRef.current;
     if (!el) return;
     const cx = (el.clientWidth || 600) / 2;
     const cy = (el.clientHeight || 400) / 2;
@@ -634,7 +619,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   }, []);
 
   const zoomOut = useCallback(() => {
-    const el = svgRef.current;
+    const el = containerRef.current;
     if (!el) return;
     const cx = (el.clientWidth || 600) / 2;
     const cy = (el.clientHeight || 400) / 2;
@@ -648,8 +633,8 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   }, []);
 
   const zoomFit = useCallback(() => {
-    if (!svgRef.current || nodes.length === 0) return;
-    const el = svgRef.current;
+    if (!containerRef.current || nodes.length === 0) return;
+    const el = containerRef.current;
     const w = el.clientWidth || 600;
     const h = el.clientHeight || 400;
 
@@ -692,7 +677,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
 
   if (!isJson) {
     return (
-      <div className="h-full flex flex-col bg-card">
+      <div className="h-full flex flex-col bg-white">
         <Header path={path} copied={copied} onCopy={handleCopy} onDownload={handleDownload} onOpenInEditor={onOpenInEditor} />
         <div className="flex-1 overflow-y-auto p-5"><MarkdownRenderer content={content} /></div>
       </div>
@@ -701,7 +686,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
 
   if (!treeData) {
     return (
-      <div className="h-full flex flex-col bg-card">
+      <div className="h-full flex flex-col bg-white">
         <Header path={path} copied={copied} onCopy={handleCopy} onDownload={handleDownload} onOpenInEditor={onOpenInEditor} />
         <div className="flex-1 flex items-center justify-center text-sm text-destructive">无法解析思维导图 JSON</div>
       </div>
@@ -709,152 +694,165 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   }
 
   return (
-    <div className="h-full flex flex-col bg-card">
+    <div className="h-full flex flex-col bg-white text-gray-800 font-sans overflow-hidden">
       <Header path={path} copied={copied} onCopy={handleCopy} onDownload={handleDownload} onOpenInEditor={onOpenInEditor} />
 
       <div className="flex-1 flex min-h-0">
-        {/* Left: SVG Tree */}
-        <div className="flex-[3] relative min-w-0 border-r border-border" style={{ minHeight: 300, overflow: 'hidden' }}>
-          <svg
-            ref={svgRef}
-            style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none', cursor: isDragging ? 'grabbing' : 'grab' }}
-            onWheel={handleWheel}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+        {/* Left: Canvas */}
+        <div
+          ref={containerRef}
+          className="flex-[3] relative min-w-0 border-r border-gray-100 bg-[#fafafa] overflow-hidden"
+          style={{ minHeight: 300, cursor: isDragging ? 'grabbing' : 'grab' }}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          {/* Transform container */}
+          <div
+            className="absolute"
+            style={{
+              transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
+              transformOrigin: '0 0',
+              willChange: 'transform',
+            }}
           >
-            <defs>
-              <filter id="drop-shadow" x="-10%" y="-10%" width="120%" height="130%">
-                <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000" floodOpacity="0.06" />
-              </filter>
-            </defs>
-            <g transform={`translate(${tx},${ty}) scale(${scale})`}>
-              {/* ── Links ── */}
+            {/* SVG connection lines */}
+            <svg
+              className="absolute overflow-visible pointer-events-none"
+              style={{ left: 0, top: 0, width: 1, height: 1 }}
+            >
               {links.map((link) => (
                 <path
                   key={`link-${link.source.data._id}-${link.target.data._id}`}
                   d={linkGen(link) || ''}
                   fill="none"
                   stroke={LINK_COLOR}
-                  strokeWidth={1.8}
+                  strokeWidth={1.5}
                   strokeLinecap="round"
-                  shapeRendering="geometricPrecision"
+                  opacity={0.9}
                   style={{ transition: `d ${ANIM_DURATION}ms ${EASE}` }}
                 />
               ))}
+            </svg>
 
-              {/* ── Exiting nodes (FLIP-animated) ── */}
-              {exitingNodes.map((ex) => {
-                const color = getDepthColor(ex.depth);
-                return (
-                  <g
-                    key={`exit-${ex.id}`}
-                    ref={(el) => {
-                      if (el) exitRefs.current.set(ex.id, el);
-                      else exitRefs.current.delete(ex.id);
-                    }}
-                    // React sets initial position; useLayoutEffect will override for FLIP
-                    transform={`translate(${ex.targetY - NODE_W / 2},${ex.targetX - NODE_H / 2})`}
-                    style={{ pointerEvents: 'none' }}
-                  >
-                    <rect
-                      width={NODE_W} height={NODE_H}
-                      rx={NODE_RX} ry={NODE_RX}
-                      style={{ fill: color.bg, opacity: 0.9 }}
-                    />
-                    <text
-                      x={NODE_W / 2} y={NODE_H / 2}
-                      textAnchor="middle" dominantBaseline="central"
-                      fontSize={14} fontWeight={500} fill={color.text}
-                    >
-                      {truncate(ex.title, 12)}
-                    </text>
-                  </g>
-                );
-              })}
+            {/* Exiting nodes (FLIP-animated) */}
+            {exitingNodes.map((ex) => {
+              const color = getDepthColor(ex.depth);
+              return (
+                <div
+                  key={`exit-${ex.id}`}
+                  ref={(el) => {
+                    if (el) exitRefs.current.set(ex.id, el);
+                    else exitRefs.current.delete(ex.id);
+                  }}
+                  className="absolute px-4 py-2 rounded-lg whitespace-nowrap shadow-sm pointer-events-none"
+                  style={{
+                    left: `${ex.targetY - NODE_W / 2}px`,
+                    top: `${ex.targetX - NODE_H / 2}px`,
+                    width: `${NODE_W}px`,
+                    height: `${NODE_H}px`,
+                    backgroundColor: color.bg,
+                    color: color.text,
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {truncate(ex.title, 12)}
+                </div>
+              );
+            })}
 
-              {/* ── Active nodes ── */}
-              {nodes.map((node) => {
-                const depth = idToDepth(node.data._id);
-                const color = getDepthColor(depth);
-                const isSelected = node.data._id === selectedId;
-                const hasChildren = node.data.children.length > 0 || (node.data._children && node.data._children.length > 0);
-                const isCollapsed = node.data._children && node.data._children.length > 0;
-                const isEntering = enteringNodes.some((en) => en.id === node.data._id);
+            {/* Active nodes */}
+            {nodes.map((node) => {
+              const depth = idToDepth(node.data._id);
+              const color = getDepthColor(depth);
+              const isSelected = node.data._id === selectedId;
+              const hasChildren = node.data.children.length > 0 || (node.data._children && node.data._children.length > 0);
+              const isCollapsed = node.data._children && node.data._children.length > 0;
+              const isEntering = enteringNodes.some((en) => en.id === node.data._id);
 
-                return (
-                  <g
-                    key={node.data._id}
-                    ref={isEntering ? (el) => {
-                      if (el) enterRefs.current.set(node.data._id, el);
-                      else enterRefs.current.delete(node.data._id);
-                    } : undefined}
-                    transform={`translate(${node.y - NODE_W / 2},${node.x - NODE_H / 2})`}
+              return (
+                <div
+                  key={node.data._id}
+                  ref={isEntering ? (el) => {
+                    if (el) enterRefs.current.set(node.data._id, el);
+                    else enterRefs.current.delete(node.data._id);
+                  } : undefined}
+                  className="absolute pointer-events-auto transition-shadow"
+                  style={{
+                    left: `${node.y - NODE_W / 2}px`,
+                    top: `${node.x - NODE_H / 2}px`,
+                    width: `${NODE_W}px`,
+                    height: `${NODE_H}px`,
+                    transition: `left ${ANIM_DURATION}ms ${EASE}, top ${ANIM_DURATION}ms ${EASE}`,
+                  }}
+                >
+                  {/* Node body */}
+                  <div
+                    className="w-full h-full px-4 py-2 rounded-lg whitespace-nowrap shadow-sm flex items-center justify-center cursor-pointer transition-all"
                     style={{
-                      cursor: 'pointer',
-                      transition: `transform ${ANIM_DURATION}ms ${EASE}`,
+                      backgroundColor: color.bg,
+                      color: color.text,
+                      fontSize: depth === 0 ? '15px' : '14px',
+                      fontWeight: depth === 0 ? 500 : 400,
+                      outline: isSelected ? '2px solid #93aafd' : 'none',
+                      outlineOffset: '1px',
                     }}
                     onClick={() => handleNodeClick(node.data._id, node.data)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 0 0 2px #93c5fd';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '';
+                    }}
                   >
-                    <rect
-                      x={0} y={0}
-                      width={NODE_W} height={NODE_H}
-                      rx={NODE_RX} ry={NODE_RX}
-                      fill={color.bg}
-                      stroke={isSelected ? '#8B9DFF' : 'transparent'}
-                      strokeWidth={isSelected ? 2 : 0}
-                      style={{
-                        transition: `stroke 200ms ${EASE}, stroke-width 200ms ${EASE}`,
-                      }}
-                    />
-                    {hasChildren && (
-                      <g
-                        onClick={(e) => { e.stopPropagation(); handleToggle(node.data._id); }}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <circle
-                          cx={NODE_W + 10} cy={NODE_H / 2} r={8}
-                          fill="#fff"
-                          stroke="#C8C8C8" strokeWidth={1}
-                        />
-                        <text
-                          x={NODE_W + 10} y={NODE_H / 2}
-                          textAnchor="middle" dominantBaseline="central"
-                          fontSize={11} fontWeight={500}
-                          fill="#888"
-                        >
-                          {isCollapsed ? '+' : '−'}
-                        </text>
-                      </g>
-                    )}
-                    <text
-                      x={NODE_W / 2 - 6} y={NODE_H / 2}
-                      textAnchor="middle" dominantBaseline="central"
-                      fontSize={14}
-                      fontWeight={depth === 0 ? 500 : 400}
-                      fill={color.text}
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      {truncate(node.data.title, 12)}
-                    </text>
+                    <span className="truncate">{truncate(node.data.title, 12)}</span>
                     <StatusDot title={node.data.title} />
-                  </g>
-                );
-              })}
-            </g>
-          </svg>
+                  </div>
 
-          {/* Zoom controls */}
-          <div className="absolute bottom-3 right-3 flex flex-col gap-1 bg-background/80 backdrop-blur rounded-lg border border-border p-1">
-            <button onClick={zoomIn} className="p-1.5 rounded hover:bg-accent transition-colors" title="放大">
-              <ZoomIn className="w-4 h-4 text-muted-foreground" />
+                  {/* Expand/collapse button */}
+                  {hasChildren && (
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-sm"
+                      style={{
+                        right: '-22px',
+                        backgroundColor: color.bg,
+                        color: color.text,
+                      }}
+                      onClick={(e) => { e.stopPropagation(); handleToggle(node.data._id); }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '0.8';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={isCollapsed ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Zoom controls - horizontal floating panel */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white border border-gray-100 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.08)] rounded-xl flex items-center p-1 gap-1 text-gray-500 z-10">
+            <button onClick={zoomFit} className="p-2 hover:bg-gray-50 hover:text-gray-800 rounded-lg transition-colors" title="适应屏幕">
+              <Maximize2 className="w-4 h-4" />
             </button>
-            <button onClick={zoomOut} className="p-1.5 rounded hover:bg-accent transition-colors" title="缩小">
-              <ZoomOut className="w-4 h-4 text-muted-foreground" />
+            <div className="w-px h-4 bg-gray-200 mx-1" />
+            <button onClick={zoomOut} className="p-2 hover:bg-gray-50 hover:text-gray-800 rounded-lg transition-colors" title="缩小">
+              <ZoomOut className="w-4 h-4" />
             </button>
-            <button onClick={zoomFit} className="p-1.5 rounded hover:bg-accent transition-colors" title="适应">
-              <Maximize2 className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs font-medium px-1 select-none min-w-[3ch] text-center">{Math.round(scale * 100)}%</span>
+            <button onClick={zoomIn} className="p-2 hover:bg-gray-50 hover:text-gray-800 rounded-lg transition-colors" title="放大">
+              <ZoomIn className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -876,7 +874,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
                 </div>
                 <div>
                   <p className="text-sm font-medium">点击节点查看详情</p>
-                  <p className="text-xs text-muted-foreground/70 mt-0.5">点击 + 展开子节点</p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">点击箭头展开子节点</p>
                 </div>
               </div>
             </div>

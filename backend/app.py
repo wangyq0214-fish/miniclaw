@@ -184,6 +184,7 @@ from api.subagent import router as subagent_router
 from api.tts import router as tts_router
 from api.sources import router as sources_router
 from api.notes import router as notes_router
+from api.evaluation import router as evaluation_router
 
 app.include_router(chat_router, prefix="/api", tags=["chat"])
 app.include_router(sessions_v2_router, tags=["sessions_v2"])
@@ -201,6 +202,7 @@ app.include_router(subagent_router, prefix="/api", tags=["subagent"])
 app.include_router(tts_router, prefix="/api/tts", tags=["tts"])
 app.include_router(sources_router, prefix="/api", tags=["sources"])
 app.include_router(notes_router, prefix="/api", tags=["notes"])
+app.include_router(evaluation_router, prefix="/api", tags=["evaluation"])
 
 # Mount static files for knowledge assets (images, etc.)
 # Images should be stored in knowledge/assets/ folder

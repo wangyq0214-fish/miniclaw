@@ -18,6 +18,7 @@ import {
   Trash2,
   Network,
   NotebookPen,
+  BarChart3,
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { TokenMeter } from '@/components/layout/TokenMeter';
@@ -30,7 +31,7 @@ import type { TabId } from '@/lib/store';
 
 // ── Types ──────────────────────────────────────────────
 
-type SidebarView = 'resources' | 'mindmaps' | 'learning-path' | 'mistakes' | 'knowledge-graph' | 'notes';
+type SidebarView = 'resources' | 'mindmaps' | 'learning-path' | 'mistakes' | 'knowledge-graph' | 'notes' | 'dashboard';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -48,6 +49,7 @@ const ACTION_ITEMS: Array<{
   icon: typeof GraduationCap;
   label: string;
 }> = [
+  { id: 'dashboard', icon: BarChart3, label: '学习分析' },
   { id: 'learning-path', icon: GraduationCap, label: '学习路径' },
   { id: 'resources', icon: Library, label: '资源库' },
   { id: 'mindmaps', icon: Brain, label: '思维导图' },
@@ -333,17 +335,17 @@ export function Sidebar({
 
   // Sync activeTab → currentView (when parent changes tab)
   useEffect(() => {
-    if (activeTab === 'resources' || activeTab === 'learning-path' || activeTab === 'mistakes' || activeTab === 'knowledge-graph' || activeTab === 'notes') {
+    if (activeTab === 'resources' || activeTab === 'learning-path' || activeTab === 'mistakes' || activeTab === 'knowledge-graph' || activeTab === 'notes' || activeTab === 'dashboard') {
       setCurrentView(activeTab);
     }
   }, [activeTab]);
 
   const handleActionClick = (id: SidebarView) => {
     setCurrentView(id);
-    if (id === 'learning-path' || id === 'mistakes' || id === 'knowledge-graph' || id === 'notes') {
+    if (id === 'learning-path' || id === 'mistakes' || id === 'knowledge-graph' || id === 'notes' || id === 'dashboard') {
       actions.setActiveFile(null);
     }
-    if (id === 'resources' || id === 'learning-path' || id === 'mistakes' || id === 'knowledge-graph' || id === 'notes') {
+    if (id === 'resources' || id === 'learning-path' || id === 'mistakes' || id === 'knowledge-graph' || id === 'notes' || id === 'dashboard') {
       onTabChange(id as TabId);
     }
   };
