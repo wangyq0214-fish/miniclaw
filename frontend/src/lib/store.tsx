@@ -607,6 +607,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         get_entity_graph: '查询知识图谱',
         generate_lecture: '生成讲义',
         generate_exercises: '出练习题',
+        generate_flashcards: '生成抽认卡',
         generate_mindmap: '生成思维导图',
         generate_code_case: '生成代码案例',
         generate_reading_list: '生成阅读清单',

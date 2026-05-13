@@ -12,7 +12,7 @@ import { UserSettings } from '@/components/settings/UserSettings';
 import { useGlobalHotkeys } from '@/hooks/useHotkeys';
 import { tokenManager, authApi } from '@/lib/auth';
 import { toast } from 'sonner';
-import { LogOut, User, Menu, X, PanelRightOpen } from 'lucide-react';
+import { LogOut, Settings, Menu, X, PanelRightOpen } from 'lucide-react';
 import FloatingPet from '@/components/pet/FloatingPet';
 import useAgentSync from '@/components/pet/useAgentSync';
 
@@ -132,7 +132,9 @@ function MainContent() {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="w-6 h-6 bg-primary rounded-lg" />
+          <div className="w-5 h-5 bg-foreground rounded-md flex items-center justify-center">
+            <div className="w-2 h-2 bg-background rounded-[1px]" />
+          </div>
           <span className="font-semibold text-foreground text-sm md:text-base">Mini OpenClaw</span>
         </div>
         <div className="flex items-center gap-1 md:gap-2">
@@ -149,9 +151,9 @@ function MainContent() {
           <button
             onClick={() => setShowSettings(true)}
             className="p-2 hover:bg-muted rounded-md transition-colors"
-            title="用户设置"
+            title="设置"
           >
-            <User className="w-5 h-5" />
+            <Settings className="w-5 h-5" />
           </button>
           <button
             onClick={handleLogout}
@@ -227,27 +229,13 @@ function MainContent() {
                   />
                 </div>
 
-                {/* Resizer: Sidebar ↔ Inspector */}
+                {/* Resizer: Sidebar ↔ Chat */}
                 <Resizer
                   currentWidth={state.sidebarWidth}
                   onWidthChange={actions.setSidebarWidth}
                   minWidth={180}
                   maxWidth={400}
                   className="hidden md:block"
-                />
-
-                {/* Desktop: Center Inspector */}
-                <div style={{ width: state.inspectorWidth }} className="hidden lg:block">
-                  <Inspector activeTab={state.activeTab} sessionId={state.activeSessionId} />
-                </div>
-
-                {/* Resizer: Inspector ↔ ChatView */}
-                <Resizer
-                  currentWidth={state.inspectorWidth}
-                  onWidthChange={actions.setInspectorWidth}
-                  minWidth={280}
-                  maxWidth={1600}
-                  className="hidden lg:block"
                 />
               </>
             )}
@@ -261,6 +249,24 @@ function MainContent() {
                 isLoading={state.isStreaming}
               />
             </div>
+
+            {/* Desktop: Right Inspector */}
+            {!isMobile && (
+              <>
+                {/* Resizer: Chat ↔ Inspector */}
+                <Resizer
+                  currentWidth={state.inspectorWidth}
+                  onWidthChange={actions.setInspectorWidth}
+                  minWidth={280}
+                  maxWidth={1600}
+                  className="hidden lg:block"
+                />
+
+                <div style={{ width: state.inspectorWidth }} className="hidden lg:block">
+                  <Inspector activeTab={state.activeTab} sessionId={state.activeSessionId} />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

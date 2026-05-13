@@ -23,6 +23,7 @@ import {
   CircleDot,
   CheckCircle2,
   XCircle,
+  Layers,
 } from 'lucide-react';
 import { Message, ToolCall, RetrievalResult, StatusEntry, PipelineStage, useApp } from '@/lib/store';
 import { streamSubagent } from '@/lib/api';
@@ -54,6 +55,7 @@ const TOOL_LABELS: Record<string, string> = {
   write_file: '正在保存内容',
   generate_lecture: '正在生成讲义',
   generate_exercises: '正在出练习题',
+  generate_flashcards: '正在生成抽认卡',
   evaluate_learning: '正在评估学习',
   generate_mindmap: '正在生成思维导图',
   generate_code_case: '正在生成代码案例',
@@ -70,6 +72,7 @@ const TOOL_ICONS: Record<string, any> = {
   write_file: FileText,
   generate_lecture: BookOpen,
   generate_exercises: List,
+  generate_flashcards: Layers,
   evaluate_learning: Brain,
   generate_mindmap: Network,
   generate_code_case: Code,
@@ -408,10 +411,10 @@ function MessageBubble({
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       <div
-        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+        className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center ${
           isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-primary/10 text-primary'
+            ? 'bg-secondary text-foreground'
+            : 'bg-foreground text-background'
         }`}
         aria-hidden
       >
@@ -704,7 +707,7 @@ export function ChatView({
             ) : (
               coderMessages.map((msg) => (
                 <div key={msg.id} className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0 mt-0.5">
                     {msg.role === 'user' ? (
                       <User className="w-3.5 h-3.5 text-muted-foreground" />
                     ) : (

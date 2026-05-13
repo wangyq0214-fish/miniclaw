@@ -9,6 +9,7 @@ const TOOL_LABELS = {
   write_file: '保存文件中...',
   generate_lecture: '生成讲义中...',
   generate_exercises: '出练习题中...',
+  generate_flashcards: '制作抽认卡中...',
   generate_mindmap: '绘制思维导图...',
   generate_code_case: '编写代码案例...',
   generate_reading_list: '整理阅读清单...',

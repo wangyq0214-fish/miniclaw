@@ -10,11 +10,13 @@ import {
   Map,
   Target,
   Video,
+  Layers,
 } from 'lucide-react';
 import { DocCard } from './DocCard';
 import { StudentProfileCard } from './StudentProfileCard';
 import { MindmapCard } from './MindmapCard';
 import { CodeCaseCard } from './CodeCaseCard';
+import { FlashcardViewer } from '@/components/exercise/FlashcardViewer';
 
 interface ContentCardProps {
   path: string;
@@ -31,6 +33,7 @@ function getKind(path: string) {
   if (p.includes('/mindmap') || p.includes('/mindmaps/')) return 'mindmap';
   if (p.includes('/lectures/')) return 'lecture';
   if (p.includes('/exercises/')) return 'exercise';
+  if (p.includes('/flashcards/')) return 'flashcard';
   if (p.includes('/code_cases/') || p.includes('/code-cases/')) return 'code-case';
   if (p.includes('/reading_lists/') || p.includes('/reading-lists/')) return 'reading-list';
   if (p.includes('/media_scripts/') || p.includes('/media-scripts/')) return 'media-script';
@@ -76,7 +79,11 @@ export function ContentCard({ path, content, onOpenInEditor }: ContentCardProps)
         />
       );
     case 'mindmap':
-      return <MindmapCard path={path} content={content} onOpenInEditor={onOpenInEditor} />;
+      return (
+        <div className="h-full min-h-[400px]">
+          <MindmapCard path={path} content={content} onOpenInEditor={onOpenInEditor} />
+        </div>
+      );
     case 'lecture':
       return (
         <DocCard
@@ -96,6 +103,12 @@ export function ContentCard({ path, content, onOpenInEditor }: ContentCardProps)
           content={content}
           onOpenInEditor={onOpenInEditor}
         />
+      );
+    case 'flashcard':
+      return (
+        <div className="h-full min-h-[400px]">
+          <FlashcardViewer content={content} />
+        </div>
       );
     case 'code-case':
       return (

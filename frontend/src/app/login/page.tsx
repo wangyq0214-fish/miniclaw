@@ -50,31 +50,33 @@ export default function LoginPage() {
     <div className="h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md p-4 md:p-8">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-10 h-10 bg-primary rounded-lg" />
-          <span className="text-2xl font-semibold text-foreground">Mini OpenClaw</span>
+        <div className="flex flex-col items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-foreground rounded-xl flex items-center justify-center">
+            <div className="w-4 h-4 bg-background rounded-sm" />
+          </div>
+          <span className="text-2xl font-bold tracking-tight text-foreground">Mini OpenClaw</span>
         </div>
 
         {/* Card */}
-        <div className="bg-card border border-border rounded-lg p-8 shadow-sm">
-          {/* Tabs */}
-          <div className="flex gap-2 mb-6">
+        <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
+          {/* Tabs - Segmented Control */}
+          <div className="flex bg-secondary p-1 rounded-xl mb-6">
             <button
               onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                 isLogin
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               登录
             </button>
             <button
               onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                 !isLogin
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               注册
@@ -146,7 +148,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? '处理中...' : isLogin ? '登录' : '注册'}
             </button>
@@ -167,7 +169,7 @@ export default function LoginPage() {
 
         {/* Info */}
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          一个轻量级的 AI Agent 系统
+          极简学术风 · AI Agent 学习空间
         </p>
       </div>
     </div>

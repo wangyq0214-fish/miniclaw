@@ -19,6 +19,8 @@ import {
   Terminal,
   FolderOpen,
   FileCode,
+  Layers,
+  Zap,
 } from 'lucide-react';
 import { listSkills, listFiles, type SkillInfo, type FileInfo } from '@/lib/api';
 import { useApp } from '@/lib/store';
@@ -75,6 +77,13 @@ const AGENT_LIST: AgentOption[] = [
     triggers: '题 / 练习 / 测验 / 自测',
   },
   {
+    id: 'flashcard_composer',
+    name: '抽认卡制作',
+    icon: Layers,
+    desc: '生成 10-20 张间隔重复记忆卡片',
+    triggers: '抽认卡 / 闪卡 / 记忆卡 / 复习卡',
+  },
+  {
     id: 'reading_curator',
     name: '阅读推荐',
     icon: FileText,
@@ -101,6 +110,7 @@ function skillDisplayName(skill: SkillInfo): string {
     'evaluate-learning': '学习评估',
     'generate-code-case': '代码案例',
     'generate-exercises': '练习题',
+    'generate-flashcards': '抽认卡',
     'generate-lecture': '讲义',
     'generate-mindmap': '思维导图',
     'generate-reading-list': '阅读清单',
@@ -546,37 +556,15 @@ export function ComposerInput({
       <div className="mx-3 border-t border-gray-100 dark:border-gray-800" />
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-2 py-1.5">
-        {/* Left: mode toggle */}
-        <div className="flex items-center bg-muted rounded-md p-0.5">
-          <button
-            type="button"
-            onClick={() => onChatModeChange?.('chat')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-              chatMode === 'chat'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <FileText className="w-3 h-3" />
-            聊天
-          </button>
-          <button
-            type="button"
-            onClick={() => onChatModeChange?.('coder')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-              chatMode === 'coder'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Terminal className="w-3 h-3" />
-            代码
-          </button>
+      <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted rounded-b-2xl">
+        {/* Left: smart routing label */}
+        <div className="flex items-center gap-1.5 text-muted-foreground pl-1">
+          <Zap className="w-3 h-3" />
+          <span className="text-xs">智能路由开启</span>
         </div>
 
         {/* Right: @ mention + send / stop */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           {chatMode === 'coder' && state.coderProjectPath && (
             <button
               type="button"
@@ -594,7 +582,7 @@ export function ComposerInput({
             <button
               type="button"
               onClick={onStop}
-              className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center hover:opacity-80 transition-opacity"
+              className="w-8 h-8 rounded-md bg-foreground text-background flex items-center justify-center hover:opacity-80 transition-opacity"
               aria-label="停止生成"
             >
               <Square className="w-3.5 h-3.5" />
@@ -605,10 +593,10 @@ export function ComposerInput({
               onClick={submit}
               disabled={!canSend}
               aria-label="发送"
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+              className={`w-8 h-8 rounded-md flex items-center justify-center transition-all ${
                 canSend
-                  ? 'bg-[#F4A89A] text-white hover:opacity-90 cursor-pointer'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 opacity-50 cursor-not-allowed'
+                  ? 'bg-primary text-primary-foreground hover:opacity-90 cursor-pointer'
+                  : 'bg-muted text-muted-foreground opacity-50 cursor-not-allowed'
               }`}
             >
               <Send className="w-3.5 h-3.5" />

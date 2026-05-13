@@ -16,9 +16,11 @@ import {
   Upload,
   Link,
   ClipboardPaste,
+  Layers,
 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { ExerciseViewer } from '@/components/exercise/ExerciseViewer';
+import { FlashcardViewer } from '@/components/exercise/FlashcardViewer';
 import { MindmapCard } from '@/components/inspector/MindmapCard';
 import { MessageActions } from '@/components/chat/MessageActions';
 import { streamChat, listSources, createSource, uploadSourceFile, deleteSource, getSourceContent, type SourceItem, type NoteItem, createNote, deleteNote } from '@/lib/api';
@@ -71,6 +73,7 @@ function PanelResizer({
 
 const ACTION_CARDS = [
   { key: 'exercises', label: '练习题', icon: List, bg: '#F3E8FF', iconColor: '#9333EA', subagent: 'exercise_composer', prompt: '请根据选中的来源生成一套练习题' },
+  { key: 'flashcards', label: '抽认卡', icon: Layers, bg: '#E0F7FA', iconColor: '#0891B2', subagent: 'flashcard_composer', prompt: '请根据选中的来源生成一套抽认卡' },
   { key: 'lectures', label: '讲义', icon: BookOpen, bg: '#E8F0FE', iconColor: '#2563EB', subagent: 'lecture_writer', prompt: '请根据选中的来源生成一份讲义' },
   { key: 'mindmaps', label: '思维导图', icon: Network, bg: '#E6F4EA', iconColor: '#16A34A', subagent: 'mindmap_designer', prompt: '请根据选中的来源生成思维导图' },
 ];
@@ -526,6 +529,10 @@ export function NotesView() {
                     const parsed = JSON.parse(content);
                     if (parsed.questions && Array.isArray(parsed.questions)) {
                       return <ExerciseViewer content={content} onClose={() => setViewingNote(null)} onGenerateFromTopics={handleGenerateFromTopics} />;
+                    }
+                    // Flashcard JSON → FlashcardViewer
+                    if (parsed.cards && Array.isArray(parsed.cards)) {
+                      return <FlashcardViewer content={content} onClose={() => setViewingNote(null)} onGenerateFromTopics={handleGenerateFromTopics} />;
                     }
                     // Mindmap JSON → MindmapCard
                     const tree = parsed.tree || parsed;

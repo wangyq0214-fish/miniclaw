@@ -47,65 +47,13 @@ const ACTION_ITEMS: Array<{
   id: SidebarView;
   icon: typeof GraduationCap;
   label: string;
-  bg: string;
-  iconColor: string;
-  activeBg: string;
-  activeRing: string;
 }> = [
-  {
-    id: 'learning-path',
-    icon: GraduationCap,
-    label: '学习路径',
-    bg: '#F3E8FF',
-    iconColor: '#9333EA',
-    activeBg: '#E9D5FF',
-    activeRing: '#9333EA',
-  },
-  {
-    id: 'resources',
-    icon: Library,
-    label: '资源库',
-    bg: '#E8F0FE',
-    iconColor: '#2563EB',
-    activeBg: '#D0E0FC',
-    activeRing: '#2563EB',
-  },
-  {
-    id: 'mindmaps',
-    icon: Brain,
-    label: '思维导图',
-    bg: '#E6F4EA',
-    iconColor: '#16A34A',
-    activeBg: '#C8E6D0',
-    activeRing: '#16A34A',
-  },
-  {
-    id: 'mistakes',
-    icon: BookOpen,
-    label: '错题本',
-    bg: '#FCE8E6',
-    iconColor: '#DC2626',
-    activeBg: '#F9D0CC',
-    activeRing: '#DC2626',
-  },
-  {
-    id: 'knowledge-graph',
-    icon: Network,
-    label: '知识图谱',
-    bg: '#FFF7ED',
-    iconColor: '#EA580C',
-    activeBg: '#FFEDD5',
-    activeRing: '#EA580C',
-  },
-  {
-    id: 'notes',
-    icon: NotebookPen,
-    label: '笔记',
-    bg: '#E6FAF8',
-    iconColor: '#0D9488',
-    activeBg: '#CCF5F0',
-    activeRing: '#0D9488',
-  },
+  { id: 'learning-path', icon: GraduationCap, label: '学习路径' },
+  { id: 'resources', icon: Library, label: '资源库' },
+  { id: 'mindmaps', icon: Brain, label: '思维导图' },
+  { id: 'mistakes', icon: BookOpen, label: '错题本' },
+  { id: 'knowledge-graph', icon: Network, label: '知识图谱' },
+  { id: 'notes', icon: NotebookPen, label: '笔记' },
 ];
 
 // ── Helpers ────────────────────────────────────────────
@@ -431,7 +379,7 @@ export function Sidebar({
     <div className="h-full bg-sidebar text-sidebar-foreground flex flex-col relative overflow-hidden">
       {/* 1. Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <span className="text-base font-semibold text-foreground tracking-tight">Studio</span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">工作区</span>
         <button
           onClick={() => setCollapsed(true)}
           className="p-1.5 rounded-lg hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors text-muted-foreground"
@@ -441,29 +389,24 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* 2. Action Grid */}
+      {/* 2. Action List */}
       <div className="px-3 pb-3">
-        <div className="grid grid-cols-2 gap-3">
-          {ACTION_ITEMS.map(({ id, icon: Icon, label, bg, iconColor, activeBg, activeRing }) => {
+        <div className="flex flex-col gap-0.5">
+          {ACTION_ITEMS.map(({ id, icon: Icon, label }) => {
             const isActive = currentView === id;
             return (
               <button
                 key={id}
                 onClick={() => handleActionClick(id)}
-                className="flex items-center gap-2.5 p-3 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-                style={{
-                  backgroundColor: isActive ? activeBg : bg,
-                  boxShadow: isActive ? `inset 0 0 0 2px ${activeRing}30` : 'none',
-                }}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left ${
+                  isActive
+                    ? 'bg-accent text-primary font-medium'
+                    : 'text-secondary-foreground hover:bg-accent hover:text-foreground'
+                }`}
               >
-                <Icon className="w-4 h-4 shrink-0" style={{ color: iconColor }} />
-                <span
-                  className="flex-1 text-left text-sm font-medium"
-                  style={{ color: isActive ? iconColor : undefined }}
-                >
-                  {label}
-                </span>
-                <svg width="6" height="10" viewBox="0 0 6 10" fill="none" className="shrink-0 opacity-40">
+                <Icon className="w-4 h-4 shrink-0 opacity-70" />
+                <span className="flex-1 text-sm">{label}</span>
+                <svg width="6" height="10" viewBox="0 0 6 10" fill="none" className={`shrink-0 transition-opacity ${isActive ? 'opacity-50' : 'opacity-0'}`}>
                   <path d="M1 1L5 5L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>

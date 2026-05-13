@@ -17,6 +17,7 @@ import {
   FolderOpen,
   Library,
   FolderPlus,
+  Layers,
 } from 'lucide-react';
 import { listFiles, deleteFile, writeFile, type FileInfo } from '@/lib/api';
 import { useApp } from '@/lib/store';
@@ -29,6 +30,7 @@ const agentRouters: Record<string, string> = {
   '思维导图': '@GraphMapper',
   '阅读清单': '@ReadingCurator',
   '动画脚本': '@MediaScriptWriter',
+  '抽认卡': '@FlashcardComposer',
 };
 
 // ── Resource categories ──
@@ -44,6 +46,7 @@ interface ResourceCategory {
 
 const RESOURCE_CATEGORIES: ResourceCategory[] = [
   { key: 'exercises', icon: FileCode, label: '练习题', color: 'text-purple-600', bgColor: 'bg-purple-50', description: '根据学习进度生成的针对性练习', generateLabel: '测验' },
+  { key: 'flashcards', icon: Layers, label: '抽认卡', color: 'text-cyan-600', bgColor: 'bg-cyan-50', description: '间隔重复记忆卡片，高效巩固知识点', generateLabel: '抽认卡' },
   { key: 'lectures', icon: BookOpen, label: '讲义', color: 'text-blue-600', bgColor: 'bg-blue-50', description: '深度讲解文档，涵盖核心概念与原理', generateLabel: '讲义' },
   { key: 'mindmaps', icon: Network, label: '思维导图', color: 'text-emerald-600', bgColor: 'bg-emerald-50', description: '可视化知识结构，梳理概念关系', generateLabel: '思维导图' },
   { key: 'reading-lists', icon: List, label: '阅读清单', color: 'text-amber-600', bgColor: 'bg-amber-50', description: '精选阅读材料与推荐书单', generateLabel: '阅读清单' },

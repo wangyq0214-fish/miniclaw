@@ -294,11 +294,11 @@ ${optionsText}
     return (
       <div className="flex flex-col h-full items-center justify-center p-6">
         {/* Main white card */}
-        <div className="w-full max-w-2xl bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+        <div className="w-full max-w-2xl bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4 dark:bg-gray-800 dark:border-gray-700">
 
           {/* ── Top: Score Stats ── */}
-          <div className="bg-[#f9fafb] rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-center text-gray-900 mb-6">
+          <div className="bg-[#f9fafb] rounded-2xl p-6 dark:bg-gray-700/50">
+            <h2 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-6">
               大功告成！测验完成。
             </h2>
 
@@ -317,8 +317,8 @@ ${optionsText}
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-900">{correctCount}/{questions.length}</span>
-                  <span className="text-xs text-gray-500 mt-0.5">{scorePercent}%</span>
+                  <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">{correctCount}/{questions.length}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{scorePercent}%</span>
                 </div>
               </div>
 
@@ -326,11 +326,11 @@ ${optionsText}
               <div className="flex gap-10">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-600">{correctCount}</div>
-                  <div className="text-sm text-gray-500 mt-1">答对</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">答对</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-700">{wrongCount}</div>
-                  <div className="text-sm text-gray-500 mt-1">答错</div>
+                  <div className="text-3xl font-bold text-gray-700 dark:text-gray-300">{wrongCount}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">答错</div>
                 </div>
               </div>
             </div>
@@ -339,27 +339,27 @@ ${optionsText}
           {/* ── Bottom: Dual Column ── */}
           <div className="grid grid-cols-2 gap-4">
             {/* Left: Topics */}
-            <div className="bg-[#f9fafb] rounded-2xl p-5 flex flex-col">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <div className="bg-[#f9fafb] rounded-2xl p-5 flex flex-col dark:bg-gray-700/50">
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                 涵盖的主题
               </h3>
               <ul className="space-y-2 flex-1">
                 {topics.map((topic, i) => (
-                  <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 mt-1.5 shrink-0" />
+                  <li key={i} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 mt-1.5 shrink-0" />
                     {topic}
                   </li>
                 ))}
               </ul>
-              <p className="text-xs text-gray-400 mt-3">需要更多主题吗？</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">需要更多主题吗？</p>
             </div>
 
             {/* Right: Continue Learning */}
-            <div className="bg-[#f9fafb] rounded-2xl p-5 flex flex-col">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <div className="bg-[#f9fafb] rounded-2xl p-5 flex flex-col dark:bg-gray-700/50">
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                 继续学习
               </h3>
-              <p className="text-xs text-gray-400 mb-3">请在下方选择后续主题，生成专项测验。</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">请在下方选择后续主题，生成专项测验。</p>
               <div className="flex flex-wrap gap-2 flex-1">
                 {recommendedTopics.map((topic, i) => {
                   const isSelected = selectedTopics.includes(topic);
@@ -370,7 +370,7 @@ ${optionsText}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full transition-all ${
                         isSelected
                           ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-blue-50 text-gray-700 hover:bg-blue-100'
+                          : 'bg-blue-50 text-gray-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50'
                       }`}
                     >
                       {isSelected && <Check className="w-3.5 h-3.5" />}
@@ -394,14 +394,14 @@ ${optionsText}
         <div className="flex items-center justify-end gap-3 mt-4 w-full max-w-2xl">
           <button
             onClick={() => setCurrentIndex(0)}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors dark:text-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
           >
             <Eye className="w-4 h-4" />
             回顾测验
           </button>
           <button
             onClick={handleRestart}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors dark:text-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
           >
             <RotateCcw className="w-4 h-4" />
             重新测验
@@ -419,7 +419,7 @@ ${optionsText}
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
-        <span className="text-sm text-gray-400 font-medium">
+        <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">
           {currentIndex + 1} / {questions.length}
         </span>
       </div>
@@ -440,9 +440,9 @@ ${optionsText}
               const showCorrect = isLocked && option.is_correct;
               const showWrong = isLocked && isSelected && !option.is_correct;
 
-              let bgClass = 'bg-gray-50 hover:bg-gray-100';
-              if (showCorrect) bgClass = 'bg-[#e6f4ea]';
-              else if (showWrong) bgClass = 'bg-[#fce8e6]';
+              let bgClass = 'bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700';
+              if (showCorrect) bgClass = 'bg-[#e6f4ea] dark:bg-green-900/30';
+              else if (showWrong) bgClass = 'bg-[#fce8e6] dark:bg-red-900/30';
 
               return (
                 <div key={option.id}>
@@ -454,10 +454,10 @@ ${optionsText}
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="text-sm font-medium text-gray-500 shrink-0 w-5">
+                      <span className="text-sm font-medium text-gray-500 dark:text-gray-400 shrink-0 w-5">
                         {option.id}
                       </span>
-                      <span className="flex-1 text-[15px]">
+                      <span className="flex-1 text-[15px] text-gray-900 dark:text-gray-100">
                         <MarkdownRenderer content={option.text_md} />
                       </span>
                     </div>
@@ -513,7 +513,7 @@ ${optionsText}
             }`}
           >
             <div className="overflow-hidden">
-              <div className="bg-indigo-50/40 rounded-2xl border border-indigo-100 p-5">
+              <div className="bg-indigo-50/40 rounded-2xl border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800/50 p-5">
                 {/* Chat history */}
                 <div className="max-h-[40vh] overflow-y-auto pr-2 space-y-3 mb-4">
                   {chatMessages.map((msg, i) => (
@@ -522,11 +522,11 @@ ${optionsText}
                       className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       {msg.role === 'user' ? (
-                        <div className="bg-white/80 shadow-sm rounded-xl px-3 py-2 max-w-[80%] text-sm text-gray-700">
+                        <div className="bg-white/80 shadow-sm rounded-xl px-3 py-2 max-w-[80%] text-sm text-gray-700 dark:bg-gray-700/80 dark:text-gray-200">
                           {msg.content}
                         </div>
                       ) : (
-                        <div className="max-w-[85%] text-sm text-gray-600 leading-relaxed">
+                        <div className="max-w-[85%] text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                           <MarkdownRenderer content={msg.content} />
                         </div>
                       )}
@@ -555,7 +555,7 @@ ${optionsText}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(inputText); } }}
                     placeholder="继续追问..."
                     disabled={isSending}
-                    className="flex-1 bg-white border-0 focus:ring-1 focus:ring-indigo-300 rounded-lg px-3 py-2 text-sm outline-none placeholder:text-gray-400 disabled:opacity-50"
+                    className="flex-1 bg-white border-0 focus:ring-1 focus:ring-indigo-300 rounded-lg px-3 py-2 text-sm outline-none placeholder:text-gray-400 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500 disabled:opacity-50"
                   />
                   <button
                     onClick={() => sendMessage(inputText)}
@@ -572,13 +572,13 @@ ${optionsText}
       </div>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-800">
         <button
           onClick={handleToggleTutor}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${
             isTutorOpen
-              ? 'bg-indigo-50 text-indigo-700'
-              : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'
+              ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+              : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:border-gray-700'
           }`}
         >
           <Sparkles className="w-4 h-4" />

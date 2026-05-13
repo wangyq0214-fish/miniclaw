@@ -17,6 +17,16 @@ function getApiBase() {
   return '';
 }
 
+// SSE streaming requests must bypass Next.js proxy (it buffers SSE responses).
+// Connect directly to backend for streaming endpoints.
+function getStreamingApiBase() {
+  if (typeof window === 'undefined') return 'http://localhost:8002';
+  // Use NEXT_PUBLIC_API_URL if configured
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  // Same host, backend port
+  return `${window.location.protocol}//${window.location.hostname}:8002`;
+}
+
 // Helper function to get auth headers
 function getAuthHeaders(): HeadersInit {
   const token = tokenManager.getToken();
@@ -130,7 +140,7 @@ export async function* streamChat(
   request: ChatRequest,
   signal?: AbortSignal,
 ): AsyncGenerator<SSEEvent> {
-  const response = await fetch(`${getApiBase()}/api/chat`, {
+  const response = await fetch(`${getStreamingApiBase()}/api/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -189,7 +199,7 @@ export async function* streamSubagent(
   request: SubAgentRequest,
   signal?: AbortSignal,
 ): AsyncGenerator<SSEEvent> {
-  const response = await fetch(`${getApiBase()}/api/subagent/invoke`, {
+  const response = await fetch(`${getStreamingApiBase()}/api/subagent/invoke`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

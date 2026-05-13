@@ -416,7 +416,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
 
       // Step 1: Position at old position, NO transition (before browser paints)
       el.style.transition = 'none';
-      el.style.transform = `translate(${startX}px, ${startY}px)`;
+      el.setAttribute('transform', `translate(${startX}, ${startY})`);
       el.style.opacity = '1';
 
       // Step 2: Force synchronous layout — browser commits the old position
@@ -426,12 +426,11 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
       const targetX = ex.targetY - NODE_W / 2;
       const targetY = ex.targetX - NODE_H / 2;
       el.style.transition = `transform ${ANIM_DURATION}ms ${EASE}, opacity ${ANIM_DURATION}ms ${EASE}`;
-      el.style.transform = `translate(${targetX}px, ${targetY}px)`;
+      el.setAttribute('transform', `translate(${targetX}, ${targetY})`);
       el.style.opacity = '0';
 
       cleanups.push(() => {
         el.style.transition = '';
-        el.style.transform = '';
         el.style.opacity = '';
       });
     }
@@ -453,32 +452,31 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
       const el = refMap.get(en.id);
       if (!el) continue;
 
-      // Parent position in SVG coords (tree y → SVG x, tree x → SVG y)
-      const parentSvgX = en.parentY - NODE_W / 2;
-      const parentSvgY = en.parentX - NODE_H / 2;
-
-      // Step 1: Place at parent position, no transition
-      el.style.transition = 'none';
-      el.style.transform = `translate(${parentSvgX}px, ${parentSvgY}px)`;
-      el.style.opacity = '0';
-
-      // Step 2: Force layout commit
-      el.getBoundingClientRect();
-
-      // Step 3: Read the target position from the transform attribute (set by React)
+      // Step 1: Read the target position from React's transform BEFORE overriding
       const attr = el.getAttribute('transform') || '';
       const match = attr.match(/translate\(\s*([^,\s]+)[\s,]+([^)\s]+)\s*\)/);
       const targetX = match ? parseFloat(match[1]) : 0;
       const targetY = match ? parseFloat(match[2]) : 0;
 
+      // Parent position in SVG coords (tree y → SVG x, tree x → SVG y)
+      const parentSvgX = en.parentY - NODE_W / 2;
+      const parentSvgY = en.parentX - NODE_H / 2;
+
+      // Step 2: Place at parent position, no transition (use setAttribute for SVG)
+      el.style.transition = 'none';
+      el.setAttribute('transform', `translate(${parentSvgX}, ${parentSvgY})`);
+      el.style.opacity = '0';
+
+      // Step 3: Force layout commit
+      el.getBoundingClientRect();
+
       // Step 4: Animate to target position + fade in
       el.style.transition = `transform ${ANIM_DURATION}ms ${EASE}, opacity ${ANIM_DURATION}ms ${EASE}`;
-      el.style.transform = `translate(${targetX}px, ${targetY}px)`;
+      el.setAttribute('transform', `translate(${targetX}, ${targetY})`);
       el.style.opacity = '1';
 
       cleanups.push(() => {
         el.style.transition = '';
-        el.style.transform = '';
         el.style.opacity = '';
       });
     }
@@ -763,8 +761,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
                     <rect
                       width={NODE_W} height={NODE_H}
                       rx={NODE_RX} ry={NODE_RX}
-                      fill={color.bg}
-                      opacity={0.9}
+                      style={{ fill: color.bg, opacity: 0.9 }}
                     />
                     <text
                       x={NODE_W / 2} y={NODE_H / 2}
@@ -805,10 +802,11 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
                       width={NODE_W} height={NODE_H}
                       rx={NODE_RX} ry={NODE_RX}
                       fill={color.bg}
-                      filter="url(#drop-shadow)"
                       stroke={isSelected ? '#8B9DFF' : 'transparent'}
                       strokeWidth={isSelected ? 2 : 0}
-                      style={{ transition: `stroke 200ms ${EASE}, stroke-width 200ms ${EASE}` }}
+                      style={{
+                        transition: `stroke 200ms ${EASE}, stroke-width 200ms ${EASE}`,
+                      }}
                     />
                     {hasChildren && (
                       <g

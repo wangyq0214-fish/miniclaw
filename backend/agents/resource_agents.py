@@ -48,6 +48,14 @@ RESOURCE_ROLES: list[tuple[str, str]] = [
         "student asks for 题 / 练习 / 测验 / 自测.",
     ),
     (
+        "flashcard_composer",
+        "Generate 10-20 flashcards as JSON for spaced repetition learning. Each card "
+        "has front (question, ≤30 chars), back (answer, ≤150 chars), difficulty, category, "
+        "and tags. Writes to workspace/generated/flashcards/<中文主题名>.json (system "
+        "auto-injects date prefix). Use when the student asks for 抽认卡 / 闪卡 / 记忆卡 / "
+        "复习卡 / 知识卡片.",
+    ),
+    (
         "reading_curator",
         "Search and curate 5-8 external reading materials (project KB + web via "
         "tavily-search) with summary, difficulty tier, and personalized recommendation "
