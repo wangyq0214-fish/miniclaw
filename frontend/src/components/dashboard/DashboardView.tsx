@@ -84,7 +84,7 @@ export function DashboardView() {
   if (!data) return null;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#fbfbfc] dark:bg-gray-900 p-6 md:p-10">
+    <div className="flex-1 overflow-y-auto bg-[#fbfbfc] dark:bg-zinc-950 p-6 md:p-10">
       <div className="max-w-6xl mx-auto flex flex-col gap-6">
         {/* Header */}
         <motion.header
@@ -98,14 +98,14 @@ export function DashboardView() {
             <div className="flex items-center gap-3 mb-1">
               <button
                 onClick={() => actions.setActiveTab('learning-path')}
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 返回
               </button>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">学习效果评估与能力分析</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-200">学习效果评估与能力分析</h1>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
               基于你最近的学习记录与测试表现生成的智能洞察
               {data.cached && <span className="ml-2 text-xs text-gray-400">(缓存数据)</span>}
             </p>
@@ -121,7 +121,7 @@ export function DashboardView() {
             <button
               onClick={() => fetchData(true)}
               disabled={isRefreshing}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-400 hover:text-gray-600"
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-200"
               title="刷新数据"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -147,16 +147,16 @@ export function DashboardView() {
           className="grid grid-cols-1 lg:grid-cols-2 gap-6"
         >
           {/* Radar Chart */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col">
-            <h3 className="text-base font-bold text-gray-800 dark:text-gray-200 mb-4">多维能力图谱</h3>
+          <div className="bg-white dark:bg-zinc-900/50 dark:backdrop-blur-md rounded-2xl p-6 border border-gray-100 dark:border-white/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] flex flex-col">
+            <h3 className="text-base font-bold text-gray-800 dark:text-zinc-200 mb-4">多维能力图谱</h3>
             <div className="flex-1 relative w-full flex items-center justify-center min-h-[300px]">
               <RadarChart scores={data.radar_scores} />
             </div>
           </div>
 
           {/* Trend Line Chart */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] flex flex-col">
-            <h3 className="text-base font-bold text-gray-800 dark:text-gray-200 mb-4">近 7 天学习得分趋势</h3>
+          <div className="bg-white dark:bg-zinc-900/50 dark:backdrop-blur-md rounded-2xl p-6 border border-gray-100 dark:border-white/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] flex flex-col">
+            <h3 className="text-base font-bold text-gray-800 dark:text-zinc-200 mb-4">近 7 天学习得分趋势</h3>
             <div className="flex-1 relative w-full min-h-[300px]">
               <TrendLineChart data={data.trend_scores} />
             </div>

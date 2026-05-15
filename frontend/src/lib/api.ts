@@ -17,14 +17,9 @@ function getApiBase() {
   return '';
 }
 
-// SSE streaming requests must bypass Next.js proxy (it buffers SSE responses).
-// Connect directly to backend for streaming endpoints.
+// SSE streaming requests — use relative path to go through Next.js proxy
 function getStreamingApiBase() {
-  if (typeof window === 'undefined') return 'http://localhost:8002';
-  // Use NEXT_PUBLIC_API_URL if configured
-  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-  // Same host, backend port
-  return `${window.location.protocol}//${window.location.hostname}:8002`;
+  return '';
 }
 
 // Helper function to get auth headers
@@ -320,10 +315,17 @@ export async function renameSession(sessionId: string, title: string): Promise<{
 }> {
   const response = await fetch(`${getApiBase()}/api/sessions/${sessionId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
     body: JSON.stringify({ title }),
   });
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
     throw new Error(`API error: ${response.statusText}`);
   }
   return response.json();

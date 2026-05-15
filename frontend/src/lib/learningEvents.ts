@@ -12,10 +12,12 @@ interface LearningEvent {
 }
 
 const FLUSH_INTERVAL = 10_000; // 10 seconds
+const HEARTBEAT_INTERVAL = 60_000; // 60 seconds
 const MAX_BATCH = 50;
 
 let pendingEvents: LearningEvent[] = [];
 let flushTimer: ReturnType<typeof setInterval> | null = null;
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let isInitialized = false;
 
 function getToken(): string | null {
@@ -53,9 +55,17 @@ function ensureInitialized(): void {
   // Periodic flush
   flushTimer = setInterval(flush, FLUSH_INTERVAL);
 
+  // Heartbeat: log active time every 60s while page is visible
+  heartbeatTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      logEvent('heartbeat', { seconds: HEARTBEAT_INTERVAL / 1000 });
+    }
+  }, HEARTBEAT_INTERVAL);
+
   // Flush on page unload
   window.addEventListener('beforeunload', () => {
     if (flushTimer) clearInterval(flushTimer);
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
     flush();
   });
 

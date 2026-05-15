@@ -1,14 +1,24 @@
 'use client';
 
 import { X, ChevronRight, Loader2, BookOpen, Brain, FileText, Layers, Link2, ArrowRight, Hash, MessageSquare } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { GraphNode, GraphData } from '@/lib/api';
 
-const TYPE_META: Record<string, { label: string; icon: typeof Brain; color: string; bg: string }> = {
-  entity: { label: '实体', icon: Brain, color: '#6366F1', bg: '#EEF2FF' },
-  course: { label: '课程', icon: BookOpen, color: '#D97706', bg: '#FEF3C7' },
-  chapter: { label: '章节', icon: FileText, color: '#3B82F6', bg: '#DBEAFE' },
-  section: { label: '知识点', icon: Layers, color: '#059669', bg: '#D1FAE5' },
+function useIsDark() {
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => {
+    const obs = new MutationObserver(() => setIsDark(document.documentElement.classList.contains('dark')));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
+
+const TYPE_META: Record<string, { label: string; icon: typeof Brain; color: string; bg: string; darkColor: string; darkBg: string }> = {
+  entity: { label: '实体', icon: Brain, color: '#6366F1', bg: '#EEF2FF', darkColor: '#818CF8', darkBg: '#2e2b3d' },
+  course: { label: '课程', icon: BookOpen, color: '#D97706', bg: '#FEF3C7', darkColor: '#F59E0B', darkBg: '#3d3520' },
+  chapter: { label: '章节', icon: FileText, color: '#3B82F6', bg: '#DBEAFE', darkColor: '#60A5FA', darkBg: '#1e293b' },
+  section: { label: '知识点', icon: Layers, color: '#059669', bg: '#D1FAE5', darkColor: '#34D399', darkBg: '#1a2e25' },
 };
 
 const EDGE_LABELS: Record<string, string> = {
@@ -28,8 +38,11 @@ interface GraphDetailPanelProps {
 }
 
 export function GraphDetailPanel({ node, expanded, expanding, graphData, onExpand, onClose }: GraphDetailPanelProps) {
+  const isDark = useIsDark();
   const meta = TYPE_META[node.type] || TYPE_META.entity;
   const Icon = meta.icon;
+  const metaColor = isDark ? meta.darkColor : meta.color;
+  const metaBg = isDark ? meta.darkBg : meta.bg;
 
   // Compute derived properties from graphData
   const derived = useMemo(() => {
@@ -114,15 +127,15 @@ export function GraphDetailPanel({ node, expanded, expanding, graphData, onExpan
         <div className="flex items-start gap-2.5">
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-            style={{ backgroundColor: meta.bg }}
+            style={{ backgroundColor: metaBg }}
           >
-            <Icon className="w-4.5 h-4.5" style={{ color: meta.color }} />
+            <Icon className="w-4.5 h-4.5" style={{ color: metaColor }} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-foreground leading-tight break-words">
               {node.name}
             </div>
-            <div className="text-[11px] mt-0.5" style={{ color: meta.color }}>
+            <div className="text-[11px] mt-0.5" style={{ color: metaColor }}>
               {meta.label}
             </div>
           </div>
@@ -236,8 +249,8 @@ export function GraphDetailPanel({ node, expanded, expanding, graphData, onExpan
             disabled={expanding}
             className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
               expanded
-                ? 'border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100'
-                : 'border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 disabled:opacity-50'
+                ? 'border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50'
+                : 'border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50 disabled:opacity-50'
             }`}
           >
             {expanding ? (

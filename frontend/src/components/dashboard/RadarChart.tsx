@@ -1,7 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { RadarScores } from '@/lib/api';
+
+function useIsDark() {
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => {
+    const obs = new MutationObserver(() => setIsDark(document.documentElement.classList.contains('dark')));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
 
 const DIMENSIONS: { key: keyof RadarScores; label: string }[] = [
   { key: 'memory', label: '基础记忆' },
@@ -22,6 +32,14 @@ interface RadarChartProps {
 }
 
 export function RadarChart({ scores }: RadarChartProps) {
+  const isDark = useIsDark();
+
+  // Theme-aware colors
+  const gridStroke = isDark ? 'rgba(255, 255, 255, 0.08)' : '#e5e7eb';
+  const labelFill = isDark ? '#9ca3af' : '#4b5563';
+  const pointFill = isDark ? '#18181b' : '#ffffff';
+  const pointStroke = isDark ? 'rgba(59, 130, 246, 1)' : '#3b82f6';
+
   const axes = useMemo(() => {
     return DIMENSIONS.map((dim, i) => {
       const angle = START_ANGLE + i * ANGLE_STEP;
@@ -65,9 +83,8 @@ export function RadarChart({ scores }: RadarChartProps) {
               key={ratio}
               points={points}
               fill="none"
-              stroke="rgba(229, 231, 235, 0.8)"
+              stroke={gridStroke}
               strokeWidth="1"
-              className="dark:stroke-gray-700"
             />
           );
         })}
@@ -80,9 +97,8 @@ export function RadarChart({ scores }: RadarChartProps) {
             y1={CENTER}
             x2={axis.x}
             y2={axis.y}
-            stroke="rgba(229, 231, 235, 0.8)"
+            stroke={gridStroke}
             strokeWidth="1"
-            className="dark:stroke-gray-700"
           />
         ))}
 
@@ -107,8 +123,8 @@ export function RadarChart({ scores }: RadarChartProps) {
               cx={cx}
               cy={cy}
               r="4"
-              fill="white"
-              stroke="rgba(59, 130, 246, 1)"
+              fill={pointFill}
+              stroke={pointStroke}
               strokeWidth="2"
             />
           );
@@ -131,7 +147,8 @@ export function RadarChart({ scores }: RadarChartProps) {
               y={ly}
               textAnchor={textAnchor}
               dominantBaseline="central"
-              className="text-xs font-semibold fill-gray-600 dark:fill-gray-300"
+              className="text-xs font-semibold"
+              fill={labelFill}
             >
               {axis.label}
             </text>

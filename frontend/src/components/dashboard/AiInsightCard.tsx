@@ -14,8 +14,8 @@ interface AiInsightCardProps {
 export function AiInsightCard({ insightText, highlightTags, actionItem, onRefresh, isRefreshing }: AiInsightCardProps) {
   if (!insightText) {
     return (
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/80 rounded-2xl p-6 border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3 text-gray-400">
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-zinc-900/80 dark:to-zinc-900/50 dark:backdrop-blur-md rounded-2xl p-6 border border-gray-200 dark:border-white/10">
+        <div className="flex items-center gap-3 text-gray-400 dark:text-zinc-500">
           <Zap className="w-5 h-5" />
           <span className="text-sm">完成更多学习后，AI 将为你生成个性化洞察</span>
         </div>
@@ -24,7 +24,7 @@ export function AiInsightCard({ insightText, highlightTags, actionItem, onRefres
   }
 
   return (
-    <div className="bg-gradient-to-r from-[#f0f4ff] to-[#f4faff] dark:from-blue-950/30 dark:to-indigo-950/20 rounded-2xl p-6 border border-blue-100 dark:border-blue-900/30 shadow-sm relative overflow-hidden">
+    <div className="bg-gradient-to-r from-[#f0f4ff] to-[#f4faff] dark:from-zinc-900/80 dark:to-zinc-900/50 dark:backdrop-blur-md rounded-2xl p-6 border border-blue-100 dark:border-white/10 shadow-sm dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] relative overflow-hidden">
       {/* Decorative glow */}
       <div className="absolute -right-4 -top-6 text-9xl opacity-[0.03] select-none pointer-events-none">
         ✨
@@ -38,7 +38,7 @@ export function AiInsightCard({ insightText, highlightTags, actionItem, onRefres
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-base font-bold text-blue-900 dark:text-blue-200">AI 智能洞察与行动建议</h3>
+            <h3 className="text-base font-bold text-blue-900 dark:text-zinc-200">AI 智能洞察与行动建议</h3>
             {onRefresh && (
               <button
                 onClick={onRefresh}
@@ -52,7 +52,7 @@ export function AiInsightCard({ insightText, highlightTags, actionItem, onRefres
           </div>
 
           {/* Insight text */}
-          <p className="text-sm text-blue-800 dark:text-blue-300 leading-relaxed mb-3">
+          <p className="text-sm text-blue-800 dark:text-zinc-300 leading-relaxed mb-3">
             <MarkdownRenderer content={insightText} />
           </p>
 
@@ -62,7 +62,7 @@ export function AiInsightCard({ insightText, highlightTags, actionItem, onRefres
               {highlightTags.map((tag, i) => (
                 <span
                   key={i}
-                  className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100/60 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                  className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100/60 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
                 >
                   {tag}
                 </span>
@@ -72,8 +72,8 @@ export function AiInsightCard({ insightText, highlightTags, actionItem, onRefres
 
           {/* Action item */}
           {actionItem && (
-            <div className="mt-3 pt-3 border-t border-blue-100/50 dark:border-blue-800/30">
-              <p className="text-sm text-blue-700 dark:text-blue-400">
+            <div className="mt-3 pt-3 border-t border-blue-100/50 dark:border-white/5">
+              <p className="text-sm text-blue-700 dark:text-zinc-400">
                 <span className="font-semibold">行动建议：</span>
                 {actionItem}
               </p>

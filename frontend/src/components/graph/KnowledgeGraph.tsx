@@ -26,12 +26,24 @@ function ensureRegistered() {
 
 // ── Node color scheme ──────────────────────────────────
 
-const NODE_COLORS: Record<string, { fill: string; stroke: string }> = {
+const NODE_COLORS_LIGHT: Record<string, { fill: string; stroke: string }> = {
   entity: { fill: '#EEF2FF', stroke: '#818CF8' },
   course: { fill: '#FEF3C7', stroke: '#F59E0B' },
   chapter: { fill: '#DBEAFE', stroke: '#60A5FA' },
   section: { fill: '#D1FAE5', stroke: '#34D399' },
 };
+
+const NODE_COLORS_DARK: Record<string, { fill: string; stroke: string }> = {
+  entity: { fill: '#2e2b3d', stroke: '#818CF8' },
+  course: { fill: '#3d3520', stroke: '#F59E0B' },
+  chapter: { fill: '#1e293b', stroke: '#60A5FA' },
+  section: { fill: '#1a2e25', stroke: '#34D399' },
+};
+
+function getNodeColors() {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark ? NODE_COLORS_DARK : NODE_COLORS_LIGHT;
+}
 
 type GraphMode = 'entity' | 'course';
 
@@ -131,14 +143,16 @@ export function KnowledgeGraph() {
               const override = data?.style as Record<string, unknown> | undefined;
               if (override?.fill) return override.fill as string;
               const nodeType = data?.type as string;
-              return NODE_COLORS[nodeType]?.fill || NODE_COLORS.entity.fill;
+              const colors = getNodeColors();
+              return colors[nodeType]?.fill || colors.entity.fill;
             },
             stroke: (d: Record<string, unknown>) => {
               const data = d.data as Record<string, unknown>;
               const override = data?.style as Record<string, unknown> | undefined;
               if (override?.stroke) return override.stroke as string;
               const nodeType = data?.type as string;
-              return NODE_COLORS[nodeType]?.stroke || NODE_COLORS.entity.stroke;
+              const colors = getNodeColors();
+              return colors[nodeType]?.stroke || colors.entity.stroke;
             },
             lineWidth: (d: Record<string, unknown>) => {
               const data = d.data as Record<string, unknown>;
@@ -151,7 +165,10 @@ export function KnowledgeGraph() {
               return name.length > 12 ? name.slice(0, 12) + '…' : name;
             },
             labelFontSize: 11,
-            labelFill: '#374151',
+            labelFill: () => {
+              const isDark = document.documentElement.classList.contains('dark');
+              return isDark ? '#d4d4d8' : '#374151'; // zinc-300 in dark, gray-700 in light
+            },
             labelPlacement: 'bottom',
             labelOffsetY: 8,
             cursor: 'pointer',
@@ -173,7 +190,9 @@ export function KnowledgeGraph() {
             stroke: (d: Record<string, unknown>) => {
               const data = d.data as Record<string, unknown>;
               const override = data?.style as Record<string, unknown> | undefined;
-              return (override?.stroke as string) || '#CBD5E1';
+              if (override?.stroke) return override.stroke as string;
+              const isDark = document.documentElement.classList.contains('dark');
+              return isDark ? '#3f3f46' : '#CBD5E1'; // zinc-700 in dark, slate-200 in light
             },
             lineWidth: (d: Record<string, unknown>) => {
               const data = d.data as Record<string, unknown>;
@@ -185,7 +204,9 @@ export function KnowledgeGraph() {
             endArrowFill: (d: Record<string, unknown>) => {
               const data = d.data as Record<string, unknown>;
               const override = data?.style as Record<string, unknown> | undefined;
-              return (override?.endArrowFill as string) || '#CBD5E1';
+              if (override?.endArrowFill) return override.endArrowFill as string;
+              const isDark = document.documentElement.classList.contains('dark');
+              return isDark ? '#3f3f46' : '#CBD5E1';
             },
             curveOffset: 0,
             curvePosition: 0.5,
@@ -294,6 +315,25 @@ export function KnowledgeGraph() {
     } catch { /* noop */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, getLayout, isTraceback]);
+
+  // ── Re-render on theme change ───────────────────────
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const graph = graphRef.current;
+      if (!graph || !graphData) return;
+      // Force re-render to pick up new theme colors
+      needsFitViewRef.current = false;
+      setGraphData((prev) => prev ? { ...prev } : prev);
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, [graphData]);
 
   // ── Render data ─────────────────────────────────────
 
@@ -700,7 +740,7 @@ export function KnowledgeGraph() {
             onClick={switchToEntity}
             className={`px-3 py-1.5 text-xs font-medium transition-colors ${
               mode === 'entity'
-                ? 'bg-orange-500 text-white'
+                ? 'bg-orange-500/20 text-orange-500 dark:text-orange-400'
                 : 'text-muted-foreground hover:bg-muted'
             }`}
           >
@@ -710,7 +750,7 @@ export function KnowledgeGraph() {
             onClick={switchToCourse}
             className={`px-3 py-1.5 text-xs font-medium transition-colors ${
               mode === 'course'
-                ? 'bg-orange-500 text-white'
+                ? 'bg-orange-500/20 text-orange-500 dark:text-orange-400'
                 : 'text-muted-foreground hover:bg-muted'
             }`}
           >
@@ -753,7 +793,7 @@ export function KnowledgeGraph() {
             <button
               onClick={handleSearch}
               disabled={loading || !searchText.trim()}
-              className="px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-500 dark:text-orange-400 text-xs font-medium hover:bg-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '搜索'}
             </button>

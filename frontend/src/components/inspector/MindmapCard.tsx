@@ -42,8 +42,8 @@ const NODE_RX = 10;
 const ANIM_DURATION = 450;
 const EASE = 'cubic-bezier(0.65, 0, 0.35, 1)';
 
-// Color palette matching reference design
-const DEPTH_COLORS = [
+// Color palette — light and dark variants
+const DEPTH_COLORS_LIGHT = [
   { bg: '#cdd4fd', text: '#1c2331' },  // root — purple-blue
   { bg: '#c1d3f9', text: '#1c2331' },  // depth 1 — light blue
   { bg: '#a4e2cc', text: '#1c2331' },  // depth 2 — light green
@@ -51,7 +51,16 @@ const DEPTH_COLORS = [
   { bg: '#d4d4d4', text: '#1c2331' },  // depth 4+ — light gray
 ];
 
-const LINK_COLOR = '#8ba2e8';
+const DEPTH_COLORS_DARK = [
+  { bg: '#3b3a6d', text: '#e2e0ff' },  // root — deep purple-blue
+  { bg: '#2a3a5c', text: '#b8d4ff' },  // depth 1 — deep blue
+  { bg: '#1e3a2f', text: '#a4e2cc' },  // depth 2 — deep green
+  { bg: '#3d3520', text: '#f5d5a0' },  // depth 3 — deep amber
+  { bg: '#2a2a2a', text: '#d4d4d4' },  // depth 4+ — dark gray
+];
+
+const LINK_COLOR_LIGHT = '#8ba2e8';
+const LINK_COLOR_DARK = '#4a5a8a';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -83,8 +92,13 @@ function assignIds(node: MindmapTreeNode, path: string = ''): TreeNode {
   };
 }
 
-function getDepthColor(depth: number) {
-  return DEPTH_COLORS[Math.min(depth, DEPTH_COLORS.length - 1)];
+function getDepthColor(depth: number, isDark: boolean) {
+  const palette = isDark ? DEPTH_COLORS_DARK : DEPTH_COLORS_LIGHT;
+  return palette[Math.min(depth, palette.length - 1)];
+}
+
+function getLinkColor(isDark: boolean) {
+  return isDark ? LINK_COLOR_DARK : LINK_COLOR_LIGHT;
 }
 
 function idToDepth(id: string): number {
@@ -280,7 +294,7 @@ function ContentPanel({
                   <Lightbulb className="w-3 h-3" /> 典型例子
                 </div>
                 {extra.examples.map((ex, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm bg-amber-50/50 rounded-lg px-3 py-2 border border-amber-200/30">
+                  <div key={i} className="flex items-start gap-2 text-sm bg-amber-50/50 dark:bg-amber-900/20 rounded-lg px-3 py-2 border border-amber-200/30 dark:border-amber-800/30">
                     <span className="text-amber-500 text-xs">💡</span>
                     <span className="text-foreground">{ex}</span>
                   </div>
@@ -293,7 +307,7 @@ function ContentPanel({
                   <Zap className="w-3 h-3" /> 实际应用
                 </div>
                 {extra.applications.map((app, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm bg-green-50/50 rounded-lg px-3 py-2 border border-green-200/30">
+                  <div key={i} className="flex items-start gap-2 text-sm bg-green-50/50 dark:bg-green-900/20 rounded-lg px-3 py-2 border border-green-200/30 dark:border-green-800/30">
                     <span className="text-green-500 text-xs">⚡</span>
                     <span className="text-foreground">{app}</span>
                   </div>
@@ -316,25 +330,25 @@ function Header({
 }) {
   const title = path.split('/').pop()?.replace(/\.json$/, '') || '知识导图';
   return (
-    <header className="h-14 border-b border-gray-100 flex items-center justify-between px-6 bg-white shrink-0 z-20 shadow-sm">
+    <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-white dark:bg-card shrink-0 z-20 shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="w-7 h-7 bg-blue-50 text-blue-600 rounded flex items-center justify-center border border-blue-100">
+        <div className="w-7 h-7 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded flex items-center justify-center border border-blue-100 dark:border-blue-800">
           <Network className="w-4 h-4" />
         </div>
-        <h1 className="text-[15px] font-bold text-gray-800">{title}</h1>
-        <div className="w-px h-4 bg-gray-200 mx-2" />
-        <span className="text-[12px] text-gray-400 font-mono">{path}</span>
+        <h1 className="text-[15px] font-bold text-foreground">{title}</h1>
+        <div className="w-px h-4 bg-border mx-2" />
+        <span className="text-[12px] text-muted-foreground font-mono">{path}</span>
       </div>
       <div className="flex items-center gap-1">
-        <button onClick={onCopy} className="p-1.5 rounded-md hover:bg-gray-50 transition-colors">
-          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+        <button onClick={onCopy} className="p-1.5 rounded-md hover:bg-muted transition-colors">
+          {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
         </button>
-        <button onClick={onDownload} className="p-1.5 rounded-md hover:bg-gray-50 transition-colors">
-          <Download className="w-3.5 h-3.5 text-gray-400" />
+        <button onClick={onDownload} className="p-1.5 rounded-md hover:bg-muted transition-colors">
+          <Download className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
         {onOpenInEditor && (
-          <button onClick={onOpenInEditor} className="p-1.5 rounded-md hover:bg-gray-50 transition-colors">
-            <FileCode2 className="w-3.5 h-3.5 text-gray-400" />
+          <button onClick={onOpenInEditor} className="p-1.5 rounded-md hover:bg-muted transition-colors">
+            <FileCode2 className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         )}
       </div>
@@ -356,6 +370,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   const [extraMap, setExtraMap] = useState<Record<string, MindmapExtra>>({});
   const [loadingPath, setLoadingPath] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
 
   // Exit animation
   const [exitingNodes, setExitingNodes] = useState<ExitingNode[]>([]);
@@ -389,6 +404,15 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
       initialized.current = true;
     }
   });
+
+  // Re-render on theme change
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   // Compute layout
   const { nodes, links } = useMemo(() => {
@@ -677,7 +701,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
 
   if (!isJson) {
     return (
-      <div className="h-full flex flex-col bg-white">
+      <div className="h-full flex flex-col bg-white dark:bg-card">
         <Header path={path} copied={copied} onCopy={handleCopy} onDownload={handleDownload} onOpenInEditor={onOpenInEditor} />
         <div className="flex-1 overflow-y-auto p-5"><MarkdownRenderer content={content} /></div>
       </div>
@@ -686,7 +710,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
 
   if (!treeData) {
     return (
-      <div className="h-full flex flex-col bg-white">
+      <div className="h-full flex flex-col bg-white dark:bg-card">
         <Header path={path} copied={copied} onCopy={handleCopy} onDownload={handleDownload} onOpenInEditor={onOpenInEditor} />
         <div className="flex-1 flex items-center justify-center text-sm text-destructive">无法解析思维导图 JSON</div>
       </div>
@@ -694,14 +718,14 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
   }
 
   return (
-    <div className="h-full flex flex-col bg-white text-gray-800 font-sans overflow-hidden">
+    <div className="h-full flex flex-col bg-white dark:bg-card text-foreground font-sans overflow-hidden">
       <Header path={path} copied={copied} onCopy={handleCopy} onDownload={handleDownload} onOpenInEditor={onOpenInEditor} />
 
       <div className="flex-1 flex min-h-0">
         {/* Left: Canvas */}
         <div
           ref={containerRef}
-          className="flex-[3] relative min-w-0 border-r border-gray-100 bg-[#fafafa] overflow-hidden"
+          className="flex-[3] relative min-w-0 border-r border-border bg-[#fafafa] dark:bg-[#141418] overflow-hidden"
           style={{ minHeight: 300, cursor: isDragging ? 'grabbing' : 'grab' }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
@@ -728,7 +752,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
                   key={`link-${link.source.data._id}-${link.target.data._id}`}
                   d={linkGen(link) || ''}
                   fill="none"
-                  stroke={LINK_COLOR}
+                  stroke={getLinkColor(isDark)}
                   strokeWidth={1.5}
                   strokeLinecap="round"
                   opacity={0.9}
@@ -739,7 +763,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
 
             {/* Exiting nodes (FLIP-animated) */}
             {exitingNodes.map((ex) => {
-              const color = getDepthColor(ex.depth);
+              const color = getDepthColor(ex.depth, isDark);
               return (
                 <div
                   key={`exit-${ex.id}`}
@@ -769,7 +793,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
             {/* Active nodes */}
             {nodes.map((node) => {
               const depth = idToDepth(node.data._id);
-              const color = getDepthColor(depth);
+              const color = getDepthColor(depth, isDark);
               const isSelected = node.data._id === selectedId;
               const hasChildren = node.data.children.length > 0 || (node.data._children && node.data._children.length > 0);
               const isCollapsed = node.data._children && node.data._children.length > 0;
@@ -842,16 +866,16 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
           </div>
 
           {/* Zoom controls - horizontal floating panel */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white border border-gray-100 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.08)] rounded-xl flex items-center p-1 gap-1 text-gray-500 z-10">
-            <button onClick={zoomFit} className="p-2 hover:bg-gray-50 hover:text-gray-800 rounded-lg transition-colors" title="适应屏幕">
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white dark:bg-card border border-border shadow-[0_2px_12px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_12px_-2px_rgba(0,0,0,0.3)] rounded-xl flex items-center p-1 gap-1 text-muted-foreground z-10">
+            <button onClick={zoomFit} className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors" title="适应屏幕">
               <Maximize2 className="w-4 h-4" />
             </button>
-            <div className="w-px h-4 bg-gray-200 mx-1" />
-            <button onClick={zoomOut} className="p-2 hover:bg-gray-50 hover:text-gray-800 rounded-lg transition-colors" title="缩小">
+            <div className="w-px h-4 bg-border mx-1" />
+            <button onClick={zoomOut} className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors" title="缩小">
               <ZoomOut className="w-4 h-4" />
             </button>
             <span className="text-xs font-medium px-1 select-none min-w-[3ch] text-center">{Math.round(scale * 100)}%</span>
-            <button onClick={zoomIn} className="p-2 hover:bg-gray-50 hover:text-gray-800 rounded-lg transition-colors" title="放大">
+            <button onClick={zoomIn} className="p-2 hover:bg-muted hover:text-foreground rounded-lg transition-colors" title="放大">
               <ZoomIn className="w-4 h-4" />
             </button>
           </div>

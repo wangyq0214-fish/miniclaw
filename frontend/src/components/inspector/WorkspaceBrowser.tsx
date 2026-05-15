@@ -45,20 +45,20 @@ interface ResourceCategory {
 }
 
 const RESOURCE_CATEGORIES: ResourceCategory[] = [
-  { key: 'exercises', icon: FileCode, label: '练习题', color: 'text-purple-600', bgColor: 'bg-purple-50', description: '根据学习进度生成的针对性练习', generateLabel: '测验' },
-  { key: 'flashcards', icon: Layers, label: '抽认卡', color: 'text-cyan-600', bgColor: 'bg-cyan-50', description: '间隔重复记忆卡片，高效巩固知识点', generateLabel: '抽认卡' },
-  { key: 'lectures', icon: BookOpen, label: '讲义', color: 'text-blue-600', bgColor: 'bg-blue-50', description: '深度讲解文档，涵盖核心概念与原理', generateLabel: '讲义' },
-  { key: 'mindmaps', icon: Network, label: '思维导图', color: 'text-emerald-600', bgColor: 'bg-emerald-50', description: '可视化知识结构，梳理概念关系', generateLabel: '思维导图' },
-  { key: 'reading-lists', icon: List, label: '阅读清单', color: 'text-amber-600', bgColor: 'bg-amber-50', description: '精选阅读材料与推荐书单', generateLabel: '阅读清单' },
-  { key: 'evaluations', icon: BarChart3, label: '评估', color: 'text-rose-600', bgColor: 'bg-rose-50', description: '学习效果评估与能力分析', generateLabel: '评估' },
-  { key: 'code-cases', icon: Code, label: '代码案例', color: 'text-violet-600', bgColor: 'bg-violet-50', description: '可运行的分级代码示例', generateLabel: '代码案例' },
-  { key: 'media-scripts', icon: FileCode, label: '动画脚本', color: 'text-pink-600', bgColor: 'bg-pink-50', description: '场景分镜动画脚本，含视觉元素与旁白', generateLabel: '动画脚本' },
+  { key: 'exercises', icon: FileCode, label: '练习题', color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-50 dark:bg-purple-500/10', description: '根据学习进度生成的针对性练习', generateLabel: '测验' },
+  { key: 'flashcards', icon: Layers, label: '抽认卡', color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-50 dark:bg-cyan-500/10', description: '间隔重复记忆卡片，高效巩固知识点', generateLabel: '抽认卡' },
+  { key: 'lectures', icon: BookOpen, label: '讲义', color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-50 dark:bg-blue-500/10', description: '深度讲解文档，涵盖核心概念与原理', generateLabel: '讲义' },
+  { key: 'mindmaps', icon: Network, label: '思维导图', color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-50 dark:bg-emerald-500/10', description: '可视化知识结构，梳理概念关系', generateLabel: '思维导图' },
+  { key: 'reading-lists', icon: List, label: '阅读清单', color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-50 dark:bg-amber-500/10', description: '精选阅读材料与推荐书单', generateLabel: '阅读清单' },
+  { key: 'evaluations', icon: BarChart3, label: '评估', color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-50 dark:bg-rose-500/10', description: '学习效果评估与能力分析', generateLabel: '评估' },
+  { key: 'code-cases', icon: Code, label: '代码案例', color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-50 dark:bg-violet-500/10', description: '可运行的分级代码示例', generateLabel: '代码案例' },
+  { key: 'media-scripts', icon: FileCode, label: '动画脚本', color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-50 dark:bg-pink-500/10', description: '场景分镜动画脚本，含视觉元素与旁白', generateLabel: '动画脚本' },
 ];
 
 // ── Roots ──
 const ROOTS = [
-  { path: 'knowledge/source', label: '共享资源', icon: Library, color: 'bg-sky-50 text-sky-600' },
-  { path: 'workspace', label: '我的工作区', icon: FolderOpen, color: 'bg-violet-50 text-violet-600' },
+  { path: 'knowledge/source', label: '共享资源', icon: Library, color: 'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400' },
+  { path: 'workspace', label: '我的工作区', icon: FolderOpen, color: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400' },
 ] as const;
 
 // ── Types ──
@@ -135,7 +135,7 @@ function CategoryCard({
 }) {
   return (
     <div
-      className="group flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
+      className="group flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-border hover:border-primary/20 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
       onClick={e => {
         // Only navigate if click target is NOT inside the button
         if (!(e.target as HTMLElement).closest('button')) {
@@ -148,13 +148,13 @@ function CategoryCard({
           <category.icon className={`w-5 h-5 ${category.color}`} />
         </div>
         <div className="min-w-0">
-          <span className="text-sm font-semibold text-gray-800 block">{category.label}</span>
-          <span className="text-xs text-gray-400 line-clamp-1">{category.description}</span>
+          <span className="text-sm font-semibold text-foreground block">{category.label}</span>
+          <span className="text-xs text-muted-foreground line-clamp-1">{category.description}</span>
         </div>
       </div>
       <button
         onClick={e => { e.stopPropagation(); onGenerate(); }}
-        className="w-8 h-8 rounded-full bg-gray-50 hover:bg-indigo-50 flex items-center justify-center text-gray-400 hover:text-indigo-500 transition-colors shrink-0 ml-2"
+        className="w-8 h-8 rounded-full bg-secondary hover:bg-primary/10 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors shrink-0 ml-2"
         title={`自定义生成${category.label}`}
       >
         <Sparkles className="w-4 h-4" />
@@ -177,7 +177,7 @@ function CapsuleSelector({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-foreground mb-2">{label}</label>
       <div className="flex flex-wrap gap-2">
         {options.map(opt => (
           <button
@@ -186,8 +186,8 @@ function CapsuleSelector({
             onClick={() => onChange(opt)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               value === opt
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-accent'
             }`}
           >
             {opt}
@@ -216,9 +216,9 @@ function GenerateModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-border">
           <div className="flex items-center gap-3">
             {category && (
               <div className={`w-9 h-9 rounded-xl ${category.bgColor} flex items-center justify-center`}>
@@ -226,11 +226,11 @@ function GenerateModal({
               </div>
             )}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">自定义生成</h2>
-              <p className="text-xs text-gray-400">{resourceType}</p>
+              <h2 className="text-lg font-semibold text-foreground">自定义生成</h2>
+              <p className="text-xs text-muted-foreground">{resourceType}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -264,21 +264,21 @@ function GenerateModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">额外要求（可选）</label>
+            <label className="block text-sm font-medium text-foreground mb-2">额外要求（可选）</label>
             <textarea
               value={formData.prompt || ''}
               onChange={e => update('prompt', e.target.value)}
               placeholder="例如：重点考察反向传播的数学推导..."
-              className="w-full h-32 px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-shadow"
+              className="w-full h-32 px-4 py-3 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-shadow"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/50">
+        <div className="px-8 py-5 border-t border-border bg-secondary/50">
           <button
             onClick={() => onGenerate(formData)}
-            className="w-full py-3 rounded-xl bg-indigo-600 text-white text-base font-semibold hover:bg-indigo-700 active:scale-[0.98] transition-all"
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-base font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
           >
             开始生成
           </button>
@@ -291,13 +291,13 @@ function GenerateModal({
 // ── Generating list item ──
 function GeneratingListItem({ title, metadata }: { title: string; metadata: string }) {
   return (
-    <div className="flex items-center gap-3 py-3 px-3 rounded-xl bg-gradient-to-r from-blue-50/60 to-indigo-50/40">
-      <div className="w-8 h-8 rounded-lg bg-blue-100/60 flex items-center justify-center shrink-0">
-        <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+    <div className="flex items-center gap-3 py-3 px-3 rounded-xl bg-primary/5 border border-primary/10">
+      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+        <Loader2 className="w-4 h-4 text-primary animate-spin" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-blue-700 truncate">{title}</p>
-        <p className="text-xs text-blue-400 mt-0.5">{metadata}</p>
+        <p className="text-sm font-medium text-primary truncate">{title}</p>
+        <p className="text-xs text-primary/60 mt-0.5">{metadata}</p>
       </div>
     </div>
   );
@@ -345,24 +345,24 @@ function FileTreeItem({
         onClick={() => isDir ? handleToggle() : onSelect(file.path)}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isDir ? handleToggle() : onSelect(file.path); } }}
         className={`flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
-          isActive ? 'bg-blue-50/80' : 'hover:bg-gray-50'
+          isActive ? 'bg-primary/10' : 'hover:bg-secondary'
         }`}
         style={{ paddingLeft: 8 + depth * 16 }}
       >
         {isDir ? (
-          <ChevronRight className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+          <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`} />
         ) : (
           <span className="w-3.5 shrink-0" />
         )}
         {isDir ? (
           <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
         ) : (
-          <FileCode className="w-4 h-4 text-blue-400 shrink-0" />
+          <FileCode className="w-4 h-4 text-primary/60 shrink-0" />
         )}
-        <span className={`text-sm truncate ${isActive ? 'text-blue-700 font-medium' : 'text-gray-700'}`}>
+        <span className={`text-sm truncate ${isActive ? 'text-primary font-medium' : 'text-foreground'}`}>
           {file.name}
         </span>
-        {loading && <Loader2 className="w-3 h-3 text-gray-400 animate-spin shrink-0" />}
+        {loading && <Loader2 className="w-3 h-3 text-muted-foreground animate-spin shrink-0" />}
       </div>
       {isDir && expanded && children.map(child => (
         <FileTreeItem
@@ -581,7 +581,7 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
   if (loading) {
     return (
       <div className="p-4 flex items-center justify-center">
-        <div className="flex items-center gap-2 text-gray-500">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span className="text-xs">加载中…</span>
         </div>
@@ -603,8 +603,8 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
     viewContent = (
       <>
         <div className="px-5 pt-5 pb-3">
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-          <p className="text-sm text-gray-400 mt-1">{description}</p>
+          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
         </div>
         {state.isGeneratingQuiz && <GeneratingBanner />}
         <div className="flex-1 overflow-y-auto px-5 pb-6">
@@ -613,12 +613,12 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
               <button
                 key={root.path}
                 onClick={() => setCurrentPath(root.path)}
-                className="group flex flex-col items-start p-4 rounded-2xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all text-left"
+                className="group flex flex-col items-start p-4 rounded-2xl bg-white dark:bg-card border border-border hover:border-primary/20 hover:shadow-md hover:-translate-y-0.5 transition-all text-left"
               >
                 <div className={`w-10 h-10 rounded-xl ${root.color} flex items-center justify-center mb-3`}>
                   <root.icon className="w-5 h-5" />
                 </div>
-                <span className="text-sm font-semibold text-gray-800">{root.label}</span>
+                <span className="text-sm font-semibold text-foreground">{root.label}</span>
               </button>
             ))}
           </div>
@@ -631,12 +631,12 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
       <>
         <div className="px-5 pt-4 pb-2">
           <div className="flex items-center gap-3 mb-3">
-            <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
-              <ArrowLeft className="w-4 h-4 text-gray-500" />
+            <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors">
+              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{title}</h1>
-              <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+              <h1 className="text-xl font-bold text-foreground">{title}</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
             </div>
           </div>
         </div>
@@ -661,12 +661,12 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
       <>
         <div className="px-5 pt-4 pb-2">
           <div className="flex items-center gap-3 mb-3">
-            <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
-              <ArrowLeft className="w-4 h-4 text-gray-500" />
+            <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors">
+              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{title}</h1>
-              <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+              <h1 className="text-xl font-bold text-foreground">{title}</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
             </div>
           </div>
         </div>
@@ -676,14 +676,14 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
               <div className="relative" ref={newMenuRef}>
                 <button
                   onClick={() => setNewMenuOpen(!newMenuOpen)}
-                  className="flex items-center gap-3 py-3 px-3 rounded-xl border-2 border-dashed border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 transition-all text-left w-full"
+                  className="flex items-center gap-3 py-3 px-3 rounded-xl border-2 border-dashed border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all text-left w-full"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                    <FolderPlus className="w-4 h-4 text-violet-600" />
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <FolderPlus className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <span className="text-sm font-medium text-violet-700">新建</span>
-                    <span className="text-xs text-violet-400 block">创建文件或文件夹</span>
+                    <span className="text-sm font-medium text-primary">新建</span>
+                    <span className="text-xs text-primary/60 block">创建文件或文件夹</span>
                   </div>
                 </button>
                 {newMenuOpen && (
@@ -710,12 +710,12 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
               <button
                 key={dir.path}
                 onClick={() => setCurrentPath(dir.path)}
-                className="flex items-center gap-3 py-3 px-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                className="flex items-center gap-3 py-3 px-3 rounded-xl hover:bg-secondary transition-colors text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                  <FolderOpen className="w-4 h-4 text-gray-500" />
+                <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                  <FolderOpen className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <span className="text-sm font-medium text-gray-800">{getDisplayName(dir.name)}</span>
+                <span className="text-sm font-medium text-foreground">{getDisplayName(dir.name)}</span>
               </button>
             ))}
           </div>
@@ -728,12 +728,12 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
       <>
         <div className="px-5 pt-4 pb-2">
           <div className="flex items-center gap-3 mb-3">
-            <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
-              <ArrowLeft className="w-4 h-4 text-gray-500" />
+            <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors">
+              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{title}</h1>
-              <p className="text-xs text-gray-400 mt-0.5">项目文件</p>
+              <h1 className="text-xl font-bold text-foreground">{title}</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">项目文件</p>
             </div>
           </div>
         </div>
@@ -742,12 +742,12 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
           <div className="relative mb-2" ref={newMenuRef}>
             <button
               onClick={() => setNewMenuOpen(!newMenuOpen)}
-              className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl border-2 border-dashed border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 transition-all text-left"
+              className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl border-2 border-dashed border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
             >
-              <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                <FolderPlus className="w-3.5 h-3.5 text-violet-600" />
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <FolderPlus className="w-3.5 h-3.5 text-primary" />
               </div>
-              <span className="text-sm font-medium text-violet-700">新建</span>
+              <span className="text-sm font-medium text-primary">新建</span>
             </button>
             {newMenuOpen && (
               <div className="absolute left-0 top-full mt-1 z-50 w-44 bg-popover border border-border rounded-xl shadow-lg overflow-hidden">
@@ -770,7 +770,7 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
           </div>
           {/* File tree */}
           {loading ? (
-            <div className="flex items-center gap-2 text-gray-500 py-4">
+            <div className="flex items-center gap-2 text-muted-foreground py-4">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span className="text-xs">加载中…</span>
             </div>
@@ -787,7 +787,7 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
               ))}
             </div>
           ) : (
-            <div className="text-center text-gray-400 text-xs py-12">项目为空</div>
+            <div className="text-center text-muted-foreground text-xs py-12">项目为空</div>
           )}
         </div>
       </>
@@ -798,12 +798,12 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
       <>
         <div className="px-5 pt-4 pb-2">
           <div className="flex items-center gap-3 mb-3">
-            <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
-              <ArrowLeft className="w-4 h-4 text-gray-500" />
+            <button onClick={handleBack} className="w-8 h-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors">
+              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{title}</h1>
-              <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+              <h1 className="text-xl font-bold text-foreground">{title}</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
             </div>
           </div>
         </div>
@@ -813,14 +813,14 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
             <div className="relative mb-3" ref={newMenuRef}>
               <button
                 onClick={() => setNewMenuOpen(!newMenuOpen)}
-                className="w-full flex items-center gap-3 py-3 px-3 rounded-xl border-2 border-dashed border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 transition-all text-left"
+                className="w-full flex items-center gap-3 py-3 px-3 rounded-xl border-2 border-dashed border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
               >
-                <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                  <FolderPlus className="w-4 h-4 text-violet-600" />
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <FolderPlus className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-violet-700">新建</span>
-                  <span className="text-xs text-violet-400 block">创建文件或文件夹</span>
+                  <span className="text-sm font-medium text-primary">新建</span>
+                  <span className="text-xs text-primary/60 block">创建文件或文件夹</span>
                 </div>
               </button>
               {newMenuOpen && (
@@ -858,21 +858,21 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
                     onClick={() => onSelect(item.id)}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(item.id); } }}
                     className={`group flex items-center gap-3 py-3 px-3 rounded-xl cursor-pointer transition-colors ${
-                      isActive ? 'bg-blue-50/80' : 'hover:bg-gray-50'
+                      isActive ? 'bg-primary/10' : 'hover:bg-secondary'
                     }`}
                   >
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                      <Sparkles className="w-4 h-4 text-indigo-500" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${isActive ? 'text-blue-700' : 'text-gray-800'}`}>
+                      <p className={`text-sm font-medium truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>
                         {item.title}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">{item.metadata}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.metadata}</p>
                     </div>
                     <button
                       onClick={e => handleDelete(e, item.id, item.title + '.json')}
-                      className="p-1.5 rounded-lg text-gray-300 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 transition-all"
+                      className="p-1.5 rounded-lg text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all"
                       title="删除"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -882,7 +882,7 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
               })}
             </div>
           ) : (
-            <div className="text-center text-gray-400 text-xs py-12">暂无资源</div>
+            <div className="text-center text-muted-foreground text-xs py-12">暂无资源</div>
           )}
         </div>
       </>
@@ -890,7 +890,7 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white dark:bg-background">
       {viewContent}
       {generateModal.isOpen && generateModal.resourceType && (
         <GenerateModal
@@ -905,9 +905,9 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
 
 function GeneratingBanner() {
   return (
-    <div className="mx-5 mb-3 flex items-center gap-3 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
-      <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-      <span className="text-sm text-blue-700">正在生成测验...</span>
+    <div className="mx-5 mb-3 flex items-center gap-3 py-3 px-4 rounded-xl bg-primary/5 border border-primary/10">
+      <Loader2 className="w-4 h-4 text-primary animate-spin" />
+      <span className="text-sm text-primary">正在生成测验...</span>
     </div>
   );
 }

@@ -85,37 +85,38 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.75 0.14 264);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* ── Zinc-based dark palette (NotebookLM inspired) ── */
+  --background: oklch(0.13 0.003 265);        /* zinc-950: deepest layer */
+  --foreground: oklch(0.87 0.004 265);        /* zinc-200: primary text */
+  --card: oklch(0.18 0.004 265);              /* zinc-900: secondary layer */
+  --card-foreground: oklch(0.87 0.004 265);   /* zinc-200 */
+  --popover: oklch(0.24 0.005 265);           /* zinc-800: elevated surfaces */
+  --popover-foreground: oklch(0.87 0.004 265); /* zinc-200 */
+  --primary: oklch(0.75 0.14 264);            /* keep Google Blue */
+  --primary-foreground: oklch(0.13 0.003 265);
+  --secondary: oklch(0.24 0.005 265);         /* zinc-800 */
+  --secondary-foreground: oklch(0.79 0.005 265); /* zinc-300 */
+  --muted: oklch(0.24 0.005 265);             /* zinc-800 */
+  --muted-foreground: oklch(0.55 0.007 265);  /* zinc-500 */
+  --accent: oklch(0.24 0.005 265);            /* zinc-800 */
+  --accent-foreground: oklch(0.87 0.004 265); /* zinc-200 */
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: oklch(1 0 0 / 6%);                /* subtle white border */
+  --input: oklch(1 0 0 / 10%);
   --ring: oklch(0.75 0.14 264);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
+  --chart-1: oklch(0.87 0.004 265);           /* zinc-200 */
+  --chart-2: oklch(0.67 0.007 265);           /* zinc-400 */
+  --chart-3: oklch(0.55 0.007 265);           /* zinc-500 */
+  --chart-4: oklch(0.44 0.006 265);           /* zinc-600 */
+  --chart-5: oklch(0.32 0.006 265);           /* zinc-700 */
+  --sidebar: oklch(0.18 0.004 265);           /* zinc-900: same as card */
+  --sidebar-foreground: oklch(0.87 0.004 265); /* zinc-200 */
   --sidebar-primary: oklch(0.75 0.14 264);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-primary-foreground: oklch(0.13 0.003 265);
+  --sidebar-accent: oklch(0.24 0.005 265);    /* zinc-800 */
+  --sidebar-accent-foreground: oklch(0.87 0.004 265);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: oklch(0.55 0.007 265);      /* zinc-500 */
 }
 
 @layer base {

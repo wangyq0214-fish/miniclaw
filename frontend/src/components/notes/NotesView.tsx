@@ -72,18 +72,29 @@ function PanelResizer({
 // ── Action Cards Config ──
 
 const ACTION_CARDS = [
-  { key: 'exercises', label: '练习题', icon: List, bg: '#F3E8FF', iconColor: '#9333EA', subagent: 'exercise_composer', prompt: '请根据选中的来源生成一套练习题' },
-  { key: 'flashcards', label: '抽认卡', icon: Layers, bg: '#E0F7FA', iconColor: '#0891B2', subagent: 'flashcard_composer', prompt: '请根据选中的来源生成一套抽认卡' },
-  { key: 'lectures', label: '讲义', icon: BookOpen, bg: '#E8F0FE', iconColor: '#2563EB', subagent: 'lecture_writer', prompt: '请根据选中的来源生成一份讲义' },
-  { key: 'mindmaps', label: '思维导图', icon: Network, bg: '#E6F4EA', iconColor: '#16A34A', subagent: 'mindmap_designer', prompt: '请根据选中的来源生成思维导图' },
+  { key: 'exercises', label: '练习题', icon: List, bgLight: '#F3E8FF', bgDark: 'rgba(147,51,234,0.15)', iconColor: '#9333EA', iconColorDark: '#C084FC', textColorDark: '#E9D5FF', hoverDark: 'dark:hover:bg-purple-500/20', borderDark: 'dark:border-purple-500/20', subagent: 'exercise_composer', prompt: '请根据选中的来源生成一套练习题' },
+  { key: 'flashcards', label: '抽认卡', icon: Layers, bgLight: '#E0F7FA', bgDark: 'rgba(6,182,212,0.15)', iconColor: '#0891B2', iconColorDark: '#22D3EE', textColorDark: '#CFFAFE', hoverDark: 'dark:hover:bg-cyan-500/20', borderDark: 'dark:border-cyan-500/20', subagent: 'flashcard_composer', prompt: '请根据选中的来源生成一套抽认卡' },
+  { key: 'lectures', label: '讲义', icon: BookOpen, bgLight: '#E8F0FE', bgDark: 'rgba(59,130,246,0.15)', iconColor: '#2563EB', iconColorDark: '#60A5FA', textColorDark: '#DBEAFE', hoverDark: 'dark:hover:bg-blue-500/20', borderDark: 'dark:border-blue-500/20', subagent: 'lecture_writer', prompt: '请根据选中的来源生成一份讲义' },
+  { key: 'mindmaps', label: '思维导图', icon: Network, bgLight: '#E6F4EA', bgDark: 'rgba(34,197,94,0.15)', iconColor: '#16A34A', iconColorDark: '#4ADE80', textColorDark: '#D1FAE5', hoverDark: 'dark:hover:bg-emerald-500/20', borderDark: 'dark:border-emerald-500/20', subagent: 'mindmap_designer', prompt: '请根据选中的来源生成思维导图' },
 ];
 
 type SourceModalView = 'menu' | 'text' | 'website';
 
 // ── Main Component ──
 
+function useIsDark() {
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => {
+    const obs = new MutationObserver(() => setIsDark(document.documentElement.classList.contains('dark')));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
+
 export function NotesView() {
   const { state, dispatch, actions } = useApp();
+  const isDark = useIsDark();
 
   // Sources state (local — not persisted to store)
   const [sources, setSources] = useState<SourceItem[]>([]);
@@ -379,7 +390,7 @@ export function NotesView() {
   // ── Render ──
 
   return (
-    <div ref={containerRef} className="flex h-full w-full bg-gray-50/30">
+    <div ref={containerRef} className="flex h-full w-full bg-gray-50/30 dark:bg-zinc-950">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -390,30 +401,30 @@ export function NotesView() {
       />
 
       {/* ── Left Panel: Sources / Source Viewer ── */}
-      <div className="border-r border-gray-200 bg-white flex flex-col overflow-hidden shrink-0" style={{ width: leftWidth }}>
+      <div className="border-r border-gray-200 dark:border-white/5 bg-white dark:bg-zinc-900 flex flex-col overflow-hidden shrink-0" style={{ width: leftWidth }}>
         {viewingSource ? (
           /* Source Content Viewer */
           <>
-            <div className="p-4 pb-3 border-b border-gray-100">
+            <div className="p-4 pb-3 border-b border-gray-100 dark:border-white/5">
               <div className="flex items-center gap-2">
                 <button
                   onClick={closeSourceViewer}
-                  className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+                  className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4 text-gray-500" />
+                  <ArrowLeft className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
                 </button>
-                <FileText className="w-4 h-4 text-gray-400 shrink-0" />
-                <span className="text-sm font-semibold text-gray-900 truncate">{viewingSource.title}</span>
+                <FileText className="w-4 h-4 text-gray-400 dark:text-zinc-500 shrink-0" />
+                <span className="text-sm font-semibold text-gray-900 dark:text-zinc-200 truncate">{viewingSource.title}</span>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-5">
               {viewingLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-300">
+                <div className="flex flex-col items-center justify-center py-20 text-gray-300 dark:text-zinc-500">
                   <div className="w-6 h-6 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
-                  <p className="text-xs text-gray-400 mt-3">加载中...</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-400 mt-3">加载中...</p>
                 </div>
               ) : (
-                <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+                <div className="prose prose-sm max-w-none text-gray-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap break-words">
                   <MarkdownRenderer content={viewingContent} />
                 </div>
               )}
@@ -426,21 +437,21 @@ export function NotesView() {
               <div className="flex items-center gap-2 mb-2">
                 <button
                   onClick={() => actions.setActiveTab('resources')}
-                  className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+                  className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors"
                   title="返回 Studio"
                 >
-                  <ArrowLeft className="w-4 h-4 text-gray-500" />
+                  <ArrowLeft className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
                 </button>
-                <span className="text-xs text-gray-400">返回 Studio</span>
+                <span className="text-xs text-gray-400 dark:text-zinc-500">返回 Studio</span>
               </div>
-              <h2 className="text-lg font-bold text-gray-900">来源</h2>
-              <p className="text-xs text-gray-400 mt-1">管理参考文档与上下文</p>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-200">来源</h2>
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">管理参考文档与上下文</p>
             </div>
 
             <div className="px-5 pb-3">
               <button
                 onClick={openAddSourceModal}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-gray-200 hover:border-teal-400 hover:bg-teal-50/50 text-gray-400 hover:text-teal-600 transition-all text-sm"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-gray-200 dark:border-zinc-800 hover:border-teal-400 hover:bg-teal-50/50 dark:hover:border-teal-400/50 dark:hover:bg-teal-500/10 text-gray-400 dark:text-zinc-500 hover:text-teal-600 dark:hover:text-teal-400 transition-all text-sm"
               >
                 <Plus className="w-4 h-4" />
                 添加来源
@@ -449,7 +460,7 @@ export function NotesView() {
 
             <div className="flex-1 overflow-y-auto px-5 pb-4">
               {sources.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-300">
+                <div className="flex flex-col items-center justify-center py-12 text-gray-300 dark:text-zinc-500">
                   <FileText className="w-8 h-8 mb-2" />
                   <p className="text-xs">暂无来源</p>
                 </div>
@@ -458,7 +469,7 @@ export function NotesView() {
                   {sources.map(src => (
                     <div
                       key={src.id}
-                      className="group flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-gray-50 transition-colors"
+                      className="group flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors"
                     >
                       <div
                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
@@ -474,12 +485,12 @@ export function NotesView() {
                         className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
                         onClick={() => handleViewSource(src)}
                       >
-                        <FileText className="w-4 h-4 text-gray-400 shrink-0" />
-                        <span className="text-sm text-gray-700 truncate hover:text-teal-600 transition-colors">{src.title}</span>
+                        <FileText className="w-4 h-4 text-gray-400 dark:text-zinc-500 shrink-0" />
+                        <span className="text-sm text-gray-700 dark:text-zinc-300 truncate hover:text-teal-600 dark:hover:text-teal-400 transition-colors">{src.title}</span>
                       </div>
                       <button
                         onClick={e => { e.stopPropagation(); handleDeleteSource(src.id); }}
-                        className="p-1 rounded text-gray-300 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
+                        className="p-1 rounded text-gray-300 dark:text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0"
                         title="删除来源"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -491,8 +502,8 @@ export function NotesView() {
             </div>
 
             {selectedSourceIds.size > 0 && (
-              <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-                <p className="text-xs text-teal-600 font-medium">
+              <div className="px-5 py-3 border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-zinc-800/30">
+                <p className="text-xs text-teal-600 dark:text-teal-400 font-medium">
                   已选择 {selectedSourceIds.size} 个来源
                 </p>
               </div>
@@ -509,16 +520,16 @@ export function NotesView() {
         {viewingNote ? (
           /* Note Detail View */
           <>
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200/60">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200/60 dark:border-white/5">
               <button
                 onClick={() => setViewingNote(null)}
-                className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+                className="w-7 h-7 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors"
               >
-                <ArrowLeft className="w-4 h-4 text-gray-500" />
+                <ArrowLeft className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
               </button>
-              <BookmarkPlus className="w-4 h-4 text-gray-400 shrink-0" />
-              <h2 className="text-sm font-bold text-gray-900 truncate">{viewingNote.title}</h2>
-              <span className="text-[10px] text-gray-300 ml-auto shrink-0">{viewingNote.created_at}</span>
+              <BookmarkPlus className="w-4 h-4 text-gray-400 dark:text-zinc-500 shrink-0" />
+              <h2 className="text-sm font-bold text-gray-900 dark:text-zinc-200 truncate">{viewingNote.title}</h2>
+              <span className="text-[10px] text-gray-300 dark:text-zinc-500 ml-auto shrink-0">{viewingNote.created_at}</span>
             </div>
             <div className="flex-1 overflow-y-auto">
               {(() => {
@@ -546,7 +557,7 @@ export function NotesView() {
                     // Other JSON → formatted code block
                     return (
                       <div className="p-6">
-                        <pre className="text-xs bg-gray-50 rounded-xl p-4 overflow-x-auto border border-gray-100 leading-relaxed">
+                        <pre className="text-xs bg-gray-50 dark:bg-zinc-900 rounded-xl p-4 overflow-x-auto border border-gray-100 dark:border-white/5 leading-relaxed">
                           <code>{JSON.stringify(parsed, null, 2)}</code>
                         </pre>
                       </div>
@@ -555,7 +566,7 @@ export function NotesView() {
                 }
                 // Markdown / text → MarkdownRenderer
                 return (
-                  <div className="p-6 prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                  <div className="p-6 prose prose-sm max-w-none text-gray-700 dark:text-zinc-300 leading-relaxed">
                     <MarkdownRenderer content={content} />
                   </div>
                 );
@@ -567,8 +578,8 @@ export function NotesView() {
           <>
             {/* Studio Grid */}
             <div className="p-6 pb-4">
-              <h2 className="text-lg font-bold text-gray-900 mb-1">快速操作</h2>
-              <p className="text-xs text-gray-400 mb-4">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-200 mb-1">快速操作</h2>
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-4">
                 {selectedSourceIds.size > 0
                   ? `基于 ${selectedSourceIds.size} 个来源生成`
                   : '请先在左侧勾选来源'}
@@ -578,21 +589,21 @@ export function NotesView() {
                   <button
                     key={card.key}
                     disabled={selectedSourceIds.size === 0 || state.isNotesStreaming || !!state.notesGeneratingLabel}
-                    className="group flex items-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 transition-all disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:border-gray-200 enabled:hover:shadow-md enabled:hover:-translate-y-0.5"
-                    style={{ backgroundColor: card.bg }}
+                    className={`group flex items-center gap-3 p-4 rounded-2xl border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:shadow-md enabled:hover:-translate-y-0.5 ${card.borderDark} ${card.hoverDark}`}
+                    style={{ backgroundColor: isDark ? card.bgDark : card.bgLight }}
                     onClick={() => handleQuickAction(card.subagent, card.prompt, card.label)}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-white/80 flex items-center justify-center shrink-0">
-                      <card.icon className="w-5 h-5" style={{ color: card.iconColor }} />
+                    <div className="w-10 h-10 rounded-xl bg-white/80 dark:bg-white/10 flex items-center justify-center shrink-0">
+                      <card.icon className="w-5 h-5" style={{ color: isDark ? card.iconColorDark : card.iconColor }} />
                     </div>
-                    <span className="text-sm font-semibold text-gray-800">{card.label}</span>
+                    <span className="text-sm font-semibold" style={{ color: isDark ? card.textColorDark : '#1f2937' }}>{card.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Divider */}
-            <div className="mx-6 border-t border-gray-200/60" />
+            <div className="mx-6 border-t border-gray-200/60 dark:border-white/5" />
 
             {/* Notes List */}
             <div className="flex-1 overflow-y-auto p-6 pt-4">
@@ -601,8 +612,8 @@ export function NotesView() {
                 className="flex items-center justify-between w-full mb-4 group"
               >
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-gray-900">我的笔记</h2>
-                  <span className="text-xs text-gray-400">{state.notes.length} 条</span>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-200">我的笔记</h2>
+                  <span className="text-xs text-gray-400 dark:text-zinc-500">{state.notes.length} 条</span>
                 </div>
                 <svg
                   className={`w-4 h-4 text-gray-400 transition-transform ${notesExpanded ? '' : '-rotate-90'}`}
@@ -616,42 +627,42 @@ export function NotesView() {
                 <div className="flex flex-col gap-3">
                   {/* Generating loading bar */}
                   {state.notesGeneratingLabel && (
-                    <div className="p-4 rounded-xl bg-white border border-gray-100">
+                    <div className="p-4 rounded-xl bg-white dark:bg-zinc-900/50 border border-gray-100 dark:border-white/10">
                       <div className="flex items-center gap-3">
                         <div className="w-5 h-5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                        <span className="text-sm text-gray-500">正在生成{state.notesGeneratingLabel}...</span>
+                        <span className="text-sm text-gray-500 dark:text-zinc-400">正在生成{state.notesGeneratingLabel}...</span>
                       </div>
-                      <div className="mt-3 h-1 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="mt-3 h-1 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                         <div className="h-full bg-teal-400 rounded-full animate-pulse" style={{ width: '60%' }} />
                       </div>
                     </div>
                   )}
                   {/* Notes list */}
                   {state.notes.length === 0 && !state.notesGeneratingLabel ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-300">
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-300 dark:text-zinc-500">
                       <BookmarkPlus className="w-10 h-10 mb-3 opacity-40" />
-                      <p className="text-sm font-medium text-gray-400">暂无笔记</p>
-                      <p className="text-xs text-gray-300 mt-1">点击快速操作生成，或在对话中保存</p>
+                      <p className="text-sm font-medium text-gray-400 dark:text-zinc-400">暂无笔记</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">点击快速操作生成，或在对话中保存</p>
                     </div>
                   ) : state.notes.map(note => (
                     <div
                       key={note.id}
-                      className="group relative p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all cursor-pointer"
+                      className="group relative p-4 rounded-xl bg-white dark:bg-zinc-900/50 border border-gray-100 dark:border-white/10 hover:border-gray-200 dark:hover:border-white/20 hover:shadow-md dark:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all cursor-pointer"
                       onClick={() => setViewingNote(note)}
                     >
                       <div className="flex items-start justify-between gap-3 mb-1.5">
-                        <h3 className="text-sm font-semibold text-gray-800 line-clamp-1">{note.title}</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-200 line-clamp-1">{note.title}</h3>
                         <button
                           onClick={e => { e.stopPropagation(); handleDeleteNote(note.id); }}
-                          className="p-1 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 opacity-0 group-hover:opacity-100"
+                          className="p-1 rounded-lg text-gray-300 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0 opacity-0 group-hover:opacity-100"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <div className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                      <div className="text-xs text-gray-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
                         {note.content.slice(0, 120)}
                       </div>
-                      <p className="text-[10px] text-gray-300 mt-2">{note.created_at}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-2">{note.created_at}</p>
                     </div>
                   ))}
                 </div>
@@ -665,11 +676,11 @@ export function NotesView() {
       <PanelResizer onStart={handleRightStart} onMove={handleRightMove} />
 
       {/* ── Right Panel: Chat ── */}
-      <div className="border-l border-gray-200 bg-white flex flex-col overflow-hidden shrink-0" style={{ width: rightWidth }}>
+      <div className="border-l border-gray-200 dark:border-white/5 bg-white dark:bg-zinc-900 flex flex-col overflow-hidden shrink-0" style={{ width: rightWidth }}>
         {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">对话</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-white/5">
+          <h2 className="text-base font-bold text-gray-900 dark:text-zinc-200">对话</h2>
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
             {selectedSourceIds.size > 0
               ? `基于 ${selectedSourceIds.size} 个来源回复`
               : '基于全部知识库回复'}
@@ -679,22 +690,22 @@ export function NotesView() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {state.notesChatMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-300">
+            <div className="flex flex-col items-center justify-center h-full text-gray-300 dark:text-zinc-500">
               <Sparkles className="w-8 h-8 mb-2 opacity-40" />
-              <p className="text-sm text-gray-400">开始提问</p>
-              <p className="text-xs text-gray-300 mt-1">左侧勾选来源可限定上下文</p>
+              <p className="text-sm text-gray-400 dark:text-zinc-400">开始提问</p>
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">左侧勾选来源可限定上下文</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               {state.notesChatMessages.map(msg => (
                 <div key={msg.id} className={`group ${msg.role === 'user' ? 'flex justify-end' : ''}`}>
                   {msg.role === 'user' ? (
-                    <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-br-md bg-teal-500 text-white text-sm">
+                    <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-br-md bg-primary text-primary-foreground text-sm">
                       {msg.content}
                     </div>
                   ) : (
                     <div className="max-w-[90%]">
-                      <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-gray-50 text-sm text-gray-800 leading-relaxed">
+                      <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-gray-100 dark:bg-zinc-800/50 text-sm text-gray-700 dark:text-zinc-300 leading-relaxed">
                         <MarkdownRenderer content={msg.content} />
                         {msg.isStreaming && (
                           <span className="inline-block w-1.5 h-4 bg-teal-400 animate-pulse ml-0.5 rounded-sm" />
@@ -716,7 +727,7 @@ export function NotesView() {
         </div>
 
         {/* Composer */}
-        <div className="p-4 border-t border-gray-100">
+        <div className="p-4 border-t border-gray-100 dark:border-white/5">
           <div className="flex items-end gap-2">
             <textarea
               value={chatInput}
@@ -729,13 +740,13 @@ export function NotesView() {
               }}
               placeholder="输入问题..."
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 max-h-32"
+              className="flex-1 resize-none rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-zinc-800/50 px-4 py-2.5 text-sm text-gray-900 dark:text-zinc-200 placeholder:text-gray-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400/50 max-h-32"
               style={{ minHeight: 40 }}
             />
             {state.isNotesStreaming ? (
               <button
                 onClick={handleStopChat}
-                className="w-9 h-9 rounded-xl bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-500 transition-colors shrink-0"
+                className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 flex items-center justify-center text-red-500 dark:text-red-400 transition-colors shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -743,7 +754,7 @@ export function NotesView() {
               <button
                 onClick={handleSendChat}
                 disabled={!chatInput.trim()}
-                className="w-9 h-9 rounded-xl bg-teal-500 hover:bg-teal-600 disabled:bg-gray-200 disabled:text-gray-400 flex items-center justify-center text-white transition-colors shrink-0"
+                className="w-9 h-9 rounded-xl bg-primary hover:bg-primary/90 disabled:bg-gray-200 dark:disabled:bg-zinc-800 disabled:text-gray-400 dark:disabled:text-zinc-500 flex items-center justify-center text-primary-foreground transition-colors shrink-0"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -756,17 +767,17 @@ export function NotesView() {
       {isAddSourceOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeAddSourceModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+          <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden border border-gray-200 dark:border-white/10">
 
             {/* ── View A: Main Menu ── */}
             {sourceModalView === 'menu' && (
               <>
                 {/* Header */}
                 <div className="flex items-center justify-between px-8 pt-7 pb-4">
-                  <h2 className="text-xl font-bold text-gray-900">添加来源</h2>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-200">添加来源</h2>
                   <button
                     onClick={closeAddSourceModal}
-                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -774,10 +785,10 @@ export function NotesView() {
 
                 {/* Drop zone */}
                 <div className="mx-8 mb-6">
-                  <div className="flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50">
-                    <Upload className="w-8 h-8 text-gray-300 mb-3" />
-                    <p className="text-sm text-gray-400">或拖放文件</p>
-                    <p className="text-xs text-gray-300 mt-1">PDF、图片、文档、音频、文本</p>
+                  <div className="flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/30">
+                    <Upload className="w-8 h-8 text-gray-400 dark:text-zinc-500 mb-3" />
+                    <p className="text-sm text-gray-500 dark:text-zinc-400">或拖放文件</p>
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">PDF、图片、文档、音频、文本</p>
                   </div>
                 </div>
 
@@ -785,23 +796,23 @@ export function NotesView() {
                 <div className="flex items-center gap-3 px-8 pb-8">
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-zinc-800/50 hover:bg-gray-100 dark:hover:bg-zinc-800 text-sm font-medium text-gray-700 dark:text-zinc-200 transition-colors"
                   >
-                    <Upload className="w-4 h-4 text-gray-500" />
+                    <Upload className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
                     上传文件
                   </button>
                   <button
                     onClick={() => setSourceModalView('website')}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-zinc-800/50 hover:bg-gray-100 dark:hover:bg-zinc-800 text-sm font-medium text-gray-700 dark:text-zinc-200 transition-colors"
                   >
-                    <Link className="w-4 h-4 text-gray-500" />
+                    <Link className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
                     网站
                   </button>
                   <button
                     onClick={() => setSourceModalView('text')}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-zinc-800/50 hover:bg-gray-100 dark:hover:bg-zinc-800 text-sm font-medium text-gray-700 dark:text-zinc-200 transition-colors"
                   >
-                    <ClipboardPaste className="w-4 h-4 text-gray-500" />
+                    <ClipboardPaste className="w-4 h-4 text-gray-400 dark:text-zinc-400" />
                     复制的文字
                   </button>
                 </div>
@@ -816,22 +827,22 @@ export function NotesView() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setSourceModalView('menu')}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-400 transition-colors"
                     >
                       <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h2 className="text-lg font-bold text-gray-900">粘贴复制的文字</h2>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-200">粘贴复制的文字</h2>
                   </div>
                   <button
                     onClick={closeAddSourceModal}
-                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 {/* Tip */}
-                <p className="px-8 pt-2 pb-4 text-sm text-gray-400">
+                <p className="px-8 pt-2 pb-4 text-sm text-gray-500 dark:text-zinc-400">
                   在下方粘贴复制的文字，即可将其作为来源上传。
                 </p>
 
@@ -841,7 +852,7 @@ export function NotesView() {
                     value={sourceInputValue}
                     onChange={e => setSourceInputValue(e.target.value)}
                     placeholder="在此处粘贴文字"
-                    className="w-full h-64 px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
+                    className="w-full h-64 px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-zinc-800/50 text-sm text-gray-900 dark:text-zinc-200 placeholder:text-gray-400 dark:placeholder:text-zinc-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-shadow"
                   />
                 </div>
 
@@ -850,7 +861,7 @@ export function NotesView() {
                   <button
                     onClick={handleInsertSource}
                     disabled={!sourceInputValue.trim()}
-                    className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:bg-gray-200 disabled:text-gray-400 bg-gray-900 text-white hover:bg-gray-800"
+                    className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:bg-gray-200 dark:disabled:bg-zinc-800 disabled:text-gray-400 dark:disabled:text-zinc-500 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     插入
                   </button>
@@ -866,22 +877,22 @@ export function NotesView() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setSourceModalView('menu')}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-400 transition-colors"
                     >
                       <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h2 className="text-lg font-bold text-gray-900">网站网址</h2>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-200">网站网址</h2>
                   </div>
                   <button
                     onClick={closeAddSourceModal}
-                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 {/* Tip */}
-                <p className="px-8 pt-2 pb-4 text-sm text-gray-400">
+                <p className="px-8 pt-2 pb-4 text-sm text-gray-500 dark:text-zinc-400">
                   在下方粘贴复制的文字，即可将其作为来源上传。
                 </p>
 
@@ -891,13 +902,13 @@ export function NotesView() {
                     value={sourceInputValue}
                     onChange={e => setSourceInputValue(e.target.value)}
                     placeholder="粘贴任何链接"
-                    className="w-full h-64 px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
+                    className="w-full h-64 px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-zinc-800/50 text-sm text-gray-900 dark:text-zinc-200 placeholder:text-gray-400 dark:placeholder:text-zinc-500 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-shadow"
                   />
                 </div>
 
                 {/* Notes */}
                 <div className="px-8 pb-4">
-                  <ul className="text-xs text-gray-400 space-y-1.5 list-disc list-inside">
+                  <ul className="text-xs text-gray-400 dark:text-zinc-500 space-y-1.5 list-disc list-inside">
                     <li>如果要添加多个网址，请用空格或换行符分隔。</li>
                     <li>目前只会导入网站上的可见文字。</li>
                     <li>不支持付费文章。</li>
@@ -909,7 +920,7 @@ export function NotesView() {
                   <button
                     onClick={handleInsertSource}
                     disabled={!sourceInputValue.trim()}
-                    className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:bg-gray-200 disabled:text-gray-400 bg-gray-900 text-white hover:bg-gray-800"
+                    className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:bg-gray-200 dark:disabled:bg-zinc-800 disabled:text-gray-400 dark:disabled:text-zinc-500 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     插入
                   </button>

@@ -134,7 +134,7 @@ const components: Components = {
   h4: ({ children }) => (
     <h4 className="mt-3 mb-1 text-sm font-semibold text-foreground">{children}</h4>
   ),
-  p: ({ children }) => <p className="my-2 leading-relaxed">{children}</p>,
+  p: ({ children }) => <div className="my-2 leading-relaxed">{children}</div>,
   ul: ({ children }) => <ul className="my-2 ml-5 list-disc space-y-1">{children}</ul>,
   ol: ({ children }) => <ol className="my-2 ml-5 list-decimal space-y-1">{children}</ol>,
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
@@ -193,6 +193,19 @@ interface MarkdownRendererProps {
 }
 
 function MarkdownRendererImpl({ content, className }: MarkdownRendererProps) {
+  // Filter out tool call JSON blocks that the model outputs as text
+  // Pattern: ```json\n{ "tool": "...", ... }\n``` or ```\n<tool_call>...\n```
+  const filteredContent = content.replace(
+    /```(?:json)?\s*\n\s*\{\s*\n\s*"tool"\s*:\s*"[^"]+"\s*,[\s\S]*?\}\s*\n```/g,
+    ''
+  ).replace(
+    /<tool_call>[\s\S]*?<\/tool_call>/g,
+    ''
+  ).replace(
+    /\n{3,}/g,  // Collapse multiple blank lines
+    '\n\n'
+  ).trim();
+
   return (
     <div className={`markdown-body text-sm text-foreground ${className ?? ''}`}>
       <ReactMarkdown
@@ -200,7 +213,7 @@ function MarkdownRendererImpl({ content, className }: MarkdownRendererProps) {
         rehypePlugins={[[rehypeSanitize, sanitizeSchema], rehypeKatex]}
         components={components}
       >
-        {content}
+        {filteredContent}
       </ReactMarkdown>
     </div>
   );

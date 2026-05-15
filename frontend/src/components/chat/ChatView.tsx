@@ -147,7 +147,7 @@ function ToolCallBlock({ toolCall }: { toolCall: ToolCall }) {
             <span className="text-xs text-muted-foreground">输出:</span>
             <pre className={`mt-1 text-xs p-2 rounded overflow-auto max-h-40 font-mono ${
               isRunning
-                ? 'bg-[#1a1a2e] text-[#a0a0c0] border border-[#2a2a4e]'
+                ? 'bg-zinc-900 text-zinc-400 border border-white/5'
                 : 'bg-background border border-border'
             }`}>
               {toolCall.output || (isRunning ? '等待输出...' : '无输出')}
@@ -227,37 +227,6 @@ function AgentWorkTimeline({ statusMessages, isStreaming }: { statusMessages: St
   );
 }
 
-function PipelineStageThinking({ stage }: { stage: PipelineStage }) {
-  const [expanded, setExpanded] = useState(false);
-
-  if (!stage.thinking) return null;
-
-  return (
-    <div className="mt-1">
-      <button
-        type="button"
-        className="flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-        onClick={(e) => {
-          e.stopPropagation();
-          setExpanded(!expanded);
-        }}
-      >
-        {expanded ? (
-          <ChevronDown className="w-3 h-3" />
-        ) : (
-          <ChevronRight className="w-3 h-3" />
-        )}
-        <span>LLM 输出</span>
-      </button>
-      {expanded && (
-        <pre className="mt-1 text-xs bg-[#1a1a2e] text-[#a0a0c0] border border-[#2a2a4e] p-2 rounded overflow-auto max-h-48 font-mono whitespace-pre-wrap break-all">
-          {stage.thinking}
-        </pre>
-      )}
-    </div>
-  );
-}
-
 function PipelineProgress({ stages, isStreaming }: { stages: PipelineStage[]; isStreaming: boolean }) {
   const [now, setNow] = useState(Date.now());
 
@@ -330,10 +299,6 @@ function PipelineProgress({ stages, isStreaming }: { stages: PipelineStage[]; is
                   </span>
                 )}
               </div>
-              {/* Thinking content — collapsible, shown when stage has LLM output */}
-              {(isRunning || isDone) && stage.thinking && (
-                <PipelineStageThinking stage={stage} />
-              )}
             </div>
           </div>
         );
@@ -505,6 +470,10 @@ export function ChatView({
   const [isNearBottom, setIsNearBottom] = useState(true);
   const prevLengthRef = useRef(messages.length);
 
+  // Get current session title
+  const currentSession = state.sessions.find(s => s.session_id === sessionId);
+  const sessionTitle = currentSession?.title || sessionId;
+
   // Coder mode state
   const [chatMode, setChatMode] = useState<ChatMode>('chat');
   const [coderMessages, setCoderMessages] = useState<CoderMessage[]>([]);
@@ -673,7 +642,7 @@ export function ChatView({
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <div className="px-6 py-3 border-b border-border bg-background/80 backdrop-blur">
-        <h2 className="text-base font-semibold text-foreground truncate">{sessionId}</h2>
+        <h2 className="text-base font-semibold text-foreground truncate">{sessionTitle}</h2>
       </div>
 
       {/* Messages */}

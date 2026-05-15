@@ -204,8 +204,8 @@ export function Inspector({ activeTab }: InspectorProps) {
   const Icon = meta.icon;
 
   return (
-    <div className="h-full flex flex-col border-l border-border bg-card/30 overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border bg-muted/40 shrink-0">
+    <div className="h-full flex flex-col border-l border-gray-100 dark:border-border bg-white dark:bg-background overflow-hidden">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-100 dark:border-border bg-white dark:bg-muted/40 shrink-0">
         <Icon className="w-4 h-4 text-muted-foreground" />
         <span className="text-xs font-medium text-muted-foreground truncate">
           {meta.label}

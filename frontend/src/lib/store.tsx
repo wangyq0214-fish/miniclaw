@@ -91,7 +91,6 @@ export interface PipelineStage {
   status: 'pending' | 'running' | 'done' | 'fail';
   startTime?: number;
   endTime?: number;
-  thinking?: string;
 }
 
 export interface Message {
@@ -665,8 +664,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             if (statusMsg) {
               // Parse pipeline stage messages: pipeline:start:N:label / pipeline:done:N:msg / pipeline:fail:N:msg
               const pipelineMatch = statusMsg.match(/^pipeline:(start|done|fail):(\d+):(.+)$/);
-              // Parse thinking messages: thinking:stage_name:chunk
-              const thinkingMatch = statusMsg.match(/^thinking:([^:]+):([\s\S]*)/);
               if (pipelineMatch) {
                 const [, action, stageIdStr, detail] = pipelineMatch;
                 const stageId = parseInt(stageIdStr, 10);
@@ -684,19 +681,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     stage.endTime = Date.now();
                   }
                   if (detail) stage.label = detail;
-                  updateAssistant({ pipelineStages: [...currentPipelineStages] });
-                }
-              } else if (thinkingMatch) {
-                const [, stageName, chunk] = thinkingMatch;
-                // Map stage name to stage id
-                const stageNameToId: Record<string, number> = {
-                  '概念分析': 1, '概念设计': 2, '代码生成': 3,
-                  '代码修复': 4, '生成总结': 5,
-                };
-                const stageId = stageNameToId[stageName] ?? 0;
-                const stage = stageId ? currentPipelineStages.find((s) => s.id === stageId) : null;
-                if (stage) {
-                  stage.thinking = (stage.thinking || '') + chunk;
                   updateAssistant({ pipelineStages: [...currentPipelineStages] });
                 }
               } else {

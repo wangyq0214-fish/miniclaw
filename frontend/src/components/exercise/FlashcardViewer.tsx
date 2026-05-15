@@ -178,10 +178,10 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
 
     return (
       <div className="flex flex-col h-full items-center justify-center p-6">
-        <div className="w-full max-w-2xl bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4 dark:bg-gray-800 dark:border-gray-700">
+        <div className="w-full max-w-2xl bg-white dark:bg-zinc-900/50 dark:backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 p-6 space-y-4">
           {/* Score Stats */}
-          <div className="bg-[#f9fafb] rounded-2xl p-6 dark:bg-gray-700/50">
-            <h2 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-6">
+          <div className="bg-gray-50 dark:bg-zinc-800/30 rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-center text-gray-900 dark:text-zinc-200 mb-6">
               全部复习完成！
             </h2>
 
@@ -200,22 +200,22 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  <span className="text-2xl font-bold text-gray-900 dark:text-zinc-200">
                     {masteredCount}/{cards.length}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{progressPercent}%</span>
+                  <span className="text-xs text-gray-500 dark:text-zinc-400">{progressPercent}%</span>
                 </div>
               </div>
 
               {/* Stats */}
               <div className="flex gap-10">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">{masteredCount}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">已掌握</div>
+                  <div className="text-3xl font-bold text-green-500 dark:text-green-400">{masteredCount}</div>
+                  <div className="text-sm text-gray-500 dark:text-zinc-400 mt-1">已掌握</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-700 dark:text-gray-300">{unmasteredCount}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">需复习</div>
+                  <div className="text-3xl font-bold text-gray-700 dark:text-zinc-300">{unmasteredCount}</div>
+                  <div className="text-sm text-gray-500 dark:text-zinc-400 mt-1">需复习</div>
                 </div>
               </div>
             </div>
@@ -223,25 +223,25 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
 
           {/* Topics */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-[#f9fafb] rounded-2xl p-5 flex flex-col dark:bg-gray-700/50">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+            <div className="bg-gray-50 dark:bg-zinc-800/30 rounded-2xl p-5 flex flex-col">
+              <h3 className="text-xs font-semibold text-gray-400 dark:text-zinc-400 uppercase tracking-wider mb-3">
                 涵盖的知识点
               </h3>
               <ul className="space-y-2 flex-1">
                 {topics.map((topic, i) => (
-                  <li key={i} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 mt-1.5 shrink-0" />
+                  <li key={i} className="text-sm text-gray-600 dark:text-zinc-300 flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-zinc-500 mt-1.5 shrink-0" />
                     {topic}
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className="bg-[#f9fafb] rounded-2xl p-5 flex flex-col dark:bg-gray-700/50">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+            <div className="bg-gray-50 dark:bg-zinc-800/30 rounded-2xl p-5 flex flex-col">
+              <h3 className="text-xs font-semibold text-gray-400 dark:text-zinc-400 uppercase tracking-wider mb-2">
                 继续学习
               </h3>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">选择后续主题，生成新的抽认卡。</p>
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mb-3">选择后续主题，生成新的抽认卡。</p>
               <div className="flex flex-wrap gap-2 flex-1">
                 {recommendedTopics.map((topic, i) => {
                   const isSelected = selectedTopics.includes(topic);
@@ -276,14 +276,14 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
         <div className="flex items-center justify-end gap-3 mt-4 w-full max-w-2xl">
           <button
             onClick={() => setCurrentIndex(0)}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors dark:text-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 bg-gray-100 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
           >
             <Eye className="w-4 h-4" />
             回顾卡片
           </button>
           <button
             onClick={handleRestart}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors dark:text-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 bg-gray-100 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
             重新复习
@@ -301,14 +301,14 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
-        <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">
+        <span className="text-sm text-gray-500 dark:text-zinc-400 font-medium">
           {currentIndex + 1} / {cards.length}
         </span>
         <div className="flex items-center gap-2">
           <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${difficultyColors[currentCard.difficulty] || difficultyColors['基础']}`}>
             {currentCard.difficulty}
           </span>
-          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 flex items-center gap-1">
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 flex items-center gap-1">
             <CategoryIcon className="w-3 h-3" />
             {currentCard.category}
           </span>
@@ -385,8 +385,8 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
             onClick={() => handleMarkUnmastered(currentCard.id)}
             className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all ${
               isCurrentMastered === false
-                ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                : 'bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-500 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-red-900/20 dark:hover:text-red-400'
+                ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
+                : 'bg-gray-100 dark:bg-zinc-800/50 text-gray-500 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400'
             }`}
           >
             <X className="w-4 h-4" />
@@ -396,8 +396,8 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
             onClick={() => handleMarkMastered(currentCard.id)}
             className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all ${
               isCurrentMastered === true
-                ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-500 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-green-900/20 dark:hover:text-green-400'
+                ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400'
+                : 'bg-gray-100 dark:bg-zinc-800/50 text-gray-500 dark:text-zinc-400 hover:bg-green-50 dark:hover:bg-green-500/10 hover:text-green-500 dark:hover:text-green-400'
             }`}
           >
             <Check className="w-4 h-4" />
@@ -410,14 +410,14 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
           <button
             onClick={handlePrev}
             disabled={currentIndex === 0}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed dark:text-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 bg-gray-100 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <ChevronLeft className="w-4 h-4" />
             上一个
           </button>
           <button
             onClick={handleFlip}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors dark:text-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 bg-gray-100 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
             翻转
@@ -425,7 +425,7 @@ export function FlashcardViewer({ content, onClose, onGenerateFromTopics }: Flas
           <button
             onClick={handleNext}
             disabled={currentIndex === cards.length - 1}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed dark:text-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 bg-gray-100 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             下一个
             <ChevronRight className="w-4 h-4" />
