@@ -30,42 +30,47 @@ RESOURCE_ROLES: list[tuple[str, str]] = [
         "lecture_writer",
         "Generate an in-depth lecture document (Markdown) for a specific concept, "
         "with motivation/definition/intuition/mechanism/example/pitfalls. Calibrated to "
-        "the student's mastery and cognitive style. Use when the student asks for "
-        "讲解 / 文档 / 教程 / 介绍某概念.",
+        "the student's mastery and cognitive style. "
+        "Saves to workspace/generated/lectures/<中文主题名>.md (no leading slash). "
+        "Use when the student asks for 讲解 / 文档 / 教程 / 介绍某概念.",
     ),
     (
         "mindmap_designer",
         "Generate an interactive knowledge tree as JSON for the MindmapCard "
-        "visualization. Each node has title/summary/details/children. Writes "
-        "to workspace/generated/mindmaps/<中文主题名>.json (system auto-injects date prefix). Use when the "
-        "student asks for 思维导图 / 概念图 / 知识梳理 / 一张图看懂.",
+        "visualization. Each node has title/summary/details/children. "
+        "Saves to workspace/generated/mindmaps/<中文主题名>.json (no leading slash, system auto-injects date prefix). "
+        "Use when the student asks for 思维导图 / 概念图 / 知识梳理 / 一张图看懂.",
     ),
     (
         "exercise_composer",
         "Generate 5-8 exercises as JSON (choice + true/false only). CRITICAL JSON RULES: "
         "(1) each option gets its own explanation_md, (2) Chinese quotes must use 「」 "
-        "corner brackets, NEVER ASCII double quotes inside JSON strings. Use when the "
-        "student asks for 题 / 练习 / 测验 / 自测.",
+        "corner brackets, NEVER ASCII double quotes inside JSON strings. "
+        "Saves to workspace/generated/exercises/<中文主题名>.json (no leading slash). "
+        "Use when the student asks for 题 / 练习 / 测验 / 自测.",
     ),
     (
         "flashcard_composer",
         "Generate 10-20 flashcards as JSON for spaced repetition learning. Each card "
         "has front (question, ≤30 chars), back (answer, ≤150 chars), difficulty, category, "
-        "and tags. Writes to workspace/generated/flashcards/<中文主题名>.json (system "
-        "auto-injects date prefix). Use when the student asks for 抽认卡 / 闪卡 / 记忆卡 / "
-        "复习卡 / 知识卡片.",
+        "and tags. "
+        "Saves to workspace/generated/flashcards/<中文主题名>.json (no leading slash, system auto-injects date prefix). "
+        "Use when the student asks for 抽认卡 / 闪卡 / 记忆卡 / 复习卡 / 知识卡片.",
     ),
     (
         "reading_curator",
         "Search and curate 5-8 external reading materials (project KB + web via "
         "tavily-search) with summary, difficulty tier, and personalized recommendation "
-        "reason. Use when the student asks for 拓展阅读 / 资料 / 参考 / 推荐书单.",
+        "reason. "
+        "Saves to workspace/generated/reading-lists/<中文主题名>.md (no leading slash). "
+        "Use when the student asks for 拓展阅读 / 资料 / 参考 / 推荐书单.",
     ),
     (
         "code_case_builder",
         "Generate 2-4 runnable leveled code cases (Python) with smoke tests, "
-        "requirements.txt, and a learning-order README. Use when the student asks "
-        "for 代码 / 实现 / 示例 / demo / 动手.",
+        "requirements.txt, and a learning-order README. "
+        "Saves to workspace/generated/code-cases/<中文主题名>/ (no leading slash). "
+        "Use when the student asks for 代码 / 实现 / 示例 / demo / 动手.",
     ),
 ]
 

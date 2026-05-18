@@ -133,7 +133,7 @@ export function DashboardView() {
         <motion.div custom={1} variants={fadeUp} initial="hidden" animate="visible">
           <StatCards
             summaryScore={data.summary_score}
-            effectiveHours={data.effective_hours}
+            effectiveSeconds={data.effective_seconds}
             masteredPoints={data.mastered_points}
           />
         </motion.div>

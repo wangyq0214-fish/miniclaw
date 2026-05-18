@@ -182,6 +182,64 @@ export async function* streamChat(
   }
 }
 
+// Direct LLM Chat (no agent/tools)
+
+export interface DirectChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export async function* streamDirectChat(
+  messages: DirectChatMessage[],
+  opts?: { temperature?: number; maxTokens?: number },
+  signal?: AbortSignal,
+): AsyncGenerator<SSEEvent> {
+  const response = await fetch(`${getStreamingApiBase()}/api/direct-chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+    body: JSON.stringify({
+      messages,
+      temperature: opts?.temperature ?? 0.7,
+      max_tokens: opts?.maxTokens ?? 2048,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('No response body');
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          yield JSON.parse(line.slice(6)) as SSEEvent;
+        } catch { /* ignore */ }
+      }
+    }
+  }
+}
+
 // Session API
 
 export interface SubAgentRequest {
@@ -376,6 +434,10 @@ export async function readFile(path: string): Promise<{
     { headers }
   );
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
     let detail = response.statusText;
     try {
       const body = await response.json();
@@ -406,6 +468,10 @@ export async function writeFile(
     body: JSON.stringify({ path, content }),
   });
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
     throw new Error(`API error: ${response.statusText}`);
   }
   return response.json();
@@ -874,6 +940,61 @@ export async function deleteNote(noteId: string): Promise<void> {
   if (!response.ok) throw new Error(`API error: ${response.statusText}`);
 }
 
+// ── Web Search API (Source Discovery) ──
+
+export interface WebSearchSource {
+  id: string;
+  icon: string;
+  title: string;
+  url: string;
+  summary: string;
+}
+
+export interface WebSearchResponse {
+  query: string;
+  global_summary: string;
+  sources: WebSearchSource[];
+}
+
+export async function webSearch(query: string, maxResults: number = 5, chineseFirst: boolean = true): Promise<WebSearchResponse> {
+  const response = await fetch(`${getApiBase()}/api/web-search`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ query, max_results: maxResults, chinese_first: chineseFirst }),
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export interface FetchUrlResponse {
+  url: string;
+  content: string;
+  success: boolean;
+  error: string;
+}
+
+export async function fetchUrl(url: string): Promise<FetchUrlResponse> {
+  const response = await fetch(`${getApiBase()}/api/fetch-url`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ url }),
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+  return response.json();
+}
+
 // ── Evaluation API ──
 
 export interface RadarScores {
@@ -893,7 +1014,7 @@ export interface DashboardData {
   radar_scores: RadarScores;
   trend_scores: TrendPoint[];
   summary_score: number;
-  effective_hours: number;
+  effective_seconds: number;
   mastered_points: number;
   insight_text: string;
   highlight_tags: string[];
@@ -902,11 +1023,13 @@ export interface DashboardData {
   cached: boolean;
 }
 
-export async function getDashboardData(days: number = 7): Promise<DashboardData> {
+export async function getDashboardData(days: number = 7, forceRefresh: boolean = false): Promise<DashboardData> {
   const token = tokenManager.getToken();
   const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  const params = new URLSearchParams({ days: String(days) });
+  if (forceRefresh) params.set('force_refresh', 'true');
   const response = await fetch(
-    `${getApiBase()}/api/evaluation/dashboard?days=${days}`,
+    `${getApiBase()}/api/evaluation/dashboard?${params}`,
     { headers },
   );
   if (!response.ok) {

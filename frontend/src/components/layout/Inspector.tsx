@@ -104,8 +104,12 @@ export function Inspector({ activeTab }: InspectorProps) {
   const [editMode, setEditMode] = useState(false);
 
   const [loadError, setLoadError] = useState<string | null>(null);
+  const lastFetchedRef = useRef<{ path: string; time: number } | null>(null);
 
   const loadFileContent = async (path: string) => {
+    const now = Date.now();
+    if (lastFetchedRef.current?.path === path && now - lastFetchedRef.current.time < 500) return;
+    lastFetchedRef.current = { path, time: now };
     setIsLoading(true);
     setLoadError(null);
     try {

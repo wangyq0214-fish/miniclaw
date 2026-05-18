@@ -8,6 +8,19 @@ allowed-tools: read_file write_file get_entity_graph search_knowledge_base
 
 > 指令文件，非 tool。主 agent 读取后按规范生成 HTML 动画。
 
+## 🚨 硬性路径约束（最高优先级）
+
+写盘路径**必须**为（注意：不要加 `/` 前缀，直接以 `workspace` 开头）：
+```
+workspace/generated/media-scripts/<中文主题名>.html
+```
+
+**禁止写到任何其他路径**，包括 `/workspace/generated/media-scripts/` 或 `/generated/media-scripts/`。
+
+**注意**：write_file 工具会提示需要"绝对路径"，但这里必须用 `workspace/...` 格式（不加前导 `/`），系统会自动处理路径。
+
+系统会自动在文件名前注入日期，无需手动添加。
+
 ## 执行步骤
 
 1. 优先从 task description 中获取画像信息（mastery、易错点、认知风格等）。如果 description 中缺少关键信息，才用 `read_file` 读 `workspace/USER.md` 补全。
@@ -38,16 +51,33 @@ allowed-tools: read_file write_file get_entity_graph search_knowledge_base
 
 文件必须包含以下结构（缺一不可）：
 
-### CSS 变量
+### CSS 变量（浅色现代主题）
 ```css
 :root {
-    --bg-color: #0f172a;  /* 深色主题 */
-    --primary: #3b82f6;
-    --secondary: #8b5cf6;
-    --text-main: #f1f5f9;
-    --glow-blue: rgba(59, 130, 246, 0.4);
+    --bg-color: #f8faff;
+    --primary-color: #4a90e2;
+    --secondary-color: #50e3c2;
+    --accent-color: #f5a623;
+    --text-main: #2c3e50;
+    --text-sub: #7f8c8d;
+    --node-bg: #ffffff;
+    --line-color: #d1d8e0;
 }
 ```
+
+### 画布容器
+```css
+#canvas-container {
+    width: 1920px; height: 1080px;
+    background: white;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transform-origin: center;
+}
+```
+页面加载时需响应式缩放：`Math.min(window.innerWidth / 1920, window.innerHeight / 1080)`
 
 ### 场景容器 CSS（必须有）
 ```css
@@ -63,17 +93,16 @@ allowed-tools: read_file write_file get_entity_graph search_knowledge_base
 
 ### HTML 结构
 ```html
-<div id="viewport">
-    <div id="progress"></div>
-    <div id="header"><h1>标题</h1><p>副标题</p></div>
-    <div id="scene-indicator"><!-- scene-dot 元素 --></div>
+<div id="canvas-container">
+    <div id="header"><h1>标题</h1></div>
     <div id="stage">
-        <div id="scene-0"></div>
-        <div id="scene-1"></div>
-        <!-- ... -->
+        <svg id="main-svg" viewBox="0 0 1600 800">
+            <g id="scene-content"></g>
+        </svg>
     </div>
     <div id="subtitle-container">
-        <div id="subtitle-box"><div id="subtitle-cn"></div></div>
+        <div class="subtitle-zh" id="sub-zh"></div>
+        <div class="subtitle-en" id="sub-en"></div>
     </div>
 </div>
 ```
@@ -150,14 +179,38 @@ const subtitles = [
 ];
 ```
 
-## 视觉风格
+## 视觉风格（浅色现代风格，参考 RNN 动画）
 
-- **深色主题**：`--bg-color: #0f172a`
-- **渐变标题**：`background: linear-gradient` + `-webkit-background-clip: text`
-- **毛玻璃字幕**：`backdrop-filter: blur(12px)`
-- **网格背景**：`#viewport::before` 用 `linear-gradient`
-- **发光效果**：`box-shadow: 0 0 20px var(--glow-blue)`
-- **入场动画**：`translateY(20px)` → `translateY(0)`
+### 色彩
+- **浅色背景**：`--bg-color: #f8faff`，画布纯白 `background: white`
+- **主色**：`--primary-color: #4a90e2`（蓝色，用于节点描边、标题、连线）
+- **辅色**：`--secondary-color: #50e3c2`（青绿，用于隐藏层）
+- **强调色**：`--accent-color: #f5a623`（橙色，用于数据粒子、循环箭头、重点高亮）
+- **文字**：主文字 `#2c3e50`，副文字 `#7f8c8d`
+
+### 节点样式
+- **圆形节点**：`fill: white; stroke: var(--primary-color); stroke-width: 4`
+- **矩形节点**：`rx: 10` 圆角，同样白底蓝边
+- **标签**：`font-size: 24px; font-weight: bold; text-anchor: middle`
+
+### 连线与动画
+- **连线**：`stroke: var(--line-color); stroke-width: 3`，用 `stroke-dasharray/dashoffset` 做描边动画
+- **数据粒子**：`fill: var(--accent-color); filter: blur(2px)`，沿路径流动
+- **循环箭头**：用 SVG `marker-end` 定义箭头，颜色 `#f5a623`
+- **入场动画**：`fadeIn` — `opacity: 0; translateY(20px)` → `opacity: 1; translateY(0)`
+- **出场动画**：`fadeOut` — `opacity: 1` → `opacity: 0`
+- **高亮发光**：`filter: drop-shadow(0 0 15px var(--primary-color))`
+
+### 字幕区域
+- 固定在底部 `bottom: 80px`，居中
+- 中文字幕：`font-size: 32px; font-weight: 600; color: var(--text-main)`
+- 英文字幕：`font-size: 20px; color: var(--text-sub); text-transform: uppercase`
+
+### 整体质感
+- **干净、明亮、扁平**，避免过多渐变和阴影
+- 节点用纯白填充 + 彩色描边，不用渐变填充
+- 背景纯白或极浅蓝 `#f8faff`
+- 动画流畅但不花哨，重点是**清晰传达概念**
 
 ## 禁止
 

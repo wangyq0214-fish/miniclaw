@@ -17,13 +17,18 @@ import {
   Link,
   ClipboardPaste,
   Layers,
+  Globe,
+  Search,
+  Loader2,
+  Minimize2,
+  ExternalLink,
 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { ExerciseViewer } from '@/components/exercise/ExerciseViewer';
 import { FlashcardViewer } from '@/components/exercise/FlashcardViewer';
 import { MindmapCard } from '@/components/inspector/MindmapCard';
 import { MessageActions } from '@/components/chat/MessageActions';
-import { streamChat, listSources, createSource, uploadSourceFile, deleteSource, getSourceContent, type SourceItem, type NoteItem, createNote, deleteNote } from '@/lib/api';
+import { streamChat, streamDirectChat, listSources, createSource, uploadSourceFile, deleteSource, getSourceContent, type SourceItem, type NoteItem, createNote, deleteNote, webSearch, fetchUrl } from '@/lib/api';
 import { useApp, bindNotesStore, type NotesChatMessage } from '@/lib/store';
 
 // ── Resizer ──
@@ -79,6 +84,244 @@ const ACTION_CARDS = [
 ];
 
 type SourceModalView = 'menu' | 'text' | 'website';
+
+// ── Smart Search Bar ──
+
+interface SmartSearchBarProps {
+  onSearch: (query: string) => void;
+  isLoading?: boolean;
+}
+
+function SmartSearchBar({ onSearch, isLoading = false }: SmartSearchBarProps) {
+  const [inputValue, setInputValue] = useState('');
+
+  const handleSubmit = useCallback(() => {
+    const query = inputValue.trim();
+    if (query && !isLoading) {
+      onSearch(query);
+    }
+  }, [inputValue, isLoading, onSearch]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }, [handleSubmit]);
+
+  return (
+    <div className="mx-5 mb-4 rounded-2xl bg-[#F9FAFB] dark:bg-zinc-800/50 border border-gray-100 dark:border-white/10 p-4">
+      {/* Input Area */}
+      <textarea
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="在网络中搜索新来源"
+        rows={2}
+        className="w-full bg-transparent text-[15px] text-gray-900 dark:text-zinc-200 placeholder:text-gray-400 dark:placeholder:text-zinc-500 resize-none focus:outline-none leading-relaxed"
+      />
+
+      {/* Bottom Controls */}
+      <div className="flex items-center justify-between mt-3">
+        {/* Search Mode */}
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 shadow-sm text-xs font-medium text-gray-600 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+          <Globe className="w-3.5 h-3.5 text-gray-500 dark:text-zinc-400" />
+          Web Search
+        </button>
+
+        {/* Search Button */}
+        <button
+          onClick={handleSubmit}
+          disabled={!inputValue.trim() || isLoading}
+          className="w-9 h-9 rounded-full bg-gray-200 dark:bg-zinc-700 hover:bg-gray-300 dark:hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+        >
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 text-gray-600 dark:text-zinc-300 animate-spin" />
+          ) : (
+            <Search className="w-4 h-4 text-gray-600 dark:text-zinc-300" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Source Discovery Panel ──
+
+interface DiscoverySourceItem {
+  id: string;
+  icon: string;
+  title: string;
+  url: string;
+  summary: string;
+}
+
+interface SourceDiscoveryData {
+  query: string;
+  global_summary: string;
+  sources: DiscoverySourceItem[];
+}
+
+interface SourceDiscoveryPanelProps {
+  data: SourceDiscoveryData;
+  onImport: (selectedSources: DiscoverySourceItem[]) => void;
+  onClose: () => void;
+}
+
+function SourceDiscoveryPanel({ data, onImport, onClose }: SourceDiscoveryPanelProps) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const isAllSelected = selectedIds.size === data.sources.length && data.sources.length > 0;
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(data.sources.map(s => s.id)));
+    }
+  }, [isAllSelected, data.sources]);
+
+  const handleImport = useCallback(() => {
+    const selected = data.sources.filter(s => selectedIds.has(s.id));
+    onImport(selected);
+  }, [data.sources, selectedIds, onImport]);
+
+  return (
+    <div className="mx-5 mb-4 rounded-2xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 shadow-sm overflow-hidden">
+      {/* Top Navigation */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-white/5">
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400">
+          <span>来源</span>
+          <span className="text-gray-300 dark:text-zinc-600">&gt;</span>
+          <span className="font-medium text-gray-700 dark:text-zinc-300">来源发现</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
+        >
+          <Minimize2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Query & Summary */}
+      <div className="px-5 pt-4 pb-3">
+        {/* Query Badge */}
+        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#F9FAFB] dark:bg-zinc-800/50 mb-3">
+          <Search className="w-4 h-4 text-gray-400 dark:text-zinc-500 shrink-0" />
+          <span className="text-sm font-semibold text-gray-900 dark:text-zinc-200">{data.query}</span>
+        </div>
+        {/* Global Summary */}
+        <p className="text-sm text-gray-600 dark:text-zinc-400 leading-relaxed">
+          {data.global_summary}
+        </p>
+      </div>
+
+      {/* List Container */}
+      <div className="mx-5 mb-4 rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden">
+        {/* List Header */}
+        <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50/50 dark:bg-zinc-800/30 border-b border-gray-100 dark:border-white/5">
+          <span className="text-xs text-gray-500 dark:text-zinc-400">{data.sources.length} 个结果</span>
+          <button
+            onClick={toggleAll}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors"
+          >
+            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+              isAllSelected
+                ? 'bg-teal-500 border-teal-500'
+                : 'border-gray-300 dark:border-zinc-600'
+            }`}>
+              {isAllSelected && <Check className="w-3 h-3 text-white" />}
+            </div>
+            全选
+          </button>
+        </div>
+
+        {/* List Items */}
+        <div className="divide-y divide-gray-100 dark:divide-white/5">
+          {data.sources.map(source => (
+            <div
+              key={source.id}
+              className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50/50 dark:hover:bg-zinc-800/20 transition-colors cursor-pointer"
+              onClick={() => toggleSelect(source.id)}
+            >
+              {/* Site Icon */}
+              <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-sm font-bold text-gray-500 dark:text-zinc-400">
+                {source.icon}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="group/link flex items-center gap-1.5"
+                >
+                  <span className="text-sm font-medium text-gray-900 dark:text-zinc-200 group-hover/link:text-teal-600 dark:group-hover/link:text-teal-400 transition-colors truncate">
+                    {source.title}
+                  </span>
+                  <ExternalLink className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500 group-hover/link:text-teal-500 dark:group-hover/link:text-teal-400 shrink-0 transition-colors" />
+                </a>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed">
+                  {source.summary}
+                </p>
+              </div>
+
+              {/* Checkbox */}
+              <div
+                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                  selectedIds.has(source.id)
+                    ? 'bg-teal-500 border-teal-500'
+                    : 'border-gray-300 dark:border-zinc-600'
+                }`}
+              >
+                {selectedIds.has(source.id) && <Check className="w-3 h-3 text-white" />}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-zinc-800/20">
+        {/* Selected Count */}
+        <span className="text-sm text-gray-600 dark:text-zinc-400">
+          已选择 <span className="font-semibold text-gray-900 dark:text-zinc-200">{selectedIds.size}</span> 个来源
+        </span>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-zinc-800 text-sm font-medium text-gray-600 dark:text-zinc-300 transition-colors"
+          >
+            删除
+          </button>
+          <button
+            onClick={handleImport}
+            disabled={selectedIds.size === 0}
+            className="px-5 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 dark:disabled:bg-zinc-800 text-sm font-semibold text-white disabled:text-gray-400 dark:disabled:text-zinc-500 transition-colors"
+          >
+            导入
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Main Component ──
 
@@ -198,11 +441,24 @@ export function NotesView() {
     if (!text) return;
 
     let title: string;
+    let content: string = text;
+    let fileType: string = 'text';
+
     if (sourceModalView === 'website') {
+      fileType = 'website';
       try {
         const url = text.split(/[\s\n]/)[0];
         const hostname = new URL(url).hostname.replace(/^www\./, '');
         title = hostname;
+        // Fetch website content
+        try {
+          const result = await fetchUrl(url);
+          if (result.success && result.content) {
+            content = result.content;
+          }
+        } catch {
+          // Keep URL as content if fetch fails
+        }
       } catch {
         title = text.slice(0, 50);
       }
@@ -212,10 +468,10 @@ export function NotesView() {
     }
 
     try {
-      const newSource = await createSource(title, text, sourceModalView === 'website' ? 'website' : 'text');
+      const newSource = await createSource(title, content, fileType);
       setSources(prev => [newSource, ...prev]);
     } catch {
-      const fallback: SourceItem = { id: `src-${Date.now()}`, title, content: text };
+      const fallback: SourceItem = { id: `src-${Date.now()}`, title, content };
       setSources(prev => [fallback, ...prev]);
     }
     closeAddSourceModal();
@@ -233,6 +489,63 @@ export function NotesView() {
     } catch {
       // already removed from UI
     }
+  }, []);
+
+  // Smart search state
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [discoveryData, setDiscoveryData] = useState<SourceDiscoveryData | null>(null);
+
+  const handleSmartSearch = useCallback(async (query: string) => {
+    setIsSearchLoading(true);
+    try {
+      const result = await webSearch(query);
+      setDiscoveryData({
+        query: result.query,
+        global_summary: result.global_summary,
+        sources: result.sources,
+      });
+    } catch (err) {
+      console.error('Search failed:', err);
+      setDiscoveryData({
+        query,
+        global_summary: '搜索失败，请稍后重试。',
+        sources: [],
+      });
+    } finally {
+      setIsSearchLoading(false);
+    }
+  }, []);
+
+  const handleImportSources = useCallback(async (selectedSources: DiscoverySourceItem[]) => {
+    // Fetch content for each source in parallel
+    const results = await Promise.allSettled(
+      selectedSources.map(s => fetchUrl(s.url))
+    );
+
+    // Create each source in backend
+    const newSources: SourceItem[] = [];
+    for (let i = 0; i < selectedSources.length; i++) {
+      const s = selectedSources[i];
+      const result = results[i];
+      const content = result.status === 'fulfilled' && result.value.success
+        ? result.value.content
+        : s.summary;
+      try {
+        const created = await createSource(s.title, content, 'website');
+        newSources.push(created);
+      } catch {
+        // Fallback: add locally if backend fails
+        newSources.push({
+          id: `src-${Date.now()}-${s.id}`,
+          title: s.title,
+          content,
+          file_type: 'website',
+        });
+      }
+    }
+
+    setSources(prev => [...newSources, ...prev]);
+    setDiscoveryData(null);
   }, []);
 
   const toggleSource = useCallback((id: string) => {
@@ -306,10 +619,17 @@ export function NotesView() {
 
     const controller = new AbortController();
 
+    // Build messages array for direct chat
+    const messages: { role: 'system' | 'user'; content: string }[] = [
+      { role: 'system', content: '你是一个学习助手，根据用户提供的来源内容回答问题。只基于提供的来源内容回答，不要使用其他知识。如果来源中没有相关信息，请明确说明。' },
+      { role: 'user', content: contextPrefix + text },
+    ];
+
     try {
       let fullContent = '';
-      for await (const event of streamChat(
-        { message: contextPrefix + text, session_id: '', stream: true },
+      for await (const event of streamDirectChat(
+        messages,
+        { temperature: 0.7 },
         controller.signal,
       )) {
         if (event.type === 'token' && event.content) {
@@ -457,6 +777,16 @@ export function NotesView() {
                 添加来源
               </button>
             </div>
+
+            <SmartSearchBar onSearch={handleSmartSearch} isLoading={isSearchLoading} />
+
+            {discoveryData && (
+              <SourceDiscoveryPanel
+                data={discoveryData}
+                onImport={handleImportSources}
+                onClose={() => setDiscoveryData(null)}
+              />
+            )}
 
             <div className="flex-1 overflow-y-auto px-5 pb-4">
               {sources.length === 0 ? (

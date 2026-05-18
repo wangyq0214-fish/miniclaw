@@ -1,0 +1,216 @@
+{
+  "topic": "大数据导论",
+  "total": 7,
+  "difficulty_distribution": {"基础": 3, "中等": 3, "困难": 1},
+  "generated_at": "2026-05-14T10:30:00",
+  "generated_by": "exercise_composer",
+  "covered_topics": ["大数据5V特征", "Hadoop生态", "数据采集与存储", "数据处理与分析", "大数据应用场景", "分布式计算"],
+  "recommended_topics": ["数据仓库与数据湖", "实时流处理", "机器学习基础", "数据可视化", "云计算基础"],
+  "questions": [
+    {
+      "question_id": "q1",
+      "question_text_md": "大数据的「5V」特征不包括以下哪一项？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "Volume（大量）",
+          "explanation_md": "Volume 是 5V 之一，指数据规模巨大，通常达到 TB、PB 甚至 EB 级别。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "Velocity（高速）",
+          "explanation_md": "Velocity 是 5V 之一，指数据产生和处理的速度非常快，要求实时或近实时处理。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "Visibility（可见性）",
+          "explanation_md": "Visibility 并不属于大数据的 5V 特征。5V 分别是 Volume（大量）、Velocity（高速）、Variety（多样性）、Value（价值密度低）、Veracity（真实性）。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "Variety（多样性）",
+          "explanation_md": "Variety 是 5V 之一，指数据类型多样，包括结构化、半结构化和非结构化数据。"
+        }
+      ]
+    },
+    {
+      "question_id": "q2",
+      "question_text_md": "Hadoop 生态系统中，负责分布式存储的组件是？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "MapReduce",
+          "explanation_md": "MapReduce 是 Hadoop 的分布式计算框架，负责数据处理而非存储。它将计算任务拆分为 Map 和 Reduce 两个阶段并行执行。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "HDFS",
+          "explanation_md": "HDFS（Hadoop Distributed File System）是 Hadoop 的分布式文件系统，负责将大数据分散存储在多个节点上，提供高吞吐量的数据访问。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "YARN",
+          "explanation_md": "YARN（Yet Another Resource Negotiator）是 Hadoop 的资源管理框架，负责集群资源的调度和管理，而非数据存储。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "Hive",
+          "explanation_md": "Hive 是基于 Hadoop 的数据仓库工具，提供类 SQL 查询接口，但它本身不是存储组件，底层数据仍存储在 HDFS 上。"
+        }
+      ]
+    },
+    {
+      "question_id": "q3",
+      "question_text_md": "Spark 相比 MapReduce 的主要优势是？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "Spark 支持分布式存储，而 MapReduce 不支持",
+          "explanation_md": "Spark 本身不提供分布式存储，它依赖 HDFS、S3 等外部存储系统。MapReduce 同样依赖 HDFS。两者在存储方面没有本质区别。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "Spark 支持内存计算，中间结果可缓存在内存中，减少磁盘 I/O",
+          "explanation_md": "Spark 的核心优势是基于内存的计算模型（RDD/DataFrame），中间结果可以缓存在内存中，避免了 MapReduce 每个阶段都要写磁盘的问题，迭代计算场景下性能提升显著。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "Spark 只能处理结构化数据，MapReduce 可以处理所有类型数据",
+          "explanation_md": "这个说法完全颠倒了。Spark 可以处理结构化、半结构化和非结构化数据，MapReduce 同样如此。Spark 的 SparkSQL 模块还专门优化了结构化数据处理。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "Spark 是谷歌开发的，MapReduce 是 Apache 开发的",
+          "explanation_md": "事实恰恰相反。MapReduce 的论文由谷歌提出，而 Spark 由加州大学伯克利分校 AMPLab 开发，后捐赠给 Apache 基金会。"
+        }
+      ]
+    },
+    {
+      "question_id": "q4",
+      "question_text_md": "以下哪种数据属于「非结构化数据」？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "Excel 表格中的学生成绩表",
+          "explanation_md": "Excel 表格是典型的结构化数据，有固定的行、列和数据类型，可以直接用关系型数据库存储和查询。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "JSON 格式的 API 返回数据",
+          "explanation_md": "JSON 属于半结构化数据，虽然没有固定的表结构，但有明确的键值对和层次关系，可以被程序解析。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "社交媒体上的用户评论文本",
+          "explanation_md": "自然语言文本是非结构化数据的典型代表，没有预定义的数据模型，无法直接用二维表存储，需要经过 NLP 等技术处理才能提取有价值的信息。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "数据库中的订单记录",
+          "explanation_md": "数据库中的记录是结构化数据，有明确的字段定义、数据类型和约束，遵循关系模型。"
+        }
+      ]
+    },
+    {
+      "question_id": "q5",
+      "question_text_md": "HDFS 中，NameNode 的主要职责是？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "存储实际的数据块",
+          "explanation_md": "存储实际数据块是 DataNode 的职责。NameNode 不存储用户数据，只管理元数据信息。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "管理文件系统的元数据，记录每个文件的数据块分布在哪些 DataNode 上",
+          "explanation_md": "NameNode 是 HDFS 的主节点，负责维护文件系统树和文件到数据块的映射关系（元数据），客户端通过 NameNode 找到数据块所在的 DataNode 进行读写。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "执行 MapReduce 计算任务",
+          "explanation_md": "执行计算任务是 YARN 中的 ResourceManager 和 NodeManager 的职责，与 NameNode 无关。NameNode 专注于文件系统元数据管理。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "负责数据的压缩和解压缩",
+          "explanation_md": "数据压缩通常由客户端或计算框架（如 MapReduce、Spark）在读写数据时完成，不是 NameNode 的职责。"
+        }
+      ]
+    },
+    {
+      "question_id": "q6",
+      "question_text_md": "在大数据应用场景中，推荐系统主要利用的是大数据的哪个特征？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "Velocity（高速）—— 需要实时推荐",
+          "explanation_md": "虽然实时推荐确实需要一定的处理速度，但推荐系统的核心价值在于从海量用户行为数据中挖掘偏好模式，高速只是辅助特征。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "Veracity（真实性）—— 需要保证推荐结果准确",
+          "explanation_md": "Veracity 指数据的质量和可信度。推荐系统确实需要一定数据质量，但其核心挑战不是数据真实性问题，而是如何从大量数据中发现价值。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "Value（价值密度低）—— 需要从海量行为数据中挖掘出有价值的用户偏好",
+          "explanation_md": "推荐系统的本质是从大量低价值密度的用户浏览、点击、购买等行为数据中，通过算法挖掘出高价值的用户偏好和物品关联信息，这正是 Value 特征的体现。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "Volume（大量）—— 数据量越大推荐越准",
+          "explanation_md": "Volume 指数据规模大，推荐系统确实需要大量数据，但核心挑战不在于数据量本身，而在于如何从这些数据中提取有价值的信息（即 Value）。"
+        }
+      ]
+    },
+    {
+      "question_id": "q7",
+      "question_text_md": "Spark 的 RDD（Resilient Distributed Dataset）是不可变的分布式数据集，这意味着一旦创建就不能修改。",
+      "difficulty": "困难",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "正确",
+          "explanation_md": "RDD 确实是不可变的（immutable）。对 RDD 的任何「修改」操作（如 map、filter）都会生成一个新的 RDD，而不是修改原 RDD。这种设计简化了容错机制——通过记录 RDD 的血统（lineage）即可重新计算丢失的分区。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "错误",
+          "explanation_md": "RDD 的不可变性是其核心设计原则之一。虽然 Spark 提供了 DataFrame/Dataset 等更高层抽象看起来像在「修改」数据，但底层 RDD 仍然是不可变的，每次转换都会产生新的 RDD。"
+        }
+      ]
+    }
+  ]
+}

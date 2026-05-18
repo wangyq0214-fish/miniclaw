@@ -14,6 +14,8 @@ from memory.hybrid_session import HybridSessionManager
 from database import get_db, get_redis
 from memory.redis_session import RedisSessionManager
 from config import get_project_root
+from models.complete_models import User
+from auth.security import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -23,11 +25,12 @@ router = APIRouter()
 
 def get_hybrid_manager(
     db: AsyncSession = Depends(get_db),
-    redis = Depends(get_redis)
+    redis = Depends(get_redis),
+    current_user: User = Depends(get_current_user)
 ) -> HybridSessionManager:
-    """Dependency to get HybridSessionManager instance."""
+    """Dependency to get HybridSessionManager instance with user context."""
     redis_manager = RedisSessionManager(redis)
-    return HybridSessionManager(redis_manager, db)
+    return HybridSessionManager(redis_manager, db, user_id=current_user.id)
 
 # Use tiktoken for token counting
 try:

@@ -9,8 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from api.tts import _extract_subtitles, _text_hash, generate_audio_for_subtitles
 
 async def main():
-    html_path = Path("data/users/2/workspace/generated/media-scripts/transformer动画.html")
-    audio_dir = Path("data/users/2/workspace/generated/media-scripts/transformer动画")
+    html_path = Path("../data/users/2/workspace/generated/media-scripts/transformer动画.html")
+    audio_dir = Path("../data/users/2/workspace/generated/media-scripts/transformer动画")
 
     html = html_path.read_text(encoding="utf-8")
     print(f"Original HTML length: {len(html)}")

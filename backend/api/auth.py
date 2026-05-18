@@ -18,7 +18,7 @@ from auth.security import (
     get_current_active_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from config import get_user_workspace_dir, get_user_memory_dir, get_user_sessions_dir
+from config import get_user_workspace_dir, get_user_memory_dir
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ async def register(
     logger.info(f"New user registered: {new_user.username} (user_id={new_user.id})")
 
     # Initialize user directories
-    for d in [get_user_workspace_dir(new_user.id), get_user_memory_dir(new_user.id), get_user_sessions_dir(new_user.id)]:
+    for d in [get_user_workspace_dir(new_user.id), get_user_memory_dir(new_user.id)]:
         d.mkdir(parents=True, exist_ok=True)
     logger.info(f"User directories initialized for user {new_user.id}")
 

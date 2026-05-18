@@ -26,10 +26,11 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions_v2"])
 
 async def get_hybrid_manager(
     db: AsyncSession = Depends(get_db),
-    redis_client = Depends(get_redis)
+    redis_client = Depends(get_redis),
+    current_user: User = Depends(get_current_user)
 ) -> HybridSessionManager:
     redis_manager = RedisSessionManager(redis_client, ttl_days=7)
-    return HybridSessionManager(redis_manager, db)
+    return HybridSessionManager(redis_manager, db, user_id=current_user.id)
 
 @router.post("/create", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
 async def create_session(

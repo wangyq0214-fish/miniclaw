@@ -72,7 +72,7 @@ class DashboardResponse(BaseModel):
     radar_scores: RadarScores
     trend_scores: List[TrendPoint]
     summary_score: float
-    effective_hours: float
+    effective_seconds: int = 0
     mastered_points: int
     insight_text: str
     highlight_tags: List[str]
@@ -165,7 +165,7 @@ async def get_dashboard(
         for e in events
     ]
 
-    effective_hours = _compute_effective_hours(event_dicts)
+    effective_seconds = _compute_effective_seconds(event_dicts)
     mastered_points = _compute_mastered_points(event_dicts)
     trend_scores = _compute_trend_scores(event_dicts, days)
 
@@ -174,7 +174,7 @@ async def get_dashboard(
 
     # Generate AI insight (Layer 3 - LLM)
     insight_text, highlight_tags, action_item = await _generate_ai_insight(
-        event_dicts, radar, trend_scores, effective_hours, mastered_points
+        event_dicts, radar, trend_scores, effective_seconds, mastered_points
     )
 
     # Compute summary score (weighted average of radar)
@@ -195,7 +195,7 @@ async def get_dashboard(
         radar_scores=radar,
         trend_scores=trend_scores,
         summary_score=summary_score,
-        effective_hours=effective_hours,
+        effective_seconds=effective_seconds,
         mastered_points=mastered_points,
         insight_text=insight_text,
         highlight_tags=highlight_tags,
@@ -233,7 +233,7 @@ async def get_history(
                 "report_date": r.report_date.isoformat(),
                 "summary_score": r.summary_score,
                 "radar_scores": r.radar_scores,
-                "effective_hours": r.effective_hours,
+                "effective_seconds": r.effective_seconds or 0,
                 "mastered_points": r.mastered_points,
                 "insight_text": r.insight_text,
                 "highlight_tags": r.highlight_tags,
@@ -271,7 +271,7 @@ def _report_to_response(report: EvaluationReport, cached: bool) -> DashboardResp
         radar_scores=RadarScores(**(report.radar_scores or {})),
         trend_scores=[TrendPoint(**t) for t in (report.trend_scores or [])],
         summary_score=report.summary_score or 0.0,
-        effective_hours=report.effective_hours or 0.0,
+        effective_seconds=report.effective_seconds or 0,
         mastered_points=report.mastered_points or 0,
         insight_text=report.insight_text or "",
         highlight_tags=report.highlight_tags or [],
@@ -281,18 +281,18 @@ def _report_to_response(report: EvaluationReport, cached: bool) -> DashboardResp
     )
 
 
-def _compute_effective_hours(events: List[dict]) -> float:
-    """Estimate effective learning hours from events."""
-    total_seconds = 0
+def _compute_effective_seconds(events: List[dict]) -> int:
+    """Compute effective learning time in seconds from events."""
+    total = 0
     for e in events:
         data = e.get("event_data", {})
         if e["event_type"] in ("quiz_complete", "flashcard_review"):
-            total_seconds += data.get("duration", 60)  # default 60s per activity
+            total += data.get("duration", 60)
         elif e["event_type"] == "chat_message":
-            total_seconds += 30  # ~30s per message exchange
+            total += data.get("duration", 30)
         elif e["event_type"] == "page_visit":
-            total_seconds += data.get("duration", 10)
-    return round(total_seconds / 3600, 1)
+            total += data.get("duration", 10)
+    return total
 
 
 def _compute_mastered_points(events: List[dict]) -> int:
@@ -308,30 +308,24 @@ def _compute_mastered_points(events: List[dict]) -> int:
 
 
 def _compute_trend_scores(events: List[dict], days: int) -> List[dict]:
-    """Compute daily composite scores for the trend chart."""
-    # Group quiz events by date
-    daily_scores: Dict[str, List[float]] = {}
+    """Compute daily chat count for the trend chart."""
+    daily_count: Dict[str, int] = {}
     for e in events:
-        if e["event_type"] == "quiz_complete":
-            data = e.get("event_data", {})
-            created = e.get("created_at", "")
-            day = created[:10] if created else ""
-            score = data.get("score", 0)
-            total = data.get("total", 1)
-            if day and total > 0:
-                daily_scores.setdefault(day, []).append(score / total * 100)
+        if e["event_type"] != "chat_message":
+            continue
+        created = e.get("created_at", "")
+        day = created[:10] if created else ""
+        if day:
+            daily_count[day] = daily_count.get(day, 0) + 1
 
-    # Build trend data for the last N days
     result = []
     today = date.today()
     for i in range(days - 1, -1, -1):
         d = today - timedelta(days=i)
         day_str = d.isoformat()
-        scores = daily_scores.get(day_str, [])
-        avg = round(sum(scores) / len(scores), 1) if scores else None
         result.append({
             "date": d.strftime("%m-%d"),
-            "score": avg if avg is not None else 0,
+            "score": daily_count.get(day_str, 0),
         })
     return result
 
@@ -416,7 +410,7 @@ async def _generate_ai_insight(
     events: List[dict],
     radar: dict,
     trend: List[dict],
-    effective_hours: float,
+    effective_seconds: int,
     mastered_points: int,
 ) -> tuple:
     """Generate AI insight text, highlight tags, and action item via LLM."""
@@ -434,7 +428,7 @@ async def _generate_ai_insight(
         "event_types": {},
         "radar_scores": radar,
         "trend_scores": trend,
-        "effective_hours": effective_hours,
+        "effective_seconds": effective_seconds,
         "mastered_points": mastered_points,
     }
     for e in events:

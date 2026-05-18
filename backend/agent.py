@@ -91,7 +91,7 @@ class AgentManager:
         # Initialize filesystem backend with per-user isolation
         if user_id is not None:
             # Local mode with per-user directories
-            from config import get_user_memory_dir, get_user_workspace_dir, get_user_sessions_dir
+            from config import get_user_memory_dir, get_user_workspace_dir
 
             user_memory_dir = get_user_memory_dir(user_id)
             user_workspace_dir = get_user_workspace_dir(user_id)

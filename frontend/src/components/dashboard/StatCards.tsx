@@ -1,15 +1,54 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Minus, Clock, Brain } from 'lucide-react';
 
 interface StatCardsProps {
   summaryScore: number;
-  effectiveHours: number;
+  effectiveSeconds: number;
   masteredPoints: number;
   previousScore?: number;
 }
 
-export function StatCards({ summaryScore, effectiveHours, masteredPoints, previousScore }: StatCardsProps) {
+function formatDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}小时${minutes}分${seconds}秒`;
+  if (minutes > 0) return `${minutes}分${seconds}秒`;
+  return `${seconds}秒`;
+}
+
+// Track online duration with localStorage persistence
+function useOnlineDuration() {
+  const [seconds, setSeconds] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const stored = localStorage.getItem('online_start');
+    if (stored) {
+      const start = parseInt(stored, 10);
+      return Math.floor((Date.now() - start) / 1000);
+    }
+    const now = Date.now();
+    localStorage.setItem('online_start', String(now));
+    return 0;
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const stored = localStorage.getItem('online_start');
+      if (stored) {
+        const start = parseInt(stored, 10);
+        setSeconds(Math.floor((Date.now() - start) / 1000));
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return seconds;
+}
+
+export function StatCards({ summaryScore, effectiveSeconds, masteredPoints, previousScore }: StatCardsProps) {
+  const onlineSeconds = useOnlineDuration();
   const diff = previousScore != null ? summaryScore - previousScore : 0;
   const trend = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
@@ -46,11 +85,10 @@ export function StatCards({ summaryScore, effectiveHours, masteredPoints, previo
           <div className="w-4 h-4 rounded bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center">
             <Clock className="w-3 h-3 text-purple-500 dark:text-purple-400" />
           </div>
-          有效学习时长
+          在线时长
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-gray-900 dark:text-zinc-200">{effectiveHours}</span>
-          <span className="text-sm text-gray-500 dark:text-zinc-400">小时</span>
+          <span className="text-4xl font-bold text-gray-900 dark:text-zinc-200">{formatDuration(onlineSeconds)}</span>
         </div>
       </div>
 

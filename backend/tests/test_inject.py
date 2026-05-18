@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-html_path = Path("data/users/2/workspace/generated/media-scripts/transformer动画.html")
+html_path = Path("../data/users/2/workspace/generated/media-scripts/transformer动画.html")
 html = html_path.read_text(encoding="utf-8")
 
 # Extract subtitles

@@ -8,6 +8,24 @@ allowed-tools: read_file write_file get_entity_graph get_course_structure search
 
 > **重要**:本文件是一份**指令**,不是可调用 tool。被 lecture_writer 子代理 read_file 读取后,按下方步骤用工具执行。
 
+## 🚨 硬性路径约束（最高优先级）
+
+写盘路径**必须**为（注意：不要加 `/` 前缀，直接以 `workspace` 开头）：
+```
+workspace/generated/lectures/<中文主题名>.md
+```
+
+示例：`workspace/generated/lectures/反向传播.md`、`workspace/generated/lectures/循环神经网络.md`
+
+**禁止写到任何其他路径**，包括：
+- `/workspace/generated/lectures/<主题>.md` ❌（多加了 `/`）
+- `/generated/lectures/<主题>.md` ❌
+- `workspace/<主题>.md` ❌
+- `workspace/lectures/<主题>.md` ❌
+- 任何不以 `workspace/generated/lectures/` 开头的路径 ❌
+
+**注意**：write_file 工具会提示需要"绝对路径"，但这里必须用 `workspace/...` 格式（不加前导 `/`），系统会自动处理路径。
+
 ## 执行步骤
 
 ### Step 1:读学生画像

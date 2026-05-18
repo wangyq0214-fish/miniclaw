@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from api.tts import _extract_subtitles, _text_hash
 
-html_path = Path("data/users/2/workspace/generated/media-scripts/transformer动画.html")
+html_path = Path("../data/users/2/workspace/generated/media-scripts/transformer动画.html")
 html = html_path.read_text(encoding="utf-8")
 
 subtitles = _extract_subtitles(html)
@@ -20,7 +20,7 @@ print(f"\nFirst subtitle text: {repr(text[:80])}")
 print(f"Hash: {_text_hash(text)}")
 
 # Check what hash the file has
-audio_dir = Path("data/users/2/workspace/generated/media-scripts/transformer动画")
+audio_dir = Path("../data/users/2/workspace/generated/media-scripts/transformer动画")
 files = sorted(audio_dir.glob("0_*.mp3"))
 print(f"\nFiles starting with '0_':")
 for f in files:

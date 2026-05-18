@@ -238,7 +238,7 @@ function ContentPanel({
           )}
         </div>
 
-        {node.details && node.details.length > 0 && (
+        {Array.isArray(node.details) && node.details.length > 0 && (
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               <Lightbulb className="w-3 h-3" /> 核心要点
@@ -616,7 +616,7 @@ export function MindmapCard({ path, content, onOpenInEditor }: MindmapCardProps)
     try {
       const ctx = [
         selectedNode.summary ? `概念：${selectedNode.summary}` : '',
-        selectedNode.details?.length ? `要点：${selectedNode.details.join('；')}` : '',
+        Array.isArray(selectedNode.details) && selectedNode.details.length ? `要点：${selectedNode.details.join('；')}` : '',
       ].filter(Boolean).join('\n');
       const res = await expandMindmapNode(selectedNode.title, ctx);
       setExtraMap((prev) => ({ ...prev, [selectedId]: res.extra }));

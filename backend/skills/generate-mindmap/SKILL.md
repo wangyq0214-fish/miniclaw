@@ -8,6 +8,24 @@ allowed-tools: read_file write_file get_entity_graph get_course_structure
 
 > **重要**: 输出 JSON 树结构，每个节点带知识解释，不是 Mermaid。
 
+## 🚨 硬性路径约束（最高优先级）
+
+写盘路径**必须**为（注意：不要加 `/` 前缀，直接以 `workspace` 开头）：
+```
+workspace/generated/mindmaps/<中文主题名>.json
+```
+
+示例：`workspace/generated/mindmaps/循环神经网络.json`、`workspace/generated/mindmaps/反向传播.json`
+
+**禁止写到任何其他路径**，包括：
+- `/workspace/generated/mindmaps/<主题>.json` ❌（多加了 `/`）
+- `/generated/mindmaps/<主题>.json` ❌
+- `workspace/<主题>.json` ❌
+- `workspace/mindmaps/<主题>.json` ❌
+- 任何不以 `workspace/generated/mindmaps/` 开头的路径 ❌
+
+**注意**：write_file 工具会提示需要"绝对路径"，但这里必须用 `workspace/...` 格式（不加前导 `/`），系统会自动处理路径。
+
 ## 执行步骤
 
 ### Step 1: 读学生画像

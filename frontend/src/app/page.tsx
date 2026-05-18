@@ -179,7 +179,7 @@ function MainContent() {
         ) : (
           <>
             {/* Mobile Sidebar Drawer */}
-            {mobileSidebar && (
+            {isMobile && mobileSidebar && (
               <div className="md:hidden fixed inset-0 z-50">
                 <div
                   className="absolute inset-0 bg-black/40"
@@ -205,7 +205,7 @@ function MainContent() {
             )}
 
             {/* Mobile Inspector Drawer */}
-            {mobileInspector && (
+            {isMobile && mobileInspector && (
               <div className="lg:hidden fixed inset-0 z-50">
                 <div className="h-full w-full bg-background flex flex-col animate-in slide-in-from-right duration-200">
                   <div className="flex items-center justify-between p-3 border-b border-border shrink-0">

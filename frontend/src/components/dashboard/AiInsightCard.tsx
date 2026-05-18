@@ -52,9 +52,9 @@ export function AiInsightCard({ insightText, highlightTags, actionItem, onRefres
           </div>
 
           {/* Insight text */}
-          <p className="text-sm text-blue-800 dark:text-zinc-300 leading-relaxed mb-3">
+          <div className="text-sm text-blue-800 dark:text-zinc-300 leading-relaxed mb-3">
             <MarkdownRenderer content={insightText} />
-          </p>
+          </div>
 
           {/* Tags */}
           {highlightTags.length > 0 && (

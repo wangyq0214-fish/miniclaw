@@ -332,7 +332,7 @@ class EvaluationReport(Base):
     radar_scores = Column(JSONB, nullable=True, comment="雷达图分数: {memory, logic, application, innovation, breadth}")
     trend_scores = Column(JSONB, nullable=True, comment="趋势数据: [{date, score}, ...]")
     summary_score = Column(Float, nullable=True, comment="综合评分")
-    effective_hours = Column(Float, nullable=True, comment="有效学习时长(小时)")
+    effective_seconds = Column(Integer, nullable=True, comment="有效学习时长(秒)")
     mastered_points = Column(Integer, nullable=True, comment="掌握知识点数")
 
     # AI 生成内容

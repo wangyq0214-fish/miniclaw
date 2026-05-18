@@ -185,6 +185,9 @@ from api.tts import router as tts_router
 from api.sources import router as sources_router
 from api.notes import router as notes_router
 from api.evaluation import router as evaluation_router
+from api.direct_chat import router as direct_chat_router
+from api.web_search import router as web_search_router
+from api.fetch_url import router as fetch_url_router
 
 app.include_router(chat_router, prefix="/api", tags=["chat"])
 app.include_router(sessions_v2_router, tags=["sessions_v2"])
@@ -203,6 +206,9 @@ app.include_router(tts_router, prefix="/api/tts", tags=["tts"])
 app.include_router(sources_router, prefix="/api", tags=["sources"])
 app.include_router(notes_router, prefix="/api", tags=["notes"])
 app.include_router(evaluation_router, prefix="/api", tags=["evaluation"])
+app.include_router(direct_chat_router, prefix="/api", tags=["direct-chat"])
+app.include_router(web_search_router, prefix="/api", tags=["web-search"])
+app.include_router(fetch_url_router, prefix="/api", tags=["fetch-url"])
 
 # Mount static files for knowledge assets (images, etc.)
 # Images should be stored in knowledge/assets/ folder

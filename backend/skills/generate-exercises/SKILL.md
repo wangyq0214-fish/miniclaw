@@ -8,6 +8,36 @@ allowed-tools: read_file write_file get_entity_graph search_knowledge_base
 
 > 指令文件,非 tool。被 `exercise_composer` 子代理读取执行。
 
+## 🚨 硬性路径约束（最高优先级）
+
+写盘路径**必须**为（注意：不要加 `/` 前缀，直接以 `workspace` 开头）：
+```
+workspace/generated/exercises/<中文主题名>.json
+```
+
+示例：`workspace/generated/exercises/反向传播.json`、`workspace/generated/exercises/RNN基础.json`
+
+**禁止写到任何其他路径**，包括：
+- `/workspace/generated/exercises/<主题>.json` ❌（多加了 `/`）
+- `/generated/exercises/<主题>.json` ❌
+- `workspace/<主题>.json` ❌
+- `workspace/exercises/<主题>.json` ❌
+- 任何不以 `workspace/generated/exercises/` 开头的路径 ❌
+
+**注意**：write_file 工具会提示需要"绝对路径"，但这里必须用 `workspace/...` 格式（不加前导 `/`），系统会自动处理路径。
+
+**输出格式必须为 JSON 文件**，禁止生成 Markdown 文件。系统会自动在文件名前注入日期（如 `2026-05-15-rnn.json`），无需手动添加日期前缀。
+
+## 🚨 硬性格式约束（前端直接解析，字段名错误 = 页面崩溃）
+
+JSON 中每道题的字段名**必须**为：
+- `question_id`（不是 `id`）
+- `question_text_md`（不是 `question`、`text`、`content`）
+- `options` 数组中每个选项用 `id`、`text_md`、`is_correct`、`explanation_md`
+- 判断题也**必须**包含 `options` 数组（2 个选项：正确/错误）
+
+**字段名错误会导致前端 `JSON.parse` 后无法渲染，页面白屏。**
+
 ## ⚠️ JSON 生死线（最高优先级，违反即文件报废）
 
 你输出的必须是**合法 JSON**。以下是已知会导致 JSON 解析失败的错误：
@@ -149,6 +179,8 @@ outgoing 的邻近实体是选择题干扰项的黄金来源(学生容易把它�
   ]
 }
 ```
+
+
 
 ### 解析撰写铁律
 

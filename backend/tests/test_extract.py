@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from api.tts import _extract_subtitles
 
-html_path = Path("data/users/2/workspace/generated/media-scripts/transformer动画.html")
+html_path = Path("../data/users/2/workspace/generated/media-scripts/transformer动画.html")
 html = html_path.read_text(encoding="utf-8")
 
 subtitles = _extract_subtitles(html)

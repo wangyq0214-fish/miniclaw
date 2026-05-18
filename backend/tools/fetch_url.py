@@ -21,16 +21,26 @@ import html2text
 
 logger = logging.getLogger(__name__)
 
-# Common browser-like headers to avoid bot blocking
+# Multiple browser-like headers to rotate and avoid bot blocking
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+]
+
 DEFAULT_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
     "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0",
 }
 
 
@@ -78,13 +88,16 @@ class CleanedFetchTool(BaseTool):
         return output
 
     def _fetch_with_retry(self, url: str) -> tuple[str, str]:
-        """Fetch URL content with retry. Returns (content, content_type)."""
+        """Fetch URL content with retry and rotating User-Agents."""
+        import random
         last_error = None
         for attempt in range(self.max_retries):
+            # Rotate User-Agent for each attempt
+            headers = {**DEFAULT_HEADERS, "User-Agent": random.choice(USER_AGENTS)}
             try:
                 with httpx.Client(
                     timeout=self.timeout,
-                    headers=DEFAULT_HEADERS,
+                    headers=headers,
                     follow_redirects=True,
                 ) as client:
                     response = client.get(url)
@@ -97,8 +110,38 @@ class CleanedFetchTool(BaseTool):
                     logger.warning(f"Timeout on attempt {attempt + 1}, retrying...")
                     time.sleep(1)
             except httpx.HTTPStatusError as e:
-                raise  # Don't retry HTTP errors
+                if e.response.status_code == 403 and attempt < self.max_retries - 1:
+                    logger.warning(f"403 Forbidden on attempt {attempt + 1}, retrying with different User-Agent...")
+                    time.sleep(0.5)
+                    continue
+                # For other HTTP errors, try urllib as fallback
+                logger.warning(f"httpx failed with {e.response.status_code}, trying urllib fallback...")
+                return self._fetch_with_urllib(url)
+            except Exception as e:
+                logger.warning(f"httpx error: {e}, trying urllib fallback...")
+                return self._fetch_with_urllib(url)
+        # If all httpx attempts failed, try urllib
+        if last_error:
+            logger.warning(f"All httpx attempts failed, trying urllib fallback...")
+            return self._fetch_with_urllib(url)
         raise last_error
+
+    def _fetch_with_urllib(self, url: str) -> tuple[str, str]:
+        """Fallback fetch using urllib (works when httpx is blocked)."""
+        import urllib.request
+        import ssl
+        import random
+
+        headers = {**DEFAULT_HEADERS, "User-Agent": random.choice(USER_AGENTS)}
+        req = urllib.request.Request(url, headers=headers, method="GET")
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        with urllib.request.urlopen(req, timeout=self.timeout, context=ctx) as response:
+            content_type = response.headers.get('Content-Type', '')
+            content = response.read().decode('utf-8', errors='replace')
+            return content, content_type
 
     def _run(self, url: str, run_manager=None) -> str:
         """Fetch and clean URL content."""
