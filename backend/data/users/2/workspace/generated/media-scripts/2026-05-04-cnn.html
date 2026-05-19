@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>卷积神经网络(CNN) 交互式讲解</title>
+<style>
+  :root {
+    --primary: #4F46E5;
+    --primary-light: #818CF8;
+    --accent: #F59E0B;
+    --bg: #0F172A;
+    --card: #1E293B;
+    --text: #E2E8F0;
+    --text-dim: #94A3B8;
+    --success: #10B981;
+    --danger: #EF4444;
+    --border: #334155;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    text-align: center;
+    padding: 40px 20px 20px;
+    background: linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #1E293B 100%);
+    border-bottom: 2px solid var(--primary);
+  }
+  .header h1 {
+    font-size: 2.2rem;
+    background: linear-gradient(90deg, #818CF8, #C084FC, #F472B6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .header p { color: var(--text-dim); font-size: 1rem; }
+
+  /* ── Navigation Tabs ── */
+  .nav-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .nav-tab {
+    padding: 10px 22px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+  }
+  .nav-tab:hover { border-color: var(--primary-light); color: var(--text); }
+  .nav-tab.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(79,70,229,0.4);
+  }
+
+  /* ── Section Container ── */
+  .section { display: none; padding: 30px 20px; max-width: 1100px; margin: 0 auto; }
+  .section.active { display: block; }
+  .section h2 {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+    color: var(--primary-light);
+  }
+  .section .subtitle {
+    color: var(--text-dim);
+    margin-bottom: 24px;
+    font-size: 0.95rem;
+  }
+
+  /* ── Canvas Area ── */
+  .canvas-wrap {
+    background: #0D1117;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    border-radius: 8px;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .btn {
+    padding: 8px 18px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--primary-light); background: #2D3A50; }
+  .btn.primary { background: var(--primary); border-color: var(--primary); }
+  .btn.primary:hover { background: #5B52E0; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .slider-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  .slider-group input[type="range"] {
+    width: 120px;
+    accent-color: var(--primary);
+  }
+
+  /* ── Info Cards ── */
+  .info-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .info-card h3 {
+    color: var(--accent);
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+  }
+  .info-card p, .info-card li {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+  .info-card ul { padding-left: 20px; }
+  .info-card code {
+    background: #334155;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #C084FC;
+  }
+
+  /* ── Step indicator ── */
+  .step-indicator {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    text-align: center;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+  }
+
+  /* ── Architecture diagram ── */
+  .arch-layer {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 6px;
+    vertical-align: top;
+  }
+  .arch-block {
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    min-width: 80px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: default;
+  }
+  .arch-block:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  }
+  .arch-arrow {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-dim);
+    font-size: 1.4rem;
+    margin: 0 2px;
+    vertical-align: middle;
+    line-height: 60px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 700px) {
+    .header h1 { font-size: 1.5rem; }
+    .nav-tab { padding: 8px 14px; font-size: 0.85rem; }
+    .section { padding: 16px 10px; }
+  }
+
+  /* ── Highlight pulse ── */
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(79,70,229,0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(79,70,229,0); }
+  }
+  .pulse { animation: pulse 1.5s infinite; }
+
+  /* ── Tooltip ── */
+  .tooltip {
+    position: absolute;
+    background: #1E293B;
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: var(--text);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 100;
+    max-width: 260px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .tooltip.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🧠 卷积神经网络 (CNN) 交互式讲解</h1>
+  <p>通过动画直观理解卷积、池化和完整网络架构</p>
+</div>
+
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="switchSection('conv')">📐 卷积操作</button>
+  <button class="nav-tab" onclick="switchSection('pool')">🔻 池化操作</button>
+  <button class="nav-tab" onclick="switchSection('arch')">🏗️ 网络架构</button>
+  <button class="nav-tab" onclick="switchSection('feature')">🔍 特征提取</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- Section 1: 卷积操作 -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="sec-conv" class="section active">
+  <h2>卷积操作 (Convolution)</h2>
+  <p class="subtitle">卷积核在输入特征图上滑动，逐元素相乘再求和，提取局部特征</p>
+
+  <div class="info-card">
+    <h3>💡 核心思想</h3>
+    <p>卷积核（filter/kernel）是一个小矩阵（如 3×3），在输入图像上<strong>滑动</strong>，每到一个位置就做<strong>逐元素乘法 + 求和</strong>，生成输出特征图的一个像素值。公式：</p>
+    <p style="text-align:center;margin:10px 0;font-size:1.05rem;">
+      <code>Output[i,j] = Σ Σ Input[i+m, j+n] × Kernel[m, n]</code>
+    </p>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" id="convPlayBtn" onclick="convAnimation.toggle()">▶ 播放</button>
+    <button class="btn" onclick="convAnimation.reset()">↺ 重置</button>
+    <div class="slider-group">
+      <span>速度</span>
+      <input type="range" min="1" max="10" value="5" oninput="convAnimation.speed=this.value">
+    </div>
+    <div class="slider-group">
+      <span>核大小</span>
+      <select class="btn" id="kernelSizeSel" onchange="convAnimation.setKernelSize(+this.value)">
+        <option value="3" selected>3×3</option>
+        <option value="5">5×5</option>
+      </select>
+    </div>
+    <div class="slider-group">
+      <span>步幅</span>
+      <select class="btn" id="strideSel" onchange="convAnimation.setStride(+this.value)">
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#4F46E5"></div>输入特征图</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div>卷积核覆盖区域</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#10B981"></div>输出特征图</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#EF4444"></div>当前计算位置</div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="convCanvas" width="900" height="420"></canvas>
+    <div id="convTooltip" class="tooltip"></div>
+  </div>
+
+  <div class="info-card">
+    <h3>📝 关键参数</h3>
+    <ul>
+      <li><strong>卷积核大小 (Kernel Size)</strong>：常用 3×3 或 5×5，核越大感受野越大</li>
+      <li><strong>步幅 (Stride)</strong>：卷积核每次滑动的距离。步幅=1 输出尺寸大，步幅=2 输出尺寸减半</li>
+      <li><strong>填充 (Padding)</strong>：在输入边缘补零，保持输出尺寸。常用 <code>padding=1</code> 配合 3×3 核</li>
+      <li><strong>输出尺寸公式</strong>：<code>(N - K + 2P) / S + 1</code>，其中 N=输入大小, K=核大小, P=填充, S=步幅</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- Section 2: 池化操作 -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="sec-pool" class="section">
+  <h2>池化操作 (Pooling)</h2>
+  <p class="subtitle">下采样特征图，减少参数量，增强平移不变性</p>
+
+  <div class="info-card">
+    <h3>💡 最大汇聚 vs 平均汇聚</h3>
+    <p>池化在每个局部窗口中取<strong>最大值</strong>（Max Pooling）或<strong>平均值</strong>（Average Pooling），将特征图缩小。最常用的是 2×2 最大汇聚，步幅为 2，输出尺寸减半。</p>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" id="poolPlayBtn" onclick="poolAnimation.toggle()">▶ 播放</button>
+    <button class="btn" onclick="poolAnimation.reset()">↺ 重置</button>
+    <div class="slider-group">
+      <span>速度</span>
+      <input type="range" min="1" max="10" value="5" oninput="poolAnimation.speed=this.value">
+    </div>
+    <div class="slider-group">
+      <span>模式</span>
+      <select class="btn" id="poolModeSel" onchange="poolAnimation.setMode(this.value)">
+        <option value="max" selected>最大汇聚</option>
+        <option value="avg">平均汇聚</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#4F46E5"></div>输入特征图</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div>当前池化窗口</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#10B981"></div>输出特征图</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#EF4444"></div>最大值高亮</div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="poolCanvas" width="900" height="380"></canvas>
+  </div>
+
+  <div class="info-card">
+    <h3>📝 池化的作用</h3>
+    <ul>
+      <li><strong>降维</strong>：减少特征图尺寸，降低后续计算量</li>
+      <li><strong>平移不变性</strong>：特征位置微小变化不影响池化结果</li>
+      <li><strong>防止过拟合</strong>：减少参数数量</li>
+      <li>最大汇聚保留最显著特征，平均汇聚保留整体信息</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- Section 3: 网络架构 -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="sec-arch" class="section">
+  <h2>CNN 整体架构</h2>
+  <p class="subtitle">卷积层 → 激活函数 → 池化层 → ... → 全连接层 → 输出</p>
+
+  <div class="info-card">
+    <h3>💡 经典的 卷积-池化-全连接 架构</h3>
+    <p>一个典型的 CNN 由<strong>特征提取部分</strong>（卷积层 + 池化层堆叠）和<strong>分类部分</strong>（全连接层）组成。卷积层逐层提取从低级（边缘、纹理）到高级（物体部件、整体）的特征。</p>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" id="archPlayBtn" onclick="archAnimation.toggle()">▶ 播放数据流</button>
+    <button class="btn" onclick="archAnimation.reset()">↺ 重置</button>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="archCanvas" width="900" height="480"></canvas>
+  </div>
+
+  <div class="info-card">
+    <h3>📝 各层详解</h3>
+    <ul>
+      <li><strong>输入层</strong>：原始图像像素（如 224×224×3 的 RGB 图像）</li>
+      <li><strong>卷积层 (Conv)</strong>：用卷积核提取局部特征，输出特征图</li>
+      <li><strong>激活函数 (ReLU)</strong>：引入非线性，<code>f(x) = max(0, x)</code></li>
+      <li><strong>池化层 (Pool)</strong>：下采样，减少空间维度</li>
+      <li><strong>全连接层 (FC)</strong>：将特征展平后做分类决策</li>
+      <li><strong>输出层 (Softmax)</strong>：输出各类别的概率分布</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- Section 4: 特征提取可视化 -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="sec-feature" class="section">
+  <h2>特征提取过程</h2>
+  <p class="subtitle">CNN 逐层提取从低级到高级的特征：边缘 → 纹理 → 部件 → 物体</p>
+
+  <div class="info-card">
+    <h3>💡 层级特征抽象</h3>
+    <p>CNN 的每一层都在做<strong>特征抽象</strong>。浅层卷积核检测<strong>边缘和颜色</strong>，中间层检测<strong>纹理和图案</strong>，深层检测<strong>物体部件</strong>（如眼睛、轮子），最终组合成<strong>完整物体</strong>的表示。</p>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" id="featPlayBtn" onclick="featAnimation.toggle()">▶ 播放</button>
+    <button class="btn" onclick="featAnimation.reset()">↺ 重置</button>
+    <div class="slider-group">
+      <span>层级</span>
+      <input type="range" min="0" max="4" value="0" id="layerSlider" oninput="featAnimation.setLayer(+this.value)">
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#3B82F6"></div>边缘特征</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8B5CF6"></div>纹理特征</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#EC4899"></div>部件特征</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div>物体特征</div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="featCanvas" width="900" height="400"></canvas>
+  </div>
+
+  <div class="info-card">
+    <h3>📝 为什么 CNN 如此强大？</h3>
+    <ul>
+      <li><strong>局部连接</strong>：每个神经元只看局部区域，大幅减少参数</li>
+      <li><strong>权值共享</strong>：同一个卷积核在所有位置共享参数，进一步压缩参数量</li>
+      <li><strong>层级抽象</strong>：逐层从低级特征组合出高级语义</li>
+      <li><strong>平移等变性</strong>：物体在图像中平移，特征图也相应平移</li>
+    </ul>
+  </div>
+</div>
+
+<div style="text-align:center;padding:30px;color:var(--text-dim);font-size:0.85rem;border-top:1px solid var(--border);margin-top:20px;">
+  mini OpenClaw 🤖 · 卷积神经网络交互式讲解 · 2026-05-04
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// Common utilities
+// ═══════════════════════════════════════════════════════
+function switchSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  event.target.classList.add('active');
+  // Redraw active canvas
+  if (id === 'conv') convAnimation.draw();
+  if (id === 'pool') poolAnimation.draw();
+  if (id === 'arch') archAnimation.draw();
+  if (id === 'feature') featAnimation.draw();
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function drawRoundRect(ctx, x, y, w, h, r, fill, stroke) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+}
+
+// ═══════════════════════════════════════════════════════
+// Section 1: Convolution Animation
+// ═══════════════════════════════════════════════════════
+const convAnimation = (() => {
+  const canvas = document.getElementById('convCanvas');
+  const ctx = canvas.getContext('2d');
+  const tooltip = document.getElementById('convTooltip');
+
+  // Input grid data (6x6)
+  const INPUT_N = 6;
+  let kernelSize = 3;
+  let stride = 1;
+  let inputData = [];
+  let kernelData = [];
+  let outputData = [];
+  let outputN = 0;
+
+  // Animation state
+  let pos = { r: 0, c: 0 };
+  let playing = false;
+  let animId = null;
+  let speed = 5;
+  let lastTick = 0;
+  let highlightVal = null;
+
+  // Cell sizes
+  const CELL = 42;
+  const GAP = 2;
+  const KCELL = 36;
+
+  function initData() {
+    // Generate random input
+    inputData = [];
+    for (let i = 0; i < INPUT_N; i++) {
+      inputData[i] = [];
+      for (let j = 0; j < INPUT_N; j++) {
+        inputData[i][j] = Math.floor(Math.random() * 10);
+      }
+    }
+    generateKernel();
+    resetOutput();
+  }
+
+  function generateKernel() {
+    kernelData = [];
+    for (let i = 0; i < kernelSize; i++) {
+      kernelData[i] = [];
+      for (let j = 0; j < kernelSize; j++) {
+        kernelData[i][j] = (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 3) + 1);
+      }
+    }
+  }
+
+  function resetOutput() {
+    outputN = Math.floor((INPUT_N - kernelSize) / stride) + 1;
+    outputData = [];
+    for (let i = 0; i < outputN; i++) {
+      outputData[i] = [];
+      for (let j = 0; j < outputN; j++) {
+        outputData[i][j] = null;
+      }
+    }
+    pos = { r: 0, c: 0 };
+    highlightVal = null;
+  }
+
+  function computeAt(r, c) {
+    let sum = 0;
+    for (let m = 0; m < kernelSize; m++) {
+      for (let n = 0; n < kernelSize; n++) {
+        sum += inputData[r * stride + m][c * stride + n] * kernelData[m][n];
+      }
+    }
+    return sum;
+  }
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // ── Draw Input ──
+    const inputX = 30, inputY = 40;
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '13px sans-serif';
+    ctx.fillText('输入特征图 (' + INPUT_N + '×' + INPUT_N + ')', inputX, inputY - 10);
+
+    for (let i = 0; i < INPUT_N; i++) {
+      for (let j = 0; j < INPUT_N; j++) {
+        const x = inputX + j * (CELL + GAP);
+        const y = inputY + i * (CELL + GAP);
+
+        // Check if this cell is in the current kernel window
+        const inWindow = playing && i >= pos.r * stride && i < pos.r * stride + kernelSize &&
+                         j >= pos.c * stride && j < pos.c * stride + kernelSize;
+
+        let bg = '#1E3A5F';
+        if (inWindow) bg = '#92400E'; // amber highlight
+        drawRoundRect(ctx, x, y, CELL, CELL, 4, bg, inWindow ? '#F59E0B' : '#334155');
+
+        ctx.fillStyle = inWindow ? '#FCD34D' : '#CBD5E1';
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(inputData[i][j], x + CELL / 2, y + CELL / 2);
+      }
+    }
+
+    // ── Draw Kernel ──
+    const kernelX = 340, kernelY = 40;
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('卷积核 (' + kernelSize + '×' + kernelSize + ')', kernelX, kernelY - 10);
+
+    for (let i = 0; i < kernelSize; i++) {
+      for (let j = 0; j < kernelSize; j++) {
+        const x = kernelX + j * (KCELL + GAP);
+        const y = kernelY + i * (KCELL + GAP);
+        const val = kernelData[i][j];
+        const bg = val > 0 ? '#1A3A2A' : '#3A1A1A';
+        drawRoundRect(ctx, x, y, KCELL, KCELL, 4, bg, '#475569');
+        ctx.fillStyle = val > 0 ? '#4ADE80' : '#F87171';
+        ctx.font = '13px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(val > 0 ? '+' + val : val, x + KCELL / 2, y + KCELL / 2);
+      }
+    }
+
+    // ── Draw multiplication detail ──
+    if (playing) {
+      const detailX = 340, detailY = kernelY + kernelSize * (KCELL + GAP) + 20;
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('计算过程:', detailX, detailY);
+
+      let terms = [];
+      let sum = 0;
+      for (let m = 0; m < kernelSize; m++) {
+        for (let n = 0; n < kernelSize; n++) {
+          const iv = inputData[pos.r * stride + m][pos.c * stride + n];
+          const kv = kernelData[m][n];
+          const prod = iv * kv;
+          sum += prod;
+          terms.push(iv + '×' + (kv > 0 ? '+' : '') + kv + '=' + prod);
+        }
+      }
+      // Show terms in rows
+      ctx.font = '11px monospace';
+      ctx.fillStyle = '#E2E8F0';
+      for (let t = 0; t < terms.length; t++) {
+        const row = Math.floor(t / kernelSize);
+        const col = t % kernelSize;
+        ctx.fillText(terms[t], detailX + col * 110, detailY + 18 + row * 16);
+      }
+      const sumY = detailY + 18 + kernelSize * 16 + 4;
+      ctx.font = 'bold 13px monospace';
+      ctx.fillStyle = '#F59E0B';
+      ctx.fillText('= ' + sum, detailX, sumY);
+    }
+
+    // ── Draw Output ──
+    const outputX = 580, outputY = 40;
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('输出特征图 (' + outputN + '×' + outputN + ')', outputX, outputY - 10);
+
+    for (let i = 0; i < outputN; i++) {
+      for (let j = 0; j < outputN; j++) {
+        const x = outputX + j * (CELL + GAP);
+        const y = outputY + i * (CELL + GAP);
+        const isCurrent = playing && i === pos.r && j === pos.c;
+        const isDone = outputData[i][j] !== null;
+
+        let bg = '#0D1117';
+        if (isCurrent) bg = '#7C2D12';
+        else if (isDone) bg = '#064E3B';
+        drawRoundRect(ctx, x, y, CELL, CELL, 4, bg, isCurrent ? '#EF4444' : isDone ? '#10B981' : '#334155');
+
+        if (isDone) {
+          ctx.fillStyle = isCurrent ? '#FCA5A5' : '#6EE7B7';
+          ctx.font = '13px monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(outputData[i][j], x + CELL / 2, y + CELL / 2);
+        }
+      }
+    }
+
+    // ── Draw arrow ──
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(inputX + INPUT_N * (CELL + GAP) + 20, inputY + INPUT_N * (CELL + GAP) / 2);
+    ctx.lineTo(kernelX - 10, kernelY + kernelSize * (KCELL + GAP) / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Arrow label
+    ctx.fillStyle = '#64748B';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('卷积核滑动', (inputX + INPUT_N * (CELL + GAP) + kernelX) / 2, inputY + INPUT_N * (CELL + GAP) / 2 - 10);
+
+    // Status
+    if (playing) {
+      ctx.fillStyle = '#F59E0B';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('位置: (' + pos.r + ', ' + pos.c + ')  步幅: ' + stride, outputX, outputY + outputN * (CELL + GAP) + 20);
+    }
+
+    // Output size formula
+    ctx.fillStyle = '#64748B';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    const formulaY = outputY + outputN * (CELL + GAP) + 40;
+    ctx.fillText('输出尺寸 = (' + INPUT_N + ' - ' + kernelSize + ') / ' + stride + ' + 1 = ' + outputN, outputX, formulaY);
+  }
+
+  function step() {
+    // Compute current position
+    outputData[pos.r][pos.c] = computeAt(pos.r, pos.c);
+
+    // Advance
+    pos.c++;
+    if (pos.c >= outputN) {
+      pos.c = 0;
+      pos.r++;
+      if (pos.r >= outputN) {
+        // Done
+        playing = false;
+        document.getElementById('convPlayBtn').textContent = '▶ 播放';
+        cancelAnimationFrame(animId);
+        draw();
+        return;
+      }
+    }
+    draw();
+  }
+
+  function tick(ts) {
+    if (!playing) return;
+    const interval = 1100 - speed * 100;
+    if (ts - lastTick > interval) {
+      lastTick = ts;
+      step();
+    }
+    animId = requestAnimationFrame(tick);
+  }
+
+  function toggle() {
+    if (playing) {
+      playing = false;
+      document.getElementById('convPlayBtn').textContent = '▶ 播放';
+      cancelAnimationFrame(animId);
+    } else {
+      // If animation finished, reset
+      if (pos.r >= outputN) {
+        resetOutput();
+      }
+      playing = true;
+      document.getElementById('convPlayBtn').textContent = '⏸ 暂停';
+      lastTick = performance.now();
+      animId = requestAnimationFrame(tick);
+    }
+  }
+
+  function reset() {
+    playing = false;
+    cancelAnimationFrame(animId);
+    document.getElementById('convPlayBtn').textContent = '▶ 播放';
+    initData();
+    draw();
+  }
+
+  function setKernelSize(ks) {
+    kernelSize = ks;
+    generateKernel();
+    resetOutput();
+    draw();
+  }
+
+  function setStride(s) {
+    stride = s;
+    resetOutput();
+    draw();
+  }
+
+  // Mouse tooltip
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const inputX = 30, inputY = 40;
+    const gi = Math.floor((my - inputY) / (CELL + GAP));
+    const gj = Math.floor((mx - inputX) / (CELL + GAP));
+    if (gi >= 0 && gi < INPUT_N && gj >= 0 && gj < INPUT_N) {
+      tooltip.style.left = (e.clientX - canvas.getBoundingClientRect().left + 10) + 'px';
+      tooltip.style.top = (e.clientY - canvas.getBoundingClientRect().top - 30) + 'px';
+      tooltip.textContent = 'Input[' + gi + ',' + gj + '] = ' + inputData[gi][gj];
+      tooltip.classList.add('show');
+    } else {
+      tooltip.classList.remove('show');
+    }
+  });
+  canvas.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+
+  // Init
+  initData();
+  draw();
+
+  return { toggle, reset, draw, setKernelSize, setStride, speed: 5 };
+})();
+
+// ═══════════════════════════════════════════════════════
+// Section 2: Pooling Animation
+// ═══════════════════════════════════════════════════════
+const poolAnimation = (() => {
+  const canvas = document.getElementById('poolCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const INPUT_N = 6;
+  const POOL_K = 2;
+  const POOL_S = 2;
+  const outputN = Math.floor((INPUT_N - POOL_K) / POOL_S) + 1; // 3
+  const CELL = 44;
+  const GAP = 2;
+
+  let inputData = [];
+  let outputData = [];
+  let pos = { r: 0, c: 0 };
+  let playing = false;
+  let animId = null;
+  let speed = 5;
+  let lastTick = 0;
+  let mode = 'max';
+  let maxCells = [];
+
+  function initData() {
+    inputData = [];
+    for (let i = 0; i < INPUT_N; i++) {
+      inputData[i] = [];
+      for (let j = 0; j < INPUT_N; j++) {
+        inputData[i][j] = Math.floor(Math.random() * 20) + 1;
+      }
+    }
+    resetOutput();
+  }
+
+  function resetOutput() {
+    outputData = [];
+    for (let i = 0; i < outputN; i++) {
+      outputData[i] = [];
+      for (let j = 0; j < outputN; j++) outputData[i][j] = null;
+    }
+    pos = { r: 0, c: 0 };
+    maxCells = [];
+  }
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // Input
+    const inputX = 60, inputY = 50;
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('输入特征图 (' + INPUT_N + '×' + INPUT_N + ')', inputX, inputY - 12);
+
+    for (let i = 0; i < INPUT_N; i++) {
+      for (let j = 0; j < INPUT_N; j++) {
+        const x = inputX + j * (CELL + GAP);
+        const y = inputY + i * (CELL + GAP);
+        const inWindow = playing && i >= pos.r * POOL_S && i < pos.r * POOL_S + POOL_K &&
+                         j >= pos.c * POOL_S && j < pos.c * POOL_S + POOL_K;
+        const isMax = maxCells.some(c => c[0] === i && c[1] === j);
+
+        let bg = '#1E3A5F';
+        if (isMax && playing) bg = '#7F1D1D';
+        else if (inWindow) bg = '#92400E';
+        drawRoundRect(ctx, x, y, CELL, CELL, 4, bg, isMax ? '#EF4444' : inWindow ? '#F59E0B' : '#334155');
+
+        ctx.fillStyle = isMax ? '#FCA5A5' : inWindow ? '#FCD34D' : '#CBD5E1';
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(inputData[i][j], x + CELL / 2, y + CELL / 2);
+      }
+    }
+
+    // Arrow
+    const arrowX = inputX + INPUT_N * (CELL + GAP) + 30;
+    const arrowY = inputY + INPUT_N * (CELL + GAP) / 2;
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(arrowX, arrowY);
+    ctx.lineTo(arrowX + 60, arrowY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Arrowhead
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.moveTo(arrowX + 60, arrowY);
+    ctx.lineTo(arrowX + 52, arrowY - 5);
+    ctx.lineTo(arrowX + 52, arrowY + 5);
+    ctx.fill();
+    ctx.fillStyle = '#64748B';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(mode === 'max' ? 'Max' : 'Avg', arrowX + 30, arrowY - 12);
+
+    // Output
+    const outputX = arrowX + 80;
+    const outputY = inputY + (INPUT_N * (CELL + GAP) - outputN * (CELL + GAP)) / 2;
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('输出 (' + outputN + '×' + outputN + ')', outputX, outputY - 12);
+
+    for (let i = 0; i < outputN; i++) {
+      for (let j = 0; j < outputN; j++) {
+        const x = outputX + j * (CELL + GAP);
+        const y = outputY + i * (CELL + GAP);
+        const isCurrent = playing && i === pos.r && j === pos.c;
+        const isDone = outputData[i][j] !== null;
+        let bg = '#0D1117';
+        if (isCurrent) bg = '#7C2D12';
+        else if (isDone) bg = '#064E3B';
+        drawRoundRect(ctx, x, y, CELL, CELL, 4, bg, isCurrent ? '#EF4444' : isDone ? '#10B981' : '#334155');
+
+        if (isDone) {
+          ctx.fillStyle = isCurrent ? '#FCA5A5' : '#6EE7B7';
+          ctx.font = '14px monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(outputData[i][j], x + CELL / 2, y + CELL / 2);
+        }
+      }
+    }
+
+    // Formula
+    ctx.fillStyle = '#64748B';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('窗口大小: ' + POOL_K + '×' + POOL_K + '  步幅: ' + POOL_S + '  模式: ' + (mode === 'max' ? '最大汇聚' : '平均汇聚'), outputX, outputY + outputN * (CELL + GAP) + 20);
+    ctx.fillText('输出尺寸 = (' + INPUT_N + ' - ' + POOL_K + ') / ' + POOL_S + ' + 1 = ' + outputN, outputX, outputY + outputN * (CELL + GAP) + 38);
+  }
+
+  function step() {
+    const sr = pos.r * POOL_S, sc = pos.c * POOL_S;
+    let vals = [];
+    maxCells = [];
+    for (let m = 0; m < POOL_K; m++) {
+      for (let n = 0; n < POOL_K; n++) {
+        vals.push(inputData[sr + m][sc + n]);
+      }
+    }
+    if (mode === 'max') {
+      const maxVal = Math.max(...vals);
+      outputData[pos.r][pos.c] = maxVal;
+      for (let m = 0; m < POOL_K; m++) {
+        for (let n = 0; n < POOL_K; n++) {
+          if (inputData[sr + m][sc + n] === maxVal) maxCells.push([sr + m, sc + n]);
+        }
+      }
+    } else {
+      outputData[pos.r][pos.c] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10;
+      maxCells = [];
+    }
+
+    pos.c++;
+    if (pos.c >= outputN) {
+      pos.c = 0;
+      pos.r++;
+      if (pos.r >= outputN) {
+        playing = false;
+        document.getElementById('poolPlayBtn').textContent = '▶ 播放';
+        cancelAnimationFrame(animId);
+        draw();
+        return;
+      }
+    }
+    draw();
+  }
+
+  function tick(ts) {
+    if (!playing) return;
+    const interval = 1100 - speed * 100;
+    if (ts - lastTick > interval) { lastTick = ts; step(); }
+    animId = requestAnimationFrame(tick);
+  }
+
+  function toggle() {
+    if (playing) {
+      playing = false;
+      document.getElementById('poolPlayBtn').textContent = '▶ 播放';
+      cancelAnimationFrame(animId);
+    } else {
+      if (pos.r >= outputN) resetOutput();
+      playing = true;
+      document.getElementById('poolPlayBtn').textContent = '⏸ 暂停';
+      lastTick = performance.now();
+      animId = requestAnimationFrame(tick);
+    }
+  }
+
+  function reset() {
+    playing = false;
+    cancelAnimationFrame(animId);
+    document.getElementById('poolPlayBtn').textContent = '▶ 播放';
+    initData();
+    draw();
+  }
+
+  function setMode(m) { mode = m; resetOutput(); draw(); }
+
+  initData();
+  draw();
+
+  return { toggle, reset, draw, setMode, speed: 5 };
+})();
+
+// ═══════════════════════════════════════════════════════
+// Section 3: Architecture Animation
+// ═══════════════════════════════════════════════════════
+const archAnimation = (() => {
+  const canvas = document.getElementById('archCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const layers = [
+    { name: '输入', type: 'input', w: 32, h: 80, d: 3, color: '#3B82F6', desc: '224×224×3\nRGB图像' },
+    { name: 'Conv1', type: 'conv', w: 28, h: 70, d: 6, color: '#8B5CF6', desc: '3×3卷积核×6\n输出: 222×222×6' },
+    { name: 'ReLU', type: 'relu', w: 28, h: 70, d: 6, color: '#EC4899', desc: 'max(0, x)\n引入非线性' },
+    { name: 'Pool1', type: 'pool', w: 22, h: 55, d: 6, color: '#F59E0B', desc: '2×2最大汇聚\n尺寸减半' },
+    { name: 'Conv2', type: 'conv', w: 18, h: 48, d: 16, color: '#8B5CF6', desc: '3×3卷积核×16\n提取更高级特征' },
+    { name: 'ReLU', type: 'relu', w: 18, h: 48, d: 16, color: '#EC4899', desc: 'max(0, x)' },
+    { name: 'Pool2', type: 'pool', w: 14, h: 38, d: 16, color: '#F59E0B', desc: '2×2最大汇聚\n尺寸再减半' },
+    { name: 'Flatten', type: 'flatten', w: 8, h: 60, d: 1, color: '#06B6D4', desc: '展平为1D向量\n400维' },
+    { name: 'FC1', type: 'fc', w: 6, h: 50, d: 1, color: '#10B981', desc: '全连接层\n120个神经元' },
+    { name: 'FC2', type: 'fc', w: 6, h: 40, d: 1, color: '#10B981', desc: '全连接层\n84个神经元' },
+    { name: '输出', type: 'output', w: 6, h: 30, d: 1, color: '#EF4444', desc: 'Softmax\n10个类别概率' },
+  ];
+
+  let playing = false;
+  let animId = null;
+  let flowPos = 0;
+  let flowT = 0;
+  let lastTick = 0;
+  let particles = [];
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const startX = 30;
+    const totalW = layers.length;
+    const spacing = (W - 60) / totalW;
+    const centerY = H / 2 + 20;
+
+    // Title
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('LeNet 风格经典 CNN 架构', W / 2, 20);
+
+    // Draw connections first
+    for (let i = 0; i < layers.length - 1; i++) {
+      const x1 = startX + i * spacing + layers[i].w / 2 + 8;
+      const x2 = startX + (i + 1) * spacing - layers[i + 1].w / 2 - 8;
+      const y = centerY;
+
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y);
+      ctx.lineTo(x2, y);
+      ctx.stroke();
+
+      // Arrow
+      ctx.fillStyle = '#475569';
+      ctx.beginPath();
+      ctx.moveTo(x2, y);
+      ctx.lineTo(x2 - 6, y - 4);
+      ctx.lineTo(x2 - 6, y + 4);
+      ctx.fill();
+    }
+
+    // Draw layers
+    for (let i = 0; i < layers.length; i++) {
+      const L = layers[i];
+      const x = startX + i * spacing;
+      const y = centerY;
+
+      // 3D box effect
+      const depth = Math.min(L.d * 2, 20);
+      // Back face
+      drawRoundRect(ctx, x - L.w / 2 + depth, y - L.h / 2 - depth, L.w, L.h, 6, shadeColor(L.color, -40), null);
+      // Side
+      ctx.fillStyle = shadeColor(L.color, -20);
+      ctx.beginPath();
+      ctx.moveTo(x + L.w / 2, y - L.h / 2);
+      ctx.lineTo(x + L.w / 2 + depth, y - L.h / 2 - depth);
+      ctx.lineTo(x + L.w / 2 + depth, y + L.h / 2 - depth);
+      ctx.lineTo(x + L.w / 2, y + L.h / 2);
+      ctx.closePath();
+      ctx.fill();
+      // Top
+      ctx.fillStyle = shadeColor(L.color, 10);
+      ctx.beginPath();
+      ctx.moveTo(x - L.w / 2, y - L.h / 2);
+      ctx.lineTo(x - L.w / 2 + depth, y - L.h / 2 - depth);
+      ctx.lineTo(x + L.w / 2 + depth, y - L.h / 2 - depth);
+      ctx.lineTo(x + L.w / 2, y - L.h / 2);
+      ctx.closePath();
+      ctx.fill();
+      // Front face
+      drawRoundRect(ctx, x - L.w / 2, y - L.h / 2, L.w, L.h, 6, L.color, '#fff3');
+
+      // Label
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(L.name, x, y);
+
+      // Desc below
+      const descLines = L.desc.split('\n');
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = '10px sans-serif';
+      for (let dl = 0; dl < descLines.length; dl++) {
+        ctx.fillText(descLines[dl], x, y + L.h / 2 + 16 + dl * 13);
+      }
+
+      // Highlight active layer during animation
+      if (playing && i === Math.floor(flowPos)) {
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#F59E0B';
+        ctx.shadowBlur = 15;
+        drawRoundRect(ctx, x - L.w / 2 - 3, y - L.h / 2 - 3, L.w + 6, L.h + 6, 8, null, '#F59E0B');
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Draw particles
+    for (const p of particles) {
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Flow indicator
+    if (playing) {
+      const fi = Math.floor(flowPos);
+      const ft = flowPos - fi;
+      if (fi < layers.length - 1) {
+        const x1 = startX + fi * spacing;
+        const x2 = startX + (fi + 1) * spacing;
+        const fx = lerp(x1, x2, ft);
+        const fy = centerY - layers[fi].h / 2 - 25;
+
+        ctx.fillStyle = '#F59E0B';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▼ 数据流动', fx, fy);
+      }
+    }
+  }
+
+  function shadeColor(color, percent) {
+    const num = parseInt(color.replace('#', ''), 16);
+    const r = clamp((num >> 16) + percent, 0, 255);
+    const g = clamp((num >> 8 & 0x00FF) + percent, 0, 255);
+    const b = clamp((num & 0x0000FF) + percent, 0, 255);
+    return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+  }
+
+  function tick(ts) {
+    if (!playing) return;
+    const interval = 80;
+    if (ts - lastTick > interval) {
+      lastTick = ts;
+      flowPos += 0.15;
+
+      // Spawn particles
+      const startX = 30;
+      const spacing = (canvas.width - 60) / layers.length;
+      const fi = Math.floor(flowPos);
+      const ft = flowPos - fi;
+      if (fi < layers.length - 1) {
+        const x1 = startX + fi * spacing;
+        const x2 = startX + (fi + 1) * spacing;
+        const fx = lerp(x1, x2, ft);
+        const fy = canvas.height / 2 + 20;
+        for (let k = 0; k < 2; k++) {
+          particles.push({
+            x: fx + (Math.random() - 0.5) * 20,
+            y: fy + (Math.random() - 0.5) * 30,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            size: Math.random() * 3 + 1,
+            alpha: 1,
+            color: layers[fi].color,
+          });
+        }
+      }
+
+      // Update particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].x += particles[i].vx;
+        particles[i].y += particles[i].vy;
+        particles[i].alpha -= 0.02;
+        if (particles[i].alpha <= 0) particles.splice(i, 1);
+      }
+
+      if (flowPos >= layers.length) {
+        playing = false;
+        document.getElementById('archPlayBtn').textContent = '▶ 播放数据流';
+        cancelAnimationFrame(animId);
+        particles = [];
+      }
+      draw();
+    }
+    if (playing) animId = requestAnimationFrame(tick);
+  }
+
+  function toggle() {
+    if (playing) {
+      playing = false;
+      document.getElementById('archPlayBtn').textContent = '▶ 播放数据流';
+      cancelAnimationFrame(animId);
+    } else {
+      flowPos = 0;
+      particles = [];
+      playing = true;
+      document.getElementById('archPlayBtn').textContent = '⏸ 暂停';
+      lastTick = performance.now();
+      animId = requestAnimationFrame(tick);
+    }
+  }
+
+  function reset() {
+    playing = false;
+    cancelAnimationFrame(animId);
+    document.getElementById('archPlayBtn').textContent = '▶ 播放数据流';
+    flowPos = 0;
+    particles = [];
+    draw();
+  }
+
+  draw();
+  return { toggle, reset, draw };
+})();
+
+// ═══════════════════════════════════════════════════════
+// Section 4: Feature Extraction Animation
+// ═══════════════════════════════════════════════════════
+const featAnimation = (() => {
+  const canvas = document.getElementById('featCanvas');
+  const ctx = canvas.getContext('2d');
+
+  let currentLayer = 0;
+  let playing = false;
+  let animId = null;
+  let lastTick = 0;
+  let t = 0;
+
+  const layerInfo = [
+    { name: '输入图像', color: '#3B82F6', features: ['原始像素', 'RGB通道', '224×224×3'], icon: '🖼️' },
+    { name: '浅层卷积', color: '#6366F1', features: ['水平边缘', '垂直边缘', '对角线'], icon: '📏' },
+    { name: '中层卷积', color: '#8B5CF6', features: ['纹理图案', '角点', '颜色块'], icon: '🔲' },
+    { name: '深层卷积', color: '#EC4899', features: ['物体部件', '眼睛/轮子', '局部形状'], icon: '👁️' },
+    { name: '最高层', color: '#F59E0B', features: ['完整物体', '语义类别', '全局表示'], icon: '🏷️' },
+  ];
+
+  // Generate feature-like patterns for each layer
+  function drawFeaturePattern(cx, cy, size, layerIdx, seed) {
+    const rng = mulberry32(seed);
+
+    if (layerIdx === 0) {
+      // Input: random colored pixels
+      const pxSize = size / 8;
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+          const r = Math.floor(rng() * 200 + 55);
+          const g = Math.floor(rng() * 200 + 55);
+          const b = Math.floor(rng() * 200 + 55);
+          ctx.fillStyle = `rgb(${r},${g},${b})`;
+          ctx.fillRect(cx - size / 2 + j * pxSize, cy - size / 2 + i * pxSize, pxSize - 1, pxSize - 1);
+        }
+      }
+    } else if (layerIdx === 1) {
+      // Edges
+      ctx.strokeStyle = '#818CF8';
+      ctx.lineWidth = 2;
+      const angle = rng() * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cx - size / 2 * Math.cos(angle), cy - size / 2 * Math.sin(angle));
+      ctx.lineTo(cx + size / 2 * Math.cos(angle), cy + size / 2 * Math.sin(angle));
+      ctx.stroke();
+      // Add some gradient
+      const grad = ctx.createLinearGradient(cx - size / 2, cy, cx + size / 2, cy);
+      grad.addColorStop(0, 'rgba(99,102,241,0.1)');
+      grad.addColorStop(0.5, 'rgba(99,102,241,0.4)');
+      grad.addColorStop(1, 'rgba(99,102,241,0.1)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
+    } else if (layerIdx === 2) {
+      // Texture patterns
+      ctx.strokeStyle = '#A78BFA';
+      ctx.lineWidth = 1.5;
+      const pattern = Math.floor(rng() * 3);
+      if (pattern === 0) {
+        // Grid
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(cx - size / 2, cy - size / 2 + i * size / 3);
+          ctx.lineTo(cx + size / 2, cy - size / 2 + i * size / 3);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx - size / 2 + i * size / 3, cy - size / 2);
+          ctx.lineTo(cx - size / 2 + i * size / 3, cy + size / 2);
+          ctx.stroke();
+        }
+      } else if (pattern === 1) {
+        // Circles
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.arc(cx + (rng() - 0.5) * size * 0.5, cy + (rng() - 0.5) * size * 0.5, rng() * size * 0.2 + 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      } else {
+        // Diagonal lines
+        for (let i = -3; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(cx - size / 2 + i * 12, cy - size / 2);
+          ctx.lineTo(cx - size / 2 + i * 12 + size, cy + size / 2);
+          ctx.stroke();
+        }
+      }
+    } else if (layerIdx === 3) {
+      // Parts - more complex shapes
+      ctx.fillStyle = 'rgba(236,72,153,0.3)';
+      ctx.strokeStyle = '#EC4899';
+      ctx.lineWidth = 2;
+      // Draw eye-like or wheel-like shapes
+      const shape = Math.floor(rng() * 2);
+      if (shape === 0) {
+        // Eye shape
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, size * 0.35, size * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, size * 0.12, 0, Math.PI * 2);
+        ctx.fillStyle = '#EC4899';
+        ctx.fill();
+      } else {
+        // Wheel/round shape
+        ctx.beginPath();
+        ctx.arc(cx, cy, size * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        for (let a = 0; a < 4; a++) {
+          const angle = a * Math.PI / 2 + rng() * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(angle) * size * 0.3, cy + Math.sin(angle) * size * 0.3);
+          ctx.stroke();
+        }
+      }
+    } else {
+      // Full object - abstract representation
+      ctx.fillStyle = 'rgba(245,158,11,0.2)';
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 2;
+      // Draw a simple object silhouette
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - size * 0.35);
+      ctx.lineTo(cx + size * 0.3, cy - size * 0.1);
+      ctx.lineTo(cx + size * 0.25, cy + size * 0.3);
+      ctx.lineTo(cx - size * 0.25, cy + size * 0.3);
+      ctx.lineTo(cx - size * 0.3, cy - size * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Label
+      ctx.fillStyle = '#F59E0B';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('物体', cx, cy + size * 0.45);
+    }
+  }
+
+  function mulberry32(a) {
+    return function() {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // Title
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CNN 层级特征抽象可视化', W / 2, 20);
+
+    const layerW = W / 5;
+    const centerY = H / 2;
+
+    // Draw all layers
+    for (let li = 0; li < 5; li++) {
+      const cx = layerW * li + layerW / 2;
+      const info = layerInfo[li];
+      const isActive = li === currentLayer;
+      const scale = isActive ? 1.1 : 0.85;
+      const opacity = isActive ? 1 : 0.5;
+
+      ctx.globalAlpha = opacity;
+
+      // Layer label
+      ctx.fillStyle = info.color;
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(info.icon + ' ' + info.name, cx, 45);
+
+      // Feature grid
+      const gridSize = 3;
+      const cellSize = 40 * scale;
+      const gridW = gridSize * cellSize;
+      const startX = cx - gridW / 2;
+      const startY = centerY - gridW / 2 - 10;
+
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          const fx = startX + c * cellSize + cellSize / 2;
+          const fy = startY + r * cellSize + cellSize / 2;
+
+          // Background
+          drawRoundRect(ctx, fx - cellSize / 2, fy - cellSize / 2, cellSize - 2, cellSize - 2, 4, '#0D1117', info.color + '40');
+
+          // Feature pattern
+          drawFeaturePattern(fx, fy, cellSize - 8, li, li * 100 + r * 10 + c);
+        }
+      }
+
+      // Feature labels
+      ctx.font = '11px sans-serif';
+      ctx.fillStyle = '#94A3B8';
+      for (let fi = 0; fi < info.features.length; fi++) {
+        ctx.fillText(info.features[fi], cx, centerY + gridW / 2 + 20 + fi * 16);
+      }
+
+      // Arrow to next
+      if (li < 4) {
+        const arrowX = cx + layerW / 2 - 5;
+        ctx.strokeStyle = li < currentLayer ? info.color : '#334155';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(arrowX, centerY);
+        ctx.lineTo(arrowX + 10, centerY);
+        ctx.stroke();
+        ctx.fillStyle = li < currentLayer ? info.color : '#334155';
+        ctx.beginPath();
+        ctx.moveTo(arrowX + 10, centerY);
+        ctx.lineTo(arrowX + 5, centerY - 4);
+        ctx.lineTo(arrowX + 5, centerY + 4);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+
+      // Active indicator
+      if (isActive) {
+        ctx.strokeStyle = info.color;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = info.color;
+        ctx.shadowBlur = 12;
+        drawRoundRect(ctx, cx - gridW / 2 - 8, centerY - gridW / 2 - 18, gridW + 16, gridW + 50, 8, null, info.color);
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Progress bar
+    const barY = H - 30;
+    const barW = W - 100;
+    const barX = 50;
+    ctx.fillStyle = '#1E293B';
+    drawRoundRect(ctx, barX, barY, barW, 8, 4, '#1E293B', '#334155');
+    ctx.fillStyle = layerInfo[currentLayer].color;
+    drawRoundRect(ctx, barX, barY, barW * (currentLayer + 1) / 5, 8, 4, layerInfo[currentLayer].color, null);
+
+    // Bar markers
+    for (let i = 0; i < 5; i++) {
+      const mx = barX + barW * (i + 0.5) / 5;
+      ctx.fillStyle = i <= currentLayer ? '#fff' : '#64748B';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(layerInfo[i].name, mx, barY + 20);
+    }
+  }
+
+  function tick(ts) {
+    if (!playing) return;
+    if (ts - lastTick > 2000) {
+      lastTick = ts;
+      currentLayer++;
+      if (currentLayer >= 5) {
+        currentLayer = 4;
+        playing = false;
+        document.getElementById('featPlayBtn').textContent = '▶ 播放';
+        cancelAnimationFrame(animId);
+      }
+      document.getElementById('layerSlider').value = currentLayer;
+      draw();
+    }
+    if (playing) animId = requestAnimationFrame(tick);
+  }
+
+  function toggle() {
+    if (playing) {
+      playing = false;
+      document.getElementById('featPlayBtn').textContent = '▶ 播放';
+      cancelAnimationFrame(animId);
+    } else {
+      if (currentLayer >= 4) currentLayer = 0;
+      playing = true;
+      document.getElementById('featPlayBtn').textContent = '⏸ 暂停';
+      lastTick = performance.now();
+      animId = requestAnimationFrame(tick);
+    }
+  }
+
+  function reset() {
+    playing = false;
+    cancelAnimationFrame(animId);
+    document.getElementById('featPlayBtn').textContent = '▶ 播放';
+    currentLayer = 0;
+    document.getElementById('layerSlider').value = 0;
+    draw();
+  }
+
+  function setLayer(l) {
+    currentLayer = l;
+    draw();
+  }
+
+  draw();
+  return { toggle, reset, draw, setLayer };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>反向传播算法 - 动画讲解</title>
+<style>
+:root {
+    --bg-color: #0f172a;
+    --primary: #3b82f6;
+    --secondary: #8b5cf6;
+    --accent-green: #10b981;
+    --accent-red: #ef4444;
+    --accent-orange: #f59e0b;
+    --text-main: #f1f5f9;
+    --text-dim: #94a3b8;
+    --glow-blue: rgba(59, 130, 246, 0.4);
+    --glow-purple: rgba(139, 92, 246, 0.4);
+    --glow-red: rgba(239, 68, 68, 0.4);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: var(--bg-color);
+    color: var(--text-main);
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+}
+#viewport {
+    position: relative;
+    width: 100%; height: 100%;
+    overflow: hidden;
+}
+#viewport::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+}
+#progress {
+    position: absolute; top: 0; left: 0;
+    height: 3px; width: 0%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    z-index: 100; transition: width 0.3s;
+}
+#header {
+    position: absolute; top: 24px; left: 0; right: 0;
+    text-align: center; z-index: 10;
+}
+#header h1 {
+    font-size: 28px; font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+#header p {
+    font-size: 14px; color: var(--text-dim); margin-top: 4px;
+}
+#scene-indicator {
+    position: absolute; top: 80px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 10;
+}
+.scene-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    transition: all 0.4s;
+}
+.scene-dot.active {
+    background: var(--primary);
+    box-shadow: 0 0 8px var(--glow-blue);
+}
+#stage {
+    position: absolute; inset: 100px 0 80px 0;
+    z-index: 1;
+}
+[id^="scene-"] {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+    display: flex; align-items: center; justify-content: center;
+}
+[id^="scene-"].active {
+    opacity: 1; pointer-events: auto;
+}
+#subtitle-container {
+    position: absolute; bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 50; width: 600px; max-width: 90%;
+}
+#subtitle-box {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 12px 24px;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+#subtitle-cn {
+    font-size: 16px; line-height: 1.6; color: var(--text-main);
+}
+/* ---- 动画辅助 ---- */
+.fade-in {
+    animation: fadeIn 0.8s ease forwards;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+.glow-text {
+    text-shadow: 0 0 12px var(--glow-blue);
+}
+/* ---- 神经网络节点 ---- */
+.node-circle {
+    transition: all 0.5s ease;
+}
+/* ---- 连线 ---- */
+.edge-line {
+    stroke-width: 2;
+    fill: none;
+}
+</style>
+</head>
+<body>
+<div id="viewport">
+    <div id="progress"></div>
+    <div id="header">
+        <h1>反向传播算法</h1>
+        <p>Backpropagation — 神经网络训练的核心</p>
+    </div>
+    <div id="scene-indicator">
+        <div class="scene-dot active" data-scene="0"></div>
+        <div class="scene-dot" data-scene="1"></div>
+        <div class="scene-dot" data-scene="2"></div>
+        <div class="scene-dot" data-scene="3"></div>
+        <div class="scene-dot" data-scene="4"></div>
+    </div>
+    <div id="stage">
+        <div id="scene-0"></div>
+        <div id="scene-1"></div>
+        <div id="scene-2"></div>
+        <div id="scene-3"></div>
+        <div id="scene-4"></div>
+    </div>
+    <div id="subtitle-container">
+        <div id="subtitle-box">
+            <div id="subtitle-cn">准备开始...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============ 常量 ============
+const TOTAL_DURATION = 180000;
+const TOTAL_SCENES = 5;
+let startTime;
+
+const subtitles = [
+    { time: 0,    cn: "反向传播是训练神经网络的核心算法" },
+    { time: 4000, cn: "它通过链式法则，计算损失对每个参数的梯度" },
+    { time: 8500, cn: "首先，我们来看前向传播过程" },
+    { time: 13000,cn: "输入数据经过各层的线性变换和激活函数" },
+    { time: 18000,cn: "最终得到网络的预测输出" },
+    { time: 23000,cn: "接下来计算损失，衡量预测值与真实值的差距" },
+    { time: 29000,cn: "损失越大，说明预测越不准确" },
+    { time: 35000,cn: "反向传播从损失开始，逐层向前计算梯度" },
+    { time: 41000,cn: "链式法则是反向传播的数学基础" },
+    { time: 47000,cn: "对于复合函数，梯度等于各层梯度的连乘" },
+    { time: 53000,cn: "这样我们就得到了每个权重的偏导数" },
+    { time: 59000,cn: "最后用梯度下降更新参数" },
+    { time: 65000,cn: "权重沿着梯度的反方向移动一小步" },
+    { time: 71000,cn: "重复这个过程，损失会逐步减小" },
+    { time: 77000,cn: "这就是反向传播训练神经网络的完整过程" }
+];
+
+// ============ 工具函数 ============
+function el(tag, attrs, children) {
+    const e = document.createElement(tag);
+    if (attrs) Object.entries(attrs).forEach(([k,v]) => {
+        if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+        else if (k.startsWith('on')) e.addEventListener(k.slice(2).toLowerCase(), v);
+        else e.setAttribute(k, v);
+    });
+    if (children) {
+        if (typeof children === 'string') e.textContent = children;
+        else if (Array.isArray(children)) children.forEach(c => { if(c) e.appendChild(c); });
+        else e.appendChild(children);
+    }
+    return e;
+}
+
+function makeSVG(w, h) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    svg.setAttribute("width", w);
+    svg.setAttribute("height", h);
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    return svg;
+}
+
+function showScene(idx) {
+    const s = document.getElementById('scene-' + idx);
+    if (s) { s.classList.add('active'); s.style.opacity = '1'; }
+    document.querySelectorAll('.scene-dot').forEach((d,i) => {
+        d.classList.toggle('active', i === idx);
+    });
+}
+
+function clearScene(idx) {
+    const s = document.getElementById('scene-' + idx);
+    if (s) { s.classList.remove('active'); s.innerHTML = ''; }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function waitForSubtitle(keyword) {
+    return new Promise(resolve => {
+        const check = setInterval(() => {
+            const cn = document.getElementById('subtitle-cn');
+            if (cn && cn.textContent.includes(keyword)) {
+                clearInterval(check);
+                setTimeout(resolve, 2000);
+            }
+        }, 200);
+    });
+}
+
+function updateProgress() {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min(100, (elapsed / TOTAL_DURATION) * 100);
+    document.getElementById('progress').style.width = pct + '%';
+}
+
+function updateSubtitle(elapsed) {
+    const box = document.getElementById('subtitle-cn');
+    let current = subtitles[0].cn;
+    for (const s of subtitles) {
+        if (elapsed >= s.time) current = s.cn;
+        else break;
+    }
+    if (box.textContent !== current) {
+        box.style.opacity = '0';
+        setTimeout(() => { box.textContent = current; box.style.opacity = '1'; }, 200);
+    }
+}
+
+// ============ 辅助：绘制神经网络 ============
+function drawNetwork(container, opts = {}) {
+    const { forwardColor, backwardColor, showLoss, showGradient, animate } = opts;
+    const W = 700, H = 400;
+    const svg = makeSVG(W, H);
+
+    // 层位置
+    const layers = [
+        { x: 80,  nodes: 3, label: '输入层' },
+        { x: 280, nodes: 4, label: '隐藏层' },
+        { x: 480, nodes: 3, label: '隐藏层2' },
+        { x: 650, nodes: 2, label: '输出层' }
+    ];
+    const nodeR = 22;
+    const topY = 60, gapY = 80;
+
+    // 定义 defs
+    const defs = document.createElementNS("http://www.w3.org/2000/svg","defs");
+    // 发光滤镜
+    const filter = document.createElementNS("http://www.w3.org/2000/svg","filter");
+    filter.setAttribute("id","glow");
+    const blur = document.createElementNS("http://www.w3.org/2000/svg","feGaussianBlur");
+    blur.setAttribute("stdDeviation","4"); blur.setAttribute("result","blur");
+    const merge = document.createElementNS("http://www.w3.org/2000/svg","feMerge");
+    const mn1 = document.createElementNS("http://www.w3.org/2000/svg","feMergeNode");
+    mn1.setAttribute("in","blur");
+    const mn2 = document.createElementNS("http://www.w3.org/2000/svg","feMergeNode");
+    mn2.setAttribute("in","SourceGraphic");
+    merge.appendChild(mn1); merge.appendChild(mn2);
+    filter.appendChild(blur); filter.appendChild(merge);
+    defs.appendChild(filter);
+    svg.appendChild(defs);
+
+    // 连线
+    for (let l = 0; l < layers.length - 1; l++) {
+        const from = layers[l], to = layers[l+1];
+        for (let i = 0; i < from.nodes; i++) {
+            for (let j = 0; j < to.nodes; j++) {
+                const y1 = topY + i * gapY + (4 - from.nodes) * gapY / 2;
+                const y2 = topY + j * gapY + (4 - to.nodes) * gapY / 2;
+                const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+                line.setAttribute("x1", from.x + nodeR);
+                line.setAttribute("y1", y1);
+                line.setAttribute("x2", to.x - nodeR);
+                line.setAttribute("y2", y2);
+                line.setAttribute("stroke", backwardColor || "rgba(255,255,255,0.1)");
+                line.setAttribute("stroke-width", "1.5");
+                line.setAttribute("class", "edge-line");
+                if (animate && forwardColor) {
+                    line.setAttribute("stroke", "rgba(255,255,255,0.08)");
+                }
+                svg.appendChild(line);
+            }
+        }
+    }
+
+    // 前向传播箭头动画
+    if (animate && forwardColor) {
+        for (let l = 0; l < layers.length - 1; l++) {
+            const from = layers[l], to = layers[l+1];
+            for (let i = 0; i < from.nodes; i++) {
+                for (let j = 0; j < Math.min(to.nodes, 2); j++) {
+                    const y1 = topY + i * gapY + (4 - from.nodes) * gapY / 2;
+                    const y2 = topY + j * gapY + (4 - to.nodes) * gapY / 2;
+                    const circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+                    circle.setAttribute("r", "4");
+                    circle.setAttribute("fill", forwardColor);
+                    circle.setAttribute("filter", "url(#glow)");
+                    const animX = document.createElementNS("http://www.w3.org/2000/svg","animateMotion");
+                    animX.setAttribute("dur", (1.5 + l * 0.5) + "s");
+                    animX.setAttribute("repeatCount", "indefinite");
+                    animX.setAttribute("begin", (l * 0.3 + i * 0.1) + "s");
+                    animX.setAttribute("path", `M${from.x+nodeR},${y1} L${to.x-nodeR},${y2}`);
+                    circle.appendChild(animX);
+                    svg.appendChild(circle);
+                }
+            }
+        }
+    }
+
+    // 反向传播箭头
+    if (animate && backwardColor) {
+        for (let l = layers.length - 1; l > 0; l--) {
+            const from = layers[l], to = layers[l-1];
+            for (let i = 0; i < from.nodes; i++) {
+                for (let j = 0; j < Math.min(to.nodes, 2); j++) {
+                    const y1 = topY + i * gapY + (4 - from.nodes) * gapY / 2;
+                    const y2 = topY + j * gapY + (4 - to.nodes) * gapY / 2;
+                    const circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+                    circle.setAttribute("r", "4");
+                    circle.setAttribute("fill", backwardColor);
+                    circle.setAttribute("filter", "url(#glow)");
+                    const animX = document.createElementNS("http://www.w3.org/2000/svg","animateMotion");
+                    animX.setAttribute("dur", (1.5 + (layers.length - 1 - l) * 0.5) + "s");
+                    animX.setAttribute("repeatCount", "indefinite");
+                    animX.setAttribute("begin", ((layers.length - 1 - l) * 0.3 + i * 0.1) + "s");
+                    animX.setAttribute("path", `M${from.x-nodeR},${y1} L${to.x+nodeR},${y2}`);
+                    circle.appendChild(animX);
+                    svg.appendChild(circle);
+                }
+            }
+        }
+    }
+
+    // 节点
+    layers.forEach((layer, li) => {
+        for (let i = 0; i < layer.nodes; i++) {
+            const y = topY + i * gapY + (4 - layer.nodes) * gapY / 2;
+            const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+
+            const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+            c.setAttribute("cx", layer.x);
+            c.setAttribute("cy", y);
+            c.setAttribute("r", nodeR);
+            c.setAttribute("fill", li === 0 ? "rgba(59,130,246,0.2)" :
+                           li === layers.length-1 ? "rgba(139,92,246,0.2)" :
+                           "rgba(16,185,129,0.2)");
+            c.setAttribute("stroke", li === 0 ? "var(--primary)" :
+                           li === layers.length-1 ? "var(--secondary)" :
+                           "var(--accent-green)");
+            c.setAttribute("stroke-width", "2");
+            c.setAttribute("class", "node-circle");
+            if (animate) c.setAttribute("filter", "url(#glow)");
+            g.appendChild(c);
+
+            // 节点标签
+            if (li === 0) {
+                const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+                t.setAttribute("x", layer.x);
+                t.setAttribute("y", y + 5);
+                t.setAttribute("text-anchor", "middle");
+                t.setAttribute("fill", "var(--primary)");
+                t.setAttribute("font-size", "13");
+                t.setAttribute("font-weight", "600");
+                t.textContent = "x" + (i+1);
+                g.appendChild(t);
+            } else if (li === layers.length - 1) {
+                const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+                t.setAttribute("x", layer.x);
+                t.setAttribute("y", y + 5);
+                t.setAttribute("text-anchor", "middle");
+                t.setAttribute("fill", "var(--secondary)");
+                t.setAttribute("font-size", "13");
+                t.setAttribute("font-weight", "600");
+                t.textContent = "ŷ" + (i+1);
+                g.appendChild(t);
+            } else {
+                const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+                t.setAttribute("x", layer.x);
+                t.setAttribute("y", y + 5);
+                t.setAttribute("text-anchor", "middle");
+                t.setAttribute("fill", "var(--accent-green)");
+                t.setAttribute("font-size", "12");
+                t.textContent = "h" + (li) + (i+1);
+                g.appendChild(t);
+            }
+            svg.appendChild(g);
+        }
+        // 层标签
+        const lbl = document.createElementNS("http://www.w3.org/2000/svg","text");
+        lbl.setAttribute("x", layer.x);
+        lbl.setAttribute("y", H - 10);
+        lbl.setAttribute("text-anchor", "middle");
+        lbl.setAttribute("fill", "var(--text-dim)");
+        lbl.setAttribute("font-size", "12");
+        lbl.textContent = layer.label;
+        svg.appendChild(lbl);
+    });
+
+    // 损失显示
+    if (showLoss) {
+        const lossG = document.createElementNS("http://www.w3.org/2000/svg","g");
+        lossG.setAttribute("class", "fade-in");
+        const lossBox = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        lossBox.setAttribute("x", 560); lossBox.setAttribute("y", 310);
+        lossBox.setAttribute("width", 130); lossBox.setAttribute("height", 50);
+        lossBox.setAttribute("rx", "10");
+        lossBox.setAttribute("fill", "rgba(239,68,68,0.15)");
+        lossBox.setAttribute("stroke", "var(--accent-red)");
+        lossBox.setAttribute("stroke-width", "2");
+        lossG.appendChild(lossBox);
+        const lossText = document.createElementNS("http://www.w3.org/2000/svg","text");
+        lossText.setAttribute("x", 625); lossText.setAttribute("y", 340);
+        lossText.setAttribute("text-anchor", "middle");
+        lossText.setAttribute("fill", "var(--accent-red)");
+        lossText.setAttribute("font-size", "15");
+        lossText.setAttribute("font-weight", "700");
+        lossText.textContent = "Loss = L(ŷ, y)";
+        lossG.appendChild(lossText);
+        svg.appendChild(lossG);
+    }
+
+    container.appendChild(svg);
+}
+
+// ============ 场景 0: 概览 ============
+async function scene0() {
+    const s = document.getElementById('scene-0');
+    const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', width: '100%' } });
+
+    // 标题
+    const title = el('div', { class: 'fade-in', style: { textAlign: 'center' } }, [
+        el('h2', { style: { fontSize: '32px', fontWeight: '700', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' } }, '什么是反向传播？'),
+        el('p', { style: { color: 'var(--text-dim)', fontSize: '16px', marginTop: '8px' } }, 'Backpropagation — 让神经网络学会"自我纠错"')
+    ]);
+    wrap.appendChild(title);
+
+    // 公式卡片
+    const formulaCard = el('div', { class: 'fade-in', style: { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '24px 40px', textAlign: 'center', backdropFilter: 'blur(8px)', animationDelay: '0.3s' } }, [
+        el('div', { style: { fontSize: '14px', color: 'var(--text-dim)', marginBottom: '8px' } }, '核心思想'),
+        el('div', { style: { fontSize: '22px', fontWeight: '600', color: 'var(--text-main)', fontFamily: 'serif' } }, '∂L/∂w = ∂L/∂ŷ · ∂ŷ/∂w'),
+        el('div', { style: { fontSize: '13px', color: 'var(--text-dim)', marginTop: '8px' } }, '链式法则：复合函数的梯度 = 各层梯度的连乘')
+    ]);
+    wrap.appendChild(formulaCard);
+
+    // 三个步骤卡片
+    const steps = [
+        { icon: '→', title: '前向传播', desc: '数据从输入流向输出', color: 'var(--primary)' },
+        { icon: '⟲', title: '计算损失', desc: '衡量预测与真实值的差距', color: 'var(--accent-orange)' },
+        { icon: '←', title: '反向传播', desc: '梯度从输出流向输入', color: 'var(--accent-red)' }
+    ];
+    const stepRow = el('div', { class: 'fade-in', style: { display: 'flex', gap: '16px', animationDelay: '0.6s' } });
+    steps.forEach(st => {
+        const card = el('div', { style: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '16px 20px', textAlign: 'center', width: '160px' } }, [
+            el('div', { style: { fontSize: '28px', color: st.color, marginBottom: '6px' } }, st.icon),
+            el('div', { style: { fontSize: '15px', fontWeight: '600', color: st.color } }, st.title),
+            el('div', { style: { fontSize: '12px', color: 'var(--text-dim)', marginTop: '4px' } }, st.desc)
+        ]);
+        stepRow.appendChild(card);
+    });
+    wrap.appendChild(stepRow);
+
+    s.appendChild(wrap);
+}
+
+// ============ 场景 1: 前向传播 ============
+async function scene1() {
+    const s = document.getElementById('scene-1');
+    const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' } });
+
+    const title = el('div', { class: 'fade-in', style: { textAlign: 'center' } }, [
+        el('h2', { style: { fontSize: '24px', fontWeight: '700', color: 'var(--primary)' } }, '前向传播 Forward Pass'),
+        el('p', { style: { color: 'var(--text-dim)', fontSize: '14px', marginTop: '4px' } }, '数据从输入层逐层流向输出层')
+    ]);
+    wrap.appendChild(title);
+
+    const svgWrap = el('div', { class: 'fade-in', style: { animationDelay: '0.3s' } });
+    drawNetwork(svgWrap, { forwardColor: 'var(--primary)', animate: true });
+    wrap.appendChild(svgWrap);
+
+    // 公式说明
+    const note = el('div', { class: 'fade-in', style: { display: 'flex', gap: '20px', animationDelay: '0.6s' } }, [
+        el('div', { style: { background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '14px', color: 'var(--primary)' } }, 'z = Wx + b'),
+        el('div', { style: { background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '10px', padding: '10px 18px', fontSize: '14px', color: 'var(--accent-green)' } }, 'a = σ(z)')
+    ]);
+    wrap.appendChild(note);
+
+    s.appendChild(wrap);
+}
+
+// ============ 场景 2: 计算损失 ============
+async function scene2() {
+    const s = document.getElementById('scene-2');
+    const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%' } });
+
+    const title = el('div', { class: 'fade-in', style: { textAlign: 'center' } }, [
+        el('h2', { style: { fontSize: '24px', fontWeight: '700', color: 'var(--accent-orange)' } }, '计算损失 Loss'),
+        el('p', { style: { color: 'var(--text-dim)', fontSize: '14px', marginTop: '4px' } }, '衡量网络预测与真实标签的差距')
+    ]);
+    wrap.appendChild(title);
+
+    // 网络 + 损失
+    const svgWrap = el('div', { class: 'fade-in', style: { animationDelay: '0.3s' } });
+    drawNetwork(svgWrap, { forwardColor: 'var(--primary)', showLoss: true, animate: true });
+    wrap.appendChild(svgWrap);
+
+    // 损失函数公式
+    const formulaRow = el('div', { class: 'fade-in', style: { display: 'flex', gap: '16px', animationDelay: '0.6s' } });
+    const losses = [
+        { name: 'MSE', formula: 'L = (1/n)Σ(ŷᵢ - yᵢ)²', color: 'var(--accent-orange)' },
+        { name: '交叉熵', formula: 'L = -Σ yᵢ log(ŷᵢ)', color: 'var(--accent-red)' }
+    ];
+    losses.forEach(lf => {
+        const card = el('div', { style: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '14px 20px', textAlign: 'center', minWidth: '200px' } }, [
+            el('div', { style: { fontSize: '13px', fontWeight: '600', color: lf.color, marginBottom: '4px' } }, lf.name),
+            el('div', { style: { fontSize: '15px', color: 'var(--text-main)', fontFamily: 'serif' } }, lf.formula)
+        ]);
+        formulaRow.appendChild(card);
+    });
+    wrap.appendChild(formulaRow);
+
+    s.appendChild(wrap);
+}
+
+// ============ 场景 3: 链式法则与梯度计算 ============
+async function scene3() {
+    const s = document.getElementById('scene-3');
+    const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' } });
+
+    const title = el('div', { class: 'fade-in', style: { textAlign: 'center' } }, [
+        el('h2', { style: { fontSize: '24px', fontWeight: '700', color: 'var(--accent-red)' } }, '链式法则 Chain Rule'),
+        el('p', { style: { color: 'var(--text-dim)', fontSize: '14px', marginTop: '4px' } }, '梯度从输出层逐层回传到输入层')
+    ]);
+    wrap.appendChild(title);
+
+    // 反向传播网络
+    const svgWrap = el('div', { class: 'fade-in', style: { animationDelay: '0.3s' } });
+    drawNetwork(svgWrap, { backwardColor: 'var(--accent-red)', animate: true });
+    wrap.appendChild(svgWrap);
+
+    // 链式法则分解
+    const chain = el('div', { class: 'fade-in', style: { display: 'flex', alignItems: 'center', gap: '8px', animationDelay: '0.6s' } });
+    const parts = [
+        { text: '∂L/∂w₁', color: 'var(--accent-red)' },
+        { text: '=', color: 'var(--text-dim)' },
+        { text: '∂L/∂ŷ', color: 'var(--accent-orange)' },
+        { text: '·', color: 'var(--text-dim)' },
+        { text: '∂ŷ/∂h', color: 'var(--accent-green)' },
+        { text: '·', color: 'var(--text-dim)' },
+        { text: '∂h/∂w₁', color: 'var(--primary)' }
+    ];
+    parts.forEach(p => {
+        chain.appendChild(el('span', { style: { fontSize: '18px', fontWeight: '600', fontFamily: 'serif', color: p.color } }, p.text));
+    });
+    const chainBox = el('div', { style: { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '16px 24px' } }, [chain]);
+    wrap.appendChild(chainBox);
+
+    s.appendChild(wrap);
+}
+
+// ============ 场景 4: 参数更新 ============
+async function scene4() {
+    const s = document.getElementById('scene-4');
+    const wrap = el('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' } });
+
+    const title = el('div', { class: 'fade-in', style: { textAlign: 'center' } }, [
+        el('h2', { style: { fontSize: '24px', fontWeight: '700', color: 'var(--accent-green)' } }, '梯度下降更新参数'),
+        el('p', { style: { color: 'var(--text-dim)', fontSize: '14px', marginTop: '4px' } }, '沿梯度反方向移动，逐步减小损失')
+    ]);
+    wrap.appendChild(title);
+
+    // 更新公式
+    const formulaCard = el('div', { class: 'fade-in', style: { background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '16px', padding: '20px 36px', textAlign: 'center', animationDelay: '0.3s' } }, [
+        el('div', { style: { fontSize: '24px', fontWeight: '700', color: 'var(--accent-green)', fontFamily: 'serif' } }, 'w ← w - η · ∂L/∂w'),
+        el('div', { style: { fontSize: '13px', color: 'var(--text-dim)', marginTop: '8px' } }, 'η 为学习率，控制每步更新的幅度')
+    ]);
+    wrap.appendChild(formulaCard);
+
+    // 损失下降曲线（用 SVG 绘制）
+    const curveWrap = el('div', { class: 'fade-in', style: { animationDelay: '0.5s' } });
+    const svg = makeSVG(500, 200);
+    // 坐标轴
+    const xAxis = document.createElementNS("http://www.w3.org/2000/svg","line");
+    xAxis.setAttribute("x1","50"); xAxis.setAttribute("y1","170");
+    xAxis.setAttribute("x2","470"); xAxis.setAttribute("y2","170");
+    xAxis.setAttribute("stroke","var(--text-dim)"); xAxis.setAttribute("stroke-width","1");
+    svg.appendChild(xAxis);
+    const yAxis = document.createElementNS("http://www.w3.org/2000/svg","line");
+    yAxis.setAttribute("x1","50"); yAxis.setAttribute("y1","20");
+    yAxis.setAttribute("x2","50"); yAxis.setAttribute("y2","170");
+    yAxis.setAttribute("stroke","var(--text-dim)"); yAxis.setAttribute("stroke-width","1");
+    svg.appendChild(yAxis);
+    // 标签
+    const xLabel = document.createElementNS("http://www.w3.org/2000/svg","text");
+    xLabel.setAttribute("x","260"); xLabel.setAttribute("y","195");
+    xLabel.setAttribute("text-anchor","middle"); xLabel.setAttribute("fill","var(--text-dim)");
+    xLabel.setAttribute("font-size","12"); xLabel.textContent = "训练轮次 (Epoch)";
+    svg.appendChild(xLabel);
+    const yLabel = document.createElementNS("http://www.w3.org/2000/svg","text");
+    yLabel.setAttribute("x","15"); yLabel.setAttribute("y","95");
+    yLabel.setAttribute("text-anchor","middle"); yLabel.setAttribute("fill","var(--text-dim)");
+    yLabel.setAttribute("font-size","12"); yLabel.setAttribute("transform","rotate(-90,15,95)");
+    yLabel.textContent = "Loss";
+    svg.appendChild(yLabel);
+    // 下降曲线
+    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    let d = "M60,30";
+    const points = [[60,30],[100,50],[140,65],[180,78],[220,90],[260,100],[300,108],[340,114],[380,118],[420,120],[460,121]];
+    for (let i = 1; i < points.length; i++) {
+        const cp1x = points[i-1][0] + (points[i][0]-points[i-1][0])*0.5;
+        const cp1y = points[i-1][1];
+        const cp2x = points[i][0] - (points[i][0]-points[i-1][0])*0.5;
+        const cp2y = points[i][1];
+        d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${points[i][0]},${points[i][1]}`;
+    }
+    path.setAttribute("d", d);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "var(--accent-green)");
+    path.setAttribute("stroke-width", "3");
+    path.setAttribute("filter", "url(#glow)");
+    // 动画
+    const pathLen = 1200;
+    path.setAttribute("stroke-dasharray", pathLen);
+    path.setAttribute("stroke-dashoffset", pathLen);
+    const anim = document.createElementNS("http://www.w3.org/2000/svg","animate");
+    anim.setAttribute("attributeName","stroke-dashoffset");
+    anim.setAttribute("from", pathLen); anim.setAttribute("to","0");
+    anim.setAttribute("dur","3s"); anim.setAttribute("fill","freeze");
+    anim.setAttribute("begin","0.5s");
+    path.appendChild(anim);
+    svg.appendChild(path);
+    // 标注
+    const startLabel = document.createElementNS("http://www.w3.org/2000/svg","text");
+    startLabel.setAttribute("x","65"); startLabel.setAttribute("y","22");
+    startLabel.setAttribute("fill","var(--accent-red)"); startLabel.setAttribute("font-size","11");
+    startLabel.textContent = "初始 Loss ↑";
+    svg.appendChild(startLabel);
+    const endLabel = document.createElementNS("http://www.w3.org/2000/svg","text");
+    endLabel.setAttribute("x","410"); endLabel.setAttribute("y","115");
+    endLabel.setAttribute("fill","var(--accent-green)"); endLabel.setAttribute("font-size","11");
+    endLabel.textContent = "收敛 Loss ↓";
+    svg.appendChild(endLabel);
+    curveWrap.appendChild(svg);
+    wrap.appendChild(curveWrap);
+
+    // 总结
+    const summary = el('div', { class: 'fade-in', style: { display: 'flex', gap: '12px', animationDelay: '0.8s', flexWrap: 'wrap', justifyContent: 'center' } });
+    const tags = [
+        { text: '前向传播 → 计算输出', color: 'var(--primary)' },
+        { text: '计算损失 → 衡量误差', color: 'var(--accent-orange)' },
+        { text: '反向传播 → 计算梯度', color: 'var(--accent-red)' },
+        { text: '更新参数 → 减小损失', color: 'var(--accent-green)' }
+    ];
+    tags.forEach(t => {
+        summary.appendChild(el('div', { style: { background: 'rgba(255,255,255,0.05)', border: `1px solid ${t.color}40`, borderRadius: '20px', padding: '6px 16px', fontSize: '13px', color: t.color } }, t.text));
+    });
+    wrap.appendChild(summary);
+
+    s.appendChild(wrap);
+}
+
+// ============ 主动画流程 ============
+async function runAnimation() {
+    startTime = Date.now();
+    const timer = setInterval(() => {
+        updateProgress();
+        updateSubtitle(Date.now() - startTime);
+    }, 100);
+
+    showScene(0);
+    await scene0();
+    await waitForSubtitle('链式法则');
+    clearScene(0);
+
+    showScene(1);
+    await scene1();
+    await waitForSubtitle('预测输出');
+    clearScene(1);
+
+    showScene(2);
+    await scene2();
+    await waitForSubtitle('预测越不准确');
+    clearScene(2);
+
+    showScene(3);
+    await scene3();
+    await waitForSubtitle('偏导数');
+    clearScene(3);
+
+    showScene(4);
+    await scene4();
+
+    clearInterval(timer);
+    document.getElementById('progress').style.width = '100%';
+}
+window.onload = runAnimation;
+</script>
+</body>
+</html>

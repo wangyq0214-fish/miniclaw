@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>线性回归 - 动画讲解</title>
+<style>
+:root {
+    --bg-color: #0f172a;
+    --primary: #3b82f6;
+    --secondary: #8b5cf6;
+    --accent: #10b981;
+    --text-main: #f1f5f9;
+    --text-dim: #94a3b8;
+    --glow-blue: rgba(59, 130, 246, 0.4);
+    --glow-green: rgba(16, 185, 129, 0.4);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', system-ui, sans-serif; }
+#viewport {
+    position: relative; width: 900px; height: 600px;
+    background: var(--bg-color); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 0 60px rgba(59,130,246,0.15);
+}
+#viewport::before {
+    content: ''; position: absolute; inset: 0; z-index: 0;
+    background:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+#progress { position: absolute; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--primary), var(--secondary)); width: 0%; z-index: 100; transition: width 0.3s; }
+#header {
+    position: absolute; top: 20px; left: 0; right: 0; text-align: center; z-index: 10;
+}
+#header h1 {
+    font-size: 28px; font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+#header p { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+#scene-indicator {
+    position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 10;
+}
+.scene-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255,255,255,0.15); transition: all 0.4s;
+}
+.scene-dot.active { background: var(--primary); box-shadow: 0 0 10px var(--glow-blue); }
+#stage {
+    position: absolute; inset: 0; z-index: 5;
+}
+[id^="scene-"] {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+[id^="scene-"].active {
+    opacity: 1; pointer-events: auto;
+}
+#subtitle-container {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 50; width: 80%;
+}
+#subtitle-box {
+    background: rgba(15,23,42,0.85); backdrop-filter: blur(12px);
+    border: 1px solid rgba(59,130,246,0.2); border-radius: 12px;
+    padding: 14px 24px; text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+#subtitle-cn { font-size: 16px; color: var(--text-main); line-height: 1.6; }
+.card {
+    background: rgba(30,41,59,0.7); border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 12px; padding: 20px; backdrop-filter: blur(8px);
+}
+.formula {
+    font-family: 'Georgia', serif; font-size: 22px; color: #60a5fa;
+    text-align: center; padding: 12px; letter-spacing: 1px;
+}
+.formula-sm { font-size: 16px; color: #93c5fd; }
+.label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+.value { font-size: 20px; font-weight: 700; color: var(--primary); }
+.node {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 50%; font-size: 14px; font-weight: 700;
+    border: 2px solid; transition: all 0.3s;
+}
+.arrow-line { stroke: var(--text-dim); stroke-width: 2; marker-end: url(#arrowhead); }
+.highlight { color: var(--accent); font-weight: 700; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes dash { to { stroke-dashoffset: 0; } }
+.animate-in { animation: fadeInUp 0.6s ease forwards; }
+</style>
+</head>
+<body>
+<div id="viewport">
+    <div id="progress"></div>
+    <div id="header"><h1>线性回归</h1><p>Linear Regression — 深度学习的起点</p></div>
+    <div id="scene-indicator">
+        <div class="scene-dot" id="dot-0"></div>
+        <div class="scene-dot" id="dot-1"></div>
+        <div class="scene-dot" id="dot-2"></div>
+        <div class="scene-dot" id="dot-3"></div>
+        <div class="scene-dot" id="dot-4"></div>
+        <div class="scene-dot" id="dot-5"></div>
+    </div>
+    <div id="stage">
+        <div id="scene-0"></div>
+        <div id="scene-1"></div>
+        <div id="scene-2"></div>
+        <div id="scene-3"></div>
+        <div id="scene-4"></div>
+        <div id="scene-5"></div>
+    </div>
+    <div id="subtitle-container">
+        <div id="subtitle-box"><div id="subtitle-cn"></div></div>
+    </div>
+</div>
+
+<script>
+const subtitles = [
+            { time: 0,    cn: "线性回归是深度学习中最基础的模型，用于预测连续数值" , audio: "/api/tts/audio/2/2026-05-06-线性回归/0_aa19120fd933.mp3" },
+            { time: 6055,    cn: "比如预测房价、股票价格、零售销量等，都属于回归问题" , audio: "/api/tts/audio/2/2026-05-06-线性回归/1_a4e5ab4f85a2.mp3" },
+            { time: 12111,    cn: "给定自变量 x，线性模型用权重 w 和偏置 b 来计算预测值" , audio: "/api/tts/audio/2/2026-05-06-线性回归/2_5239a802f2fd.mp3" },
+            { time: 19277,    cn: "写成公式就是 y 等于 w 乘以 x 加上 b" , audio: "/api/tts/audio/2/2026-05-06-线性回归/3_9fce9fb98707.mp3" },
+            { time: 24888,    cn: "对于多维输入，可以用向量形式 y 等于 X 乘以 w 加上 b" , audio: "/api/tts/audio/2/2026-05-06-线性回归/4_78a2a4be1b0c.mp3" },
+            { time: 32277,    cn: "如何衡量模型的好坏？我们需要定义一个损失函数" , audio: "/api/tts/audio/2/2026-05-06-线性回归/5_43afbaec527e.mp3" },
+            { time: 37666,    cn: "均方误差是最常用的回归损失，计算预测值与真实值之差的平方均值" , audio: "/api/tts/audio/2/2026-05-06-线性回归/6_0209fc251f1e.mp3" },
+            { time: 44833,    cn: "有了损失函数，接下来需要优化算法来找到最优参数" , audio: "/api/tts/audio/2/2026-05-06-线性回归/7_66fe71bdf574.mp3" },
+            { time: 50444,    cn: "梯度下降沿着损失函数下降最快的方向迭代更新参数" , audio: "/api/tts/audio/2/2026-05-06-线性回归/8_6a8dc1cc70e9.mp3" },
+            { time: 56055,    cn: "学习率决定了每步更新的大小，过大会震荡，过小会很慢" , audio: "/api/tts/audio/2/2026-05-06-线性回归/9_5afa4d2876df.mp3" },
+            { time: 62111,    cn: "实际训练中使用小批量随机梯度下降，兼顾效率和稳定性" , audio: "/api/tts/audio/2/2026-05-06-线性回归/10_2e29e2ba8f80.mp3" },
+            { time: 68166,    cn: "每次从数据集中随机抽取一小批样本计算梯度并更新参数" , audio: "/api/tts/audio/2/2026-05-06-线性回归/11_9821dbad454a.mp3" },
+            { time: 74222,    cn: "线性回归本质上就是一个没有激活函数的单层神经网络" , audio: "/api/tts/audio/2/2026-05-06-线性回归/12_8ddbe4dc27c1.mp3" },
+            { time: 80055,    cn: "在全连接层后面加上激活函数并堆叠更多层，就变成了多层感知机" , audio: "/api/tts/audio/2/2026-05-06-线性回归/13_ca6becac6a46.mp3" },
+            { time: 87000,    cn: "线性回归是理解所有深度学习模型的起点，掌握它至关重要" , audio: "/api/tts/audio/2/2026-05-06-线性回归/14_9ffabaa52f03.mp3" }
+        ];
+
+const TOTAL_DURATION = 92777;
+const TOTAL_SCENES = 6;
+let startTime;
+
+function updateProgress() {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min(100, (elapsed / TOTAL_DURATION) * 100);
+    document.getElementById('progress').style.width = pct + '%';
+}
+
+function updateSubtitle(elapsed) {
+    const cnEl = document.getElementById('subtitle-cn');
+    let current = '';
+    for (let i = subtitles.length - 1; i >= 0; i--) {
+        if (elapsed >= subtitles[i].time) { current = subtitles[i].cn; break; }
+    }
+    if (cnEl.textContent !== current) cnEl.textContent = current;
+}
+
+function el(tag, attrs, children) {
+    const e = document.createElement(tag);
+    if (attrs) Object.entries(attrs).forEach(([k,v]) => {
+        if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+        else if (k === 'textContent') e.textContent = v;
+        else e.setAttribute(k, v);
+    });
+    if (children) {
+        if (typeof children === 'string') e.textContent = children;
+        else if (Array.isArray(children)) children.forEach(c => { if(c) e.appendChild(c); });
+        else e.appendChild(children);
+    }
+    return e;
+}
+
+function makeSVG(w, h) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', w); svg.setAttribute('height', h);
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    return svg;
+}
+
+function showScene(idx) {
+    document.getElementById('scene-' + idx).classList.add('active');
+    document.getElementById('dot-' + idx).classList.add('active');
+}
+function clearScene(idx) {
+    document.getElementById('scene-' + idx).classList.remove('active');
+    document.getElementById('scene-' + idx).innerHTML = '';
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function waitForSubtitle(keyword) {
+    return new Promise(resolve => {
+        const check = setInterval(() => {
+            const cn = document.getElementById('subtitle-cn').textContent;
+            if (cn.includes(keyword)) { clearInterval(check); resolve(); }
+        }, 200);
+        setTimeout(() => { clearInterval(check); resolve(); }, 15000);
+    });
+}
+
+// ===== Scene 0: Motivation - What is Linear Regression =====
+async function scene0() {
+    const s = document.getElementById('scene-0');
+
+    // Title card
+    const titleCard = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '100px', left: '50%', transform: 'translateX(-50%)',
+        width: '700px', padding: '30px', textAlign: 'center'
+    }});
+    titleCard.appendChild(el('div', { style: { fontSize: '18px', color: 'var(--accent)', marginBottom: '12px' } }, '📊 回归问题'));
+    titleCard.appendChild(el('div', { style: { fontSize: '14px', color: 'var(--text-dim)', lineHeight: '1.8' } },
+        '预测一个连续数值 → 回归问题\n预测一个类别 → 分类问题'
+    ));
+    s.appendChild(titleCard);
+    await sleep(2000);
+
+    // Scatter plot with linear trend
+    const svg = makeSVG(700, 280);
+    svg.style.cssText = 'position:absolute; top:280px; left:100px;';
+    // Axes
+    const axLine = (x1,y1,x2,y2) => { const l = document.createElementNS('http://www.w3.org/2000/svg','line'); l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke','#475569');l.setAttribute('stroke-width','2'); return l; };
+    svg.appendChild(axLine(60,240,660,240)); // x-axis
+    svg.appendChild(axLine(60,240,60,20));   // y-axis
+    // Axis labels
+    const axLabel = (x,y,t) => { const t2 = document.createElementNS('http://www.w3.org/2000/svg','text'); t2.setAttribute('x',x);t2.setAttribute('y',y);t2.setAttribute('fill','#94a3b8');t2.setAttribute('font-size','12');t2.textContent=t; return t2; };
+    svg.appendChild(axLabel(350,270,'房屋面积'));
+    svg.appendChild(axLabel(10,140,'房价'));
+
+    // Scatter points with linear trend
+    const points = [[100,210],[130,195],[160,185],[190,170],[220,158],[250,148],[280,135],[310,120],[340,108],[370,95],[400,85],[430,72],[460,60],[490,50],[520,38],[550,28]];
+    points.forEach(([cx,cy],i) => {
+        const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r','5');
+        c.setAttribute('fill','var(--primary)'); c.setAttribute('opacity','0');
+        c.innerHTML = `<animate attributeName="opacity" from="0" to="0.8" begin="${0.1*i}s" dur="0.4s" fill="freeze"/>`;
+        svg.appendChild(c);
+    });
+    // Trend line
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',80);line.setAttribute('y1',225);line.setAttribute('x2',570);line.setAttribute('y2',22);
+    line.setAttribute('stroke','var(--accent)');line.setAttribute('stroke-width','3');
+    line.setAttribute('stroke-dasharray','600');line.setAttribute('stroke-dashoffset','600');
+    line.innerHTML = '<animate attributeName="stroke-dashoffset" from="600" to="0" begin="1.5s" dur="1.5s" fill="freeze"/>';
+    svg.appendChild(line);
+    s.appendChild(svg);
+
+    // Examples
+    const exCard = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '100px', right: '30px', width: '160px', textAlign: 'center'
+    }});
+    exCard.appendChild(el('div', { class: 'label', style: { marginBottom: '8px' } }, '典型应用'));
+    ['🏠 房价预测','📈 股票走势','🛒 销量预测'].forEach(t => {
+        exCard.appendChild(el('div', { style: { fontSize: '13px', color: 'var(--text-main)', margin: '6px 0' } }, t));
+    });
+    s.appendChild(exCard);
+}
+
+// ===== Scene 1: Linear Model Expression =====
+async function scene1() {
+    const s = document.getElementById('scene-1');
+
+    // Formula card - scalar
+    const f1 = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '100px', left: '50%', transform: 'translateX(-50%)',
+        width: '600px', textAlign: 'center'
+    }});
+    f1.appendChild(el('div', { class: 'label', style: { marginBottom: '12px' } }, '标量形式'));
+    f1.appendChild(el('div', { class: 'formula' }, 'ŷ = w · x + b'));
+    f1.appendChild(el('div', { style: { display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '12px' } }, [
+        el('span', { style: { color: '#60a5fa', fontSize: '13px' } }, 'w — 权重'),
+        el('span', { style: { color: '#a78bfa', fontSize: '13px' } }, 'b — 偏置'),
+        el('span', { style: { color: '#34d399', fontSize: '13px' } }, 'x — 输入')
+    ]));
+    s.appendChild(f1);
+    await sleep(3000);
+
+    // Formula card - vector
+    const f2 = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '290px', left: '50%', transform: 'translateX(-50%)',
+        width: '600px', textAlign: 'center'
+    }});
+    f2.appendChild(el('div', { class: 'label', style: { marginBottom: '12px' } }, '向量形式（多维输入）'));
+    f2.appendChild(el('div', { class: 'formula' }, 'ŷ = X · w + b'));
+    f2.appendChild(el('div', { style: { fontSize: '13px', color: 'var(--text-dim)', marginTop: '10px', lineHeight: '1.8' } },
+        'X: n×d 矩阵    w: d×1 向量    b: 标量    ŷ: n×1 向量'
+    ));
+    s.appendChild(f2);
+
+    // Visual: input → linear → output
+    await sleep(2500);
+    const vis = el('div', { style: {
+        position: 'absolute', top: '440px', left: '50%', transform: 'translateX(-50%)',
+        display: 'flex', alignItems: 'center', gap: '20px'
+    }});
+    const makeNode = (label, color) => el('div', { class: 'node', style: {
+        borderColor: color, color: color, background: color.replace(')', ',0.15)').replace('rgb','rgba')
+    }}, label);
+    vis.appendChild(el('div', { style: { textAlign: 'center' } }, [
+        makeNode('x₁', 'rgb(96,165,250)'),
+        el('div', { style: { fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' } }, '输入')
+    ]));
+    vis.appendChild(el('div', { style: { fontSize: '24px', color: 'var(--text-dim)' } }, '→'));
+    vis.appendChild(el('div', { style: { textAlign: 'center' } }, [
+        makeNode('Σ', 'rgb(167,139,250)'),
+        el('div', { style: { fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' } }, '线性变换')
+    ]));
+    vis.appendChild(el('div', { style: { fontSize: '24px', color: 'var(--text-dim)' } }, '→'));
+    vis.appendChild(el('div', { style: { textAlign: 'center' } }, [
+        makeNode('ŷ', 'rgb(52,211,153)'),
+        el('div', { style: { fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' } }, '预测值')
+    ]));
+    s.appendChild(vis);
+}
+
+// ===== Scene 2: Loss Function =====
+async function scene2() {
+    const s = document.getElementById('scene-2');
+
+    // MSE formula
+    const card = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '100px', left: '50%', transform: 'translateX(-50%)',
+        width: '650px', textAlign: 'center'
+    }});
+    card.appendChild(el('div', { class: 'label', style: { marginBottom: '12px' } }, '均方误差损失 (MSE)'));
+    card.appendChild(el('div', { class: 'formula' }, 'L(w, b) = (1/n) Σ (ŷᵢ - yᵢ)²'));
+    card.appendChild(el('div', { style: { fontSize: '13px', color: 'var(--text-dim)', marginTop: '10px' } },
+        '衡量所有样本的预测值与真实值之间的平均差距'
+    ));
+    s.appendChild(card);
+    await sleep(3000);
+
+    // Visual: prediction vs actual
+    const svg = makeSVG(650, 220);
+    svg.style.cssText = 'position:absolute; top:300px; left:125px;';
+    // Axes
+    const axL = (x1,y1,x2,y2) => { const l = document.createElementNS('http://www.w3.org/2000/svg','line'); l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);l.setAttribute('stroke','#334155');l.setAttribute('stroke-width','1.5'); return l; };
+    svg.appendChild(axL(50,180,620,180));
+    svg.appendChild(axL(50,180,50,20));
+
+    // Data points (actual)
+    const actual = [[100,140],[200,100],[300,70],[400,45],[500,25]];
+    // Predicted (slightly off)
+    const predicted = [[100,150],[200,110],[300,60],[400,55],[500,20]];
+
+    actual.forEach(([cx,cy],i) => {
+        // Actual point
+        const c1 = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c1.setAttribute('cx',cx); c1.setAttribute('cy',cy); c1.setAttribute('r','6');
+        c1.setAttribute('fill','var(--accent)'); c1.setAttribute('opacity','0');
+        c1.innerHTML = `<animate attributeName="opacity" from="0" to="1" begin="${0.3*i}s" dur="0.3s" fill="freeze"/>`;
+        svg.appendChild(c1);
+
+        // Predicted point
+        const c2 = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c2.setAttribute('cx',cx); c2.setAttribute('cy',predicted[i][1]); c2.setAttribute('r','6');
+        c2.setAttribute('fill','var(--primary)'); c2.setAttribute('opacity','0');
+        c2.innerHTML = `<animate attributeName="opacity" from="0" to="1" begin="${0.3*i+0.15}s" dur="0.3s" fill="freeze"/>`;
+        svg.appendChild(c2);
+
+        // Error bar
+        const err = document.createElementNS('http://www.w3.org/2000/svg','line');
+        err.setAttribute('x1',cx); err.setAttribute('y1',cy);
+        err.setAttribute('x2',cx); err.setAttribute('y2',predicted[i][1]);
+        err.setAttribute('stroke','#ef4444'); err.setAttribute('stroke-width','2');
+        err.setAttribute('stroke-dasharray','4'); err.setAttribute('opacity','0');
+        err.innerHTML = `<animate attributeName="opacity" from="0" to="0.7" begin="${0.3*i+0.3}s" dur="0.3s" fill="freeze"/>`;
+        svg.appendChild(err);
+    });
+
+    // Legend
+    const lg = (x,y,color,label) => { const g = document.createElementNS('http://www.w3.org/2000/svg','g'); const c = document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r','5');c.setAttribute('fill',color); g.appendChild(c); const t = document.createElementNS('http://www.w3.org/2000/svg','text'); t.setAttribute('x',x+10);t.setAttribute('y',y+4);t.setAttribute('fill','#94a3b8');t.setAttribute('font-size','11');t.textContent=label; g.appendChild(t); return g; };
+    svg.appendChild(lg(520,30,'#34d399','真实值 y'));
+    svg.appendChild(lg(520,50,'#3b82f6','预测值 ŷ'));
+    svg.appendChild(lg(520,70,'#ef4444','误差 |ŷ-y|'));
+    s.appendChild(svg);
+}
+
+// ===== Scene 3: Gradient Descent =====
+async function scene3() {
+    const s = document.getElementById('scene-3');
+
+    // Formula
+    const card = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '100px', left: '50%', transform: 'translateX(-50%)',
+        width: '650px', textAlign: 'center'
+    }});
+    card.appendChild(el('div', { class: 'label', style: { marginBottom: '12px' } }, '梯度下降 (Gradient Descent)'));
+    card.appendChild(el('div', { class: 'formula' }, 'w ← w - η · ∂L/∂w'));
+    card.appendChild(el('div', { style: { fontSize: '14px', color: 'var(--text-dim)', marginTop: '10px' } },
+        'η — 学习率    ∂L/∂w — 损失对参数的梯度'
+    ));
+    s.appendChild(card);
+    await sleep(3000);
+
+    // Loss landscape visualization
+    const svg = makeSVG(650, 250);
+    svg.style.cssText = 'position:absolute; top:300px; left:125px;';
+
+    // Draw parabola (loss landscape)
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    // Parabola: y = 0.008*(x-325)^2 + 30
+    let d = 'M 50 ' + (0.008*Math.pow(50-325,2)+30);
+    for(let x=55; x<=600; x+=5) {
+        const y = 0.008*Math.pow(x-325,2)+30;
+        d += ` L ${x} ${y}`;
+    }
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'rgba(59,130,246,0.4)');
+    path.setAttribute('stroke-width', '3');
+    svg.appendChild(path);
+
+    // Fill under curve
+    const fill = document.createElementNS('http://www.w3.org/2000/svg','path');
+    fill.setAttribute('d', d + ' L 600 230 L 50 230 Z');
+    fill.setAttribute('fill', 'rgba(59,130,246,0.05)');
+    svg.appendChild(fill);
+
+    // Gradient descent steps (animated ball)
+    const steps = [
+        {x: 100, y: 0.008*Math.pow(100-325,2)+30},
+        {x: 170, y: 0.008*Math.pow(170-325,2)+30},
+        {x: 225, y: 0.008*Math.pow(225-325,2)+30},
+        {x: 270, y: 0.008*Math.pow(270-325,2)+30},
+        {x: 305, y: 0.008*Math.pow(305-325,2)+30},
+        {x: 320, y: 0.008*Math.pow(320-325,2)+30},
+    ];
+
+    // Minimum marker
+    const minC = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    minC.setAttribute('cx',325); minC.setAttribute('cy',30); minC.setAttribute('r','8');
+    minC.setAttribute('fill','var(--accent)'); minC.setAttribute('opacity','0.5');
+    svg.appendChild(minC);
+    const minT = document.createElementNS('http://www.w3.org/2000/svg','text');
+    minT.setAttribute('x',338); minT.setAttribute('y',35); minT.setAttribute('fill','#34d399'); minT.setAttribute('font-size','12');
+    minT.textContent = '最优解';
+    svg.appendChild(minT);
+
+    // Animated ball
+    const ball = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    ball.setAttribute('r','10'); ball.setAttribute('fill','var(--primary)');
+    ball.style.filter = 'drop-shadow(0 0 6px rgba(59,130,246,0.6))';
+    svg.appendChild(ball);
+
+    // Animate ball along steps
+    for(let i=0; i<steps.length; i++) {
+        ball.setAttribute('cx', steps[i].x);
+        ball.setAttribute('cy', steps[i].y);
+        // Arrow to next step
+        if(i < steps.length-1) {
+            const arr = document.createElementNS('http://www.w3.org/2000/svg','line');
+            arr.setAttribute('x1',steps[i].x); arr.setAttribute('y1',steps[i].y);
+            arr.setAttribute('x2',steps[i+1].x); arr.setAttribute('y2',steps[i+1].y);
+            arr.setAttribute('stroke','rgba(255,255,255,0.3)'); arr.setAttribute('stroke-width','1.5');
+            arr.setAttribute('marker-end','url(#arrowhead)');
+            svg.appendChild(arr);
+        }
+        await sleep(800);
+    }
+
+    // Arrowhead marker
+    const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg','marker');
+    marker.setAttribute('id','arrowhead'); marker.setAttribute('markerWidth','8'); marker.setAttribute('markerHeight','6');
+    marker.setAttribute('refX','8'); marker.setAttribute('refY','3'); marker.setAttribute('orient','auto');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('points','0 0, 8 3, 0 6'); poly.setAttribute('fill','#94a3b8');
+    marker.appendChild(poly); defs.appendChild(marker);
+    svg.insertBefore(defs, svg.firstChild);
+
+    // Labels
+    const axLabel = (x,y,t,sz) => { const t2 = document.createElementNS('http://www.w3.org/2000/svg','text'); t2.setAttribute('x',x);t2.setAttribute('y',y);t2.setAttribute('fill','#94a3b8');t2.setAttribute('font-size',sz||'12');t2.textContent=t; return t2; };
+    svg.appendChild(axLabel(280,240,'参数 w',13));
+    svg.appendChild(axLabel(20,120,'损失 L',13));
+    s.appendChild(svg);
+}
+
+// ===== Scene 4: Mini-batch SGD =====
+async function scene4() {
+    const s = document.getElementById('scene-4');
+
+    const card = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '100px', left: '50%', transform: 'translateX(-50%)',
+        width: '700px', textAlign: 'center'
+    }});
+    card.appendChild(el('div', { class: 'label', style: { marginBottom: '12px' } }, '小批量随机梯度下降 (Mini-batch SGD)'));
+    card.appendChild(el('div', { class: 'formula formula-sm' }, 'w ← w - η · (1/|B|) Σ ∂L(xᵢ,yᵢ;w)/∂w'));
+    card.appendChild(el('div', { style: { fontSize: '13px', color: 'var(--text-dim)', marginTop: '10px' } },
+        'B — 小批量大小 (batch size)    |B| — 批量中的样本数'
+    ));
+    s.appendChild(card);
+    await sleep(2500);
+
+    // Visual: dataset → sample batch → update
+    const svg = makeSVG(700, 230);
+    svg.style.cssText = 'position:absolute; top:310px; left:100px;';
+
+    // Dataset grid
+    const gridX = 60, gridY = 30, cellW = 28, cellH = 28;
+    const rows = 4, cols = 8;
+    for(let r=0; r<rows; r++) {
+        for(let c=0; c<cols; c++) {
+            const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+            rect.setAttribute('x', gridX+c*cellW); rect.setAttribute('y', gridY+r*cellH);
+            rect.setAttribute('width', cellW-2); rect.setAttribute('height', cellH-2);
+            rect.setAttribute('rx','3');
+            // Highlight some as sampled
+            const sampled = (r===0&&c===1)||(r===1&&c===3)||(r===2&&c===0)||(r===3&&c===5)||(r===1&&c===6);
+            rect.setAttribute('fill', sampled ? 'rgba(59,130,246,0.6)' : 'rgba(71,85,105,0.4)');
+            rect.setAttribute('stroke', sampled ? 'var(--primary)' : 'transparent');
+            if(sampled) {
+                rect.innerHTML = `<animate attributeName="opacity" values="1;0.5;1" dur="1.5s" begin="${0.1*(r*cols+c)}s" repeatCount="3"/>`;
+            }
+            svg.appendChild(rect);
+        }
+    }
+
+    // Dataset label
+    const dl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    dl.setAttribute('x', gridX+cols*cellW/2); dl.setAttribute('y', gridY+rows*cellH+20);
+    dl.setAttribute('fill','#94a3b8'); dl.setAttribute('font-size','12'); dl.setAttribute('text-anchor','middle');
+    dl.textContent = '数据集 (n 个样本)';
+    svg.appendChild(dl);
+
+    // Arrow from dataset to batch
+    const arr1 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    arr1.setAttribute('x1',290); arr1.setAttribute('y1',60);
+    arr1.setAttribute('x2',370); arr1.setAttribute('y2',60);
+    arr1.setAttribute('stroke','#475569'); arr1.setAttribute('stroke-width','2');
+    arr1.setAttribute('marker-end','url(#arrowhead2)');
+    svg.appendChild(arr1);
+
+    // Arrowhead
+    const defs2 = document.createElementNS('http://www.w3.org/2000/svg','defs');
+    const mk2 = document.createElementNS('http://www.w3.org/2000/svg','marker');
+    mk2.setAttribute('id','arrowhead2'); mk2.setAttribute('markerWidth','8'); mk2.setAttribute('markerHeight','6');
+    mk2.setAttribute('refX','8'); mk2.setAttribute('refY','3'); mk2.setAttribute('orient','auto');
+    const pl2 = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    pl2.setAttribute('points','0 0, 8 3, 0 6'); pl2.setAttribute('fill','#94a3b8');
+    mk2.appendChild(pl2); defs2.appendChild(mk2);
+    svg.insertBefore(defs2, svg.firstChild);
+
+    // Batch box
+    const batchRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    batchRect.setAttribute('x',380); batchRect.setAttribute('y',20);
+    batchRect.setAttribute('width',120); batchRect.setAttribute('height',100);
+    batchRect.setAttribute('rx','8'); batchRect.setAttribute('fill','rgba(59,130,246,0.1)');
+    batchRect.setAttribute('stroke','var(--primary)'); batchRect.setAttribute('stroke-width','1.5');
+    svg.appendChild(batchRect);
+
+    // Batch cells
+    const batchCells = [[395,35],[425,35],[455,35],[395,65],[425,65]];
+    batchCells.forEach(([bx,by],i) => {
+        const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        r.setAttribute('x',bx); r.setAttribute('y',by);
+        r.setAttribute('width',22); r.setAttribute('height',22);
+        r.setAttribute('rx','3'); r.setAttribute('fill','var(--primary)');
+        r.innerHTML = `<animate attributeName="opacity" values="0;1" begin="${1.5+0.15*i}s" dur="0.3s" fill="freeze"/>`;
+        svg.appendChild(r);
+    });
+
+    const bl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    bl.setAttribute('x',440); bl.setAttribute('y',110);
+    bl.setAttribute('fill','#60a5fa'); bl.setAttribute('font-size','12'); bl.setAttribute('text-anchor','middle');
+    bl.textContent = '小批量 B';
+    svg.appendChild(bl);
+
+    // Arrow to update
+    const arr2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    arr2.setAttribute('x1',510); arr2.setAttribute('y1',70);
+    arr2.setAttribute('x2',570); arr2.setAttribute('y2',70);
+    arr2.setAttribute('stroke','#475569'); arr2.setAttribute('stroke-width','2');
+    arr2.setAttribute('marker-end','url(#arrowhead2)');
+    svg.appendChild(arr2);
+
+    // Update box
+    const updRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    updRect.setAttribute('x',580); updRect.setAttribute('y',30);
+    updRect.setAttribute('width',100); updRect.setAttribute('height',80);
+    updRect.setAttribute('rx','8'); updRect.setAttribute('fill','rgba(16,185,129,0.1)');
+    updRect.setAttribute('stroke','var(--accent)'); updRect.setAttribute('stroke-width','1.5');
+    svg.appendChild(updRect);
+
+    const ut = document.createElementNS('http://www.w3.org/2000/svg','text');
+    ut.setAttribute('x',630); ut.setAttribute('y',60); ut.setAttribute('fill','#34d399'); ut.setAttribute('font-size','12'); ut.setAttribute('text-anchor','middle');
+    ut.textContent = '计算梯度';
+    svg.appendChild(ut);
+    const ut2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    ut2.setAttribute('x',630); ut2.setAttribute('y',80); ut2.setAttribute('fill','#34d399'); ut2.setAttribute('font-size','12'); ut2.setAttribute('text-anchor','middle');
+    ut2.textContent = '更新参数';
+    svg.appendChild(ut2);
+
+    // Comparison table
+    await sleep(3000);
+    const table = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '430px', left: '50%', transform: 'translateX(-50%)',
+        width: '700px', display: 'flex', justifyContent: 'space-around', fontSize: '12px'
+    }});
+    [
+        { name: '全量GD', desc: '每次用全部样本', color: '#94a3b8' },
+        { name: '随机GD', desc: '每次用 1 个样本', color: '#f59e0b' },
+        { name: 'Mini-batch', desc: '每次用一小批', color: '#34d399' }
+    ].forEach(item => {
+        const c = el('div', { style: { textAlign: 'center', padding: '8px 16px' } });
+        c.appendChild(el('div', { style: { color: item.color, fontWeight: '700', marginBottom: '4px' } }, item.name));
+        c.appendChild(el('div', { style: { color: 'var(--text-dim)' } }, item.desc));
+        table.appendChild(c);
+    });
+    s.appendChild(table);
+}
+
+// ===== Scene 5: From Linear Regression to Neural Network =====
+async function scene5() {
+    const s = document.getElementById('scene-5');
+
+    // Left: Linear Regression as single layer
+    const leftCard = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '100px', left: '40px', width: '380px', textAlign: 'center'
+    }});
+    leftCard.appendChild(el('div', { class: 'label', style: { marginBottom: '12px' } }, '线性回归 = 单层神经网络'));
+    // Neural network diagram
+    const svgL = makeSVG(340, 180);
+    svgL.style.cssText = 'margin: 0 auto;';
+
+    // Input nodes
+    const inputLabels = ['x₁','x₂','x₃'];
+    inputLabels.forEach((lbl,i) => {
+        const y = 30 + i*55;
+        const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c.setAttribute('cx',60); c.setAttribute('cy',y); c.setAttribute('r','18');
+        c.setAttribute('fill','rgba(96,165,250,0.2)'); c.setAttribute('stroke','#60a5fa'); c.setAttribute('stroke-width','2');
+        svgL.appendChild(c);
+        const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+        t.setAttribute('x',60); t.setAttribute('y',y+4); t.setAttribute('fill','#60a5fa'); t.setAttribute('font-size','12'); t.setAttribute('text-anchor','middle');
+        t.textContent = lbl;
+        svgL.appendChild(t);
+
+        // Line to output
+        const l = document.createElementNS('http://www.w3.org/2000/svg','line');
+        l.setAttribute('x1',78); l.setAttribute('y1',y);
+        l.setAttribute('x2',240); l.setAttribute('y2',90);
+        l.setAttribute('stroke','rgba(148,163,184,0.3)'); l.setAttribute('stroke-width','1.5');
+        svgL.appendChild(l);
+    });
+
+    // Output node
+    const outC = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    outC.setAttribute('cx',260); outC.setAttribute('cy',90); outC.setAttribute('r','22');
+    outC.setAttribute('fill','rgba(52,211,153,0.2)'); outC.setAttribute('stroke','#34d399'); outC.setAttribute('stroke-width','2');
+    svgL.appendChild(outC);
+    const outT = document.createElementNS('http://www.w3.org/2000/svg','text');
+    outT.setAttribute('x',260); outT.setAttribute('y',94); outT.setAttribute('fill','#34d399'); outT.setAttribute('font-size','13'); outT.setAttribute('text-anchor','middle');
+    outT.textContent = 'ŷ';
+    svgL.appendChild(outT);
+
+    // "No activation" label
+    const noAct = document.createElementNS('http://www.w3.org/2000/svg','text');
+    noAct.setAttribute('x',170); noAct.setAttribute('y',170); noAct.setAttribute('fill','#ef4444'); noAct.setAttribute('font-size','11'); noAct.setAttribute('text-anchor','middle');
+    noAct.textContent = '✗ 无激活函数';
+    svgL.appendChild(noAct);
+
+    leftCard.appendChild(svgL);
+    s.appendChild(leftCard);
+
+    await sleep(2000);
+
+    // Right: MLP
+    const rightCard = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '100px', right: '40px', width: '380px', textAlign: 'center'
+    }});
+    rightCard.appendChild(el('div', { class: 'label', style: { marginBottom: '12px' } }, '多层感知机 (MLP)'));
+    const svgR = makeSVG(340, 180);
+    svgR.style.cssText = 'margin: 0 auto;';
+
+    // Input layer
+    inputLabels.forEach((lbl,i) => {
+        const y = 30 + i*55;
+        const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c.setAttribute('cx',50); c.setAttribute('cy',y); c.setAttribute('r','16');
+        c.setAttribute('fill','rgba(96,165,250,0.2)'); c.setAttribute('stroke','#60a5fa'); c.setAttribute('stroke-width','2');
+        svgR.appendChild(c);
+        const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+        t.setAttribute('x',50); t.setAttribute('y',y+4); t.setAttribute('fill','#60a5fa'); t.setAttribute('font-size','11'); t.setAttribute('text-anchor','middle');
+        t.textContent = lbl; svgR.appendChild(t);
+    });
+
+    // Hidden layer
+    const hiddenY = [45, 90, 135];
+    hiddenY.forEach((y,i) => {
+        const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c.setAttribute('cx',155); c.setAttribute('cy',y); c.setAttribute('r','16');
+        c.setAttribute('fill','rgba(167,139,250,0.2)'); c.setAttribute('stroke','#a78bfa'); c.setAttribute('stroke-width','2');
+        svgR.appendChild(c);
+        const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+        t.setAttribute('x',155); t.setAttribute('y',y+4); t.setAttribute('fill','#a78bfa'); t.setAttribute('font-size','10'); t.setAttribute('text-anchor','middle');
+        t.textContent = 'σ'; svgR.appendChild(t);
+    });
+
+    // Output
+    const outC2 = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    outC2.setAttribute('cx',270); outC2.setAttribute('cy',90); outC2.setAttribute('r','18');
+    outC2.setAttribute('fill','rgba(52,211,153,0.2)'); outC2.setAttribute('stroke','#34d399'); outC2.setAttribute('stroke-width','2');
+    svgR.appendChild(outC2);
+    const outT2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    outT2.setAttribute('x',270); outT2.setAttribute('y',94); outT2.setAttribute('fill','#34d399'); outT2.setAttribute('font-size','12'); outT2.setAttribute('text-anchor','middle');
+    outT2.textContent = 'ŷ'; svgR.appendChild(outT2);
+
+    // Connections: input → hidden
+    inputLabels.forEach((_,i) => {
+        const y1 = 30 + i*55;
+        hiddenY.forEach(y2 => {
+            const l = document.createElementNS('http://www.w3.org/2000/svg','line');
+            l.setAttribute('x1',66); l.setAttribute('y1',y1);
+            l.setAttribute('x2',139); l.setAttribute('y2',y2);
+            l.setAttribute('stroke','rgba(148,163,184,0.2)'); l.setAttribute('stroke-width','1');
+            svgR.appendChild(l);
+        });
+    });
+
+    // Connections: hidden → output
+    hiddenY.forEach(y => {
+        const l = document.createElementNS('http://www.w3.org/2000/svg','line');
+        l.setAttribute('x1',171); l.setAttribute('y1',y);
+        l.setAttribute('x2',252); l.setAttribute('y2',90);
+        l.setAttribute('stroke','rgba(148,163,184,0.2)'); l.setAttribute('stroke-width','1');
+        svgR.appendChild(l);
+    });
+
+    // "With activation" label
+    const withAct = document.createElementNS('http://www.w3.org/2000/svg','text');
+    withAct.setAttribute('x',155); withAct.setAttribute('y',170); withAct.setAttribute('fill','#34d399'); withAct.setAttribute('font-size','11'); withAct.setAttribute('text-anchor','middle');
+    withAct.textContent = '✓ 有激活函数 σ';
+    svgR.appendChild(withAct);
+
+    // Layer labels
+    ['输入层','隐藏层','输出层'].forEach((lbl,i) => {
+        const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+        t.setAttribute('x', [50,155,270][i]); t.setAttribute('y', 10);
+        t.setAttribute('fill','#64748b'); t.setAttribute('font-size','10'); t.setAttribute('text-anchor','middle');
+        t.textContent = lbl; svgR.appendChild(t);
+    });
+
+    rightCard.appendChild(svgR);
+    s.appendChild(rightCard);
+
+    // Arrow between cards
+    await sleep(2000);
+    const arrow = el('div', { style: {
+        position: 'absolute', top: '180px', left: '50%', transform: 'translateX(-50%)',
+        fontSize: '32px', color: 'var(--accent)', fontWeight: '700'
+    }}, '→');
+    s.appendChild(arrow);
+
+    // Summary
+    await sleep(2000);
+    const summary = el('div', { class: 'card animate-in', style: {
+        position: 'absolute', top: '340px', left: '50%', transform: 'translateX(-50%)',
+        width: '700px', textAlign: 'center', padding: '20px 30px'
+    }});
+    summary.appendChild(el('div', { style: { fontSize: '15px', color: 'var(--accent)', marginBottom: '10px' } }, '🎯 核心要点'));
+    const points = [
+        '线性回归：ŷ = Xw + b，深度学习的起点',
+        '损失函数：均方误差 MSE，衡量预测与真实的差距',
+        '优化算法：梯度下降 + 小批量随机采样 = Mini-batch SGD',
+        '扩展路径：加激活函数 + 堆叠层 → 多层感知机 MLP'
+    ];
+    points.forEach(p => {
+        summary.appendChild(el('div', { style: { fontSize: '13px', color: 'var(--text-main)', margin: '6px 0', lineHeight: '1.6' } }, '• ' + p));
+    });
+    s.appendChild(summary);
+}
+
+// ===== Main Animation Loop =====
+async function runAnimation() {
+    startTime = Date.now();
+    const timer = setInterval(() => {
+        updateProgress();
+        updateSubtitle(Date.now() - startTime);
+    }, 100);
+
+    showScene(0);
+    await scene0();
+    await waitForSubtitle('属于回归问题');
+    clearScene(0);
+
+    showScene(1);
+    await scene1();
+    await waitForSubtitle('向量形式');
+    clearScene(1);
+
+    showScene(2);
+    await scene2();
+    await waitForSubtitle('均方误差');
+    clearScene(2);
+
+    showScene(3);
+    await scene3();
+    await waitForSubtitle('学习率');
+    clearScene(3);
+
+    showScene(4);
+    await scene4();
+    await waitForSubtitle('兼顾效率和稳定性');
+    clearScene(4);
+
+    showScene(5);
+    await scene5();
+
+    clearInterval(timer);
+    document.getElementById('progress').style.width = '100%';
+}
+window.onload = runAnimation;
+</script>
+</body>
+</html>

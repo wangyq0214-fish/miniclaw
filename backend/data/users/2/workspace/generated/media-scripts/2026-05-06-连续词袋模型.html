@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>连续词袋模型(CBOW)讲解</title>
+<style>
+:root {
+    --bg-color: #0f172a;
+    --primary: #3b82f6;
+    --secondary: #8b5cf6;
+    --accent: #06b6d4;
+    --text-main: #f1f5f9;
+    --text-dim: #94a3b8;
+    --glow-blue: rgba(59, 130, 246, 0.4);
+    --glow-purple: rgba(139, 92, 246, 0.4);
+    --glow-cyan: rgba(6, 182, 212, 0.4);
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --success: #22c55e;
+    --warning: #eab308;
+    --danger: #ef4444;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: var(--bg-color);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+#viewport {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#viewport::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+#progress {
+    position: absolute;
+    top: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+    width: 0%;
+    transition: width 0.3s ease;
+    z-index: 100;
+}
+
+#header {
+    position: absolute;
+    top: 20px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 50;
+}
+
+#header h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 2px;
+}
+
+#header p {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 1px;
+}
+
+#scene-indicator {
+    position: absolute;
+    top: 70px; left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 50;
+}
+
+.scene-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(148, 163, 184, 0.3);
+    transition: all 0.4s ease;
+}
+
+.scene-dot.active {
+    background: var(--primary);
+    box-shadow: 0 0 8px var(--glow-blue);
+    transform: scale(1.3);
+}
+
+#stage {
+    position: absolute;
+    inset: 90px 0 80px 0;
+    z-index: 10;
+}
+
+[id^="scene-"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+
+[id^="scene-"].active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#subtitle-container {
+    position: absolute;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    width: 80%;
+    max-width: 700px;
+}
+
+#subtitle-box {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 12px;
+    padding: 12px 20px;
+    text-align: center;
+}
+
+#subtitle-cn {
+    font-size: 0.95rem;
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 12px;
+    padding: 16px;
+    backdrop-filter: blur(8px);
+}
+
+.glow-border {
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 15px var(--glow-blue);
+}
+
+.tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tag-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+.tag-purple { background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
+.tag-cyan { background: rgba(6, 182, 212, 0.2); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
+.tag-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+.tag-amber { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+@keyframes flowRight {
+    0% { transform: translateX(-20px); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: translateX(20px); opacity: 0; }
+}
+
+@keyframes highlight {
+    0%, 100% { box-shadow: 0 0 5px var(--glow-blue); }
+    50% { box-shadow: 0 0 20px var(--glow-blue), 0 0 40px var(--glow-purple); }
+}
+
+.animate-in {
+    animation: fadeInUp 0.6s ease forwards;
+}
+</style>
+</head>
+<body>
+<div id="viewport">
+    <div id="progress"></div>
+    <div id="header"><h1>连续词袋模型 CBOW</h1><p>Continuous Bag-of-Words</p></div>
+    <div id="scene-indicator">
+        <div class="scene-dot active" data-idx="0"></div>
+        <div class="scene-dot" data-idx="1"></div>
+        <div class="scene-dot" data-idx="2"></div>
+        <div class="scene-dot" data-idx="3"></div>
+        <div class="scene-dot" data-idx="4"></div>
+    </div>
+    <div id="stage">
+        <div id="scene-0"></div>
+        <div id="scene-1"></div>
+        <div id="scene-2"></div>
+        <div id="scene-3"></div>
+        <div id="scene-4"></div>
+    </div>
+    <div id="subtitle-container">
+        <div id="subtitle-box"><div id="subtitle-cn">准备开始...</div></div>
+    </div>
+</div>
+
+<script>
+const TOTAL_DURATION = 99222;
+const TOTAL_SCENES = 5;
+let startTime;
+let currentScene = 0;
+
+const subtitles = [
+            { time: 0,    cn: "今天我们来学习连续词袋模型，简称 CBOW" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/0_c986bc6c94c6.mp3" },
+            { time: 5166,    cn: "它是 word2vec 的两种架构之一" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/1_2e4016226d69.mp3" },
+            { time: 9888,    cn: "CBOW 的核心思想非常直观" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/2_a65a516d616f.mp3" },
+            { time: 13500,    cn: "给定一个上下文窗口内的周围词，去预测中间的目标词" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/3_2014f8ba25fb.mp3" },
+            { time: 19333,    cn: "我们来看一个具体例子" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/4_b64af78b691f.mp3" },
+            { time: 22333,    cn: "句子是「我 喜欢 用 深度 学习 做 研究」" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/5_9fa0b83accc4.mp3" },
+            { time: 27722,    cn: "窗口大小设为 2，中心词是「深度」" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/6_76f94d2aaf5e.mp3" },
+            { time: 32000,    cn: "那么上下文就是「喜欢」「用」「学习」「做」" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/7_0273965209ca.mp3" },
+            { time: 37166,    cn: "窗口滑动一次，中心词变成「学习」" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/8_ff2051511a2c.mp3" },
+            { time: 41222,    cn: "上下文变为「用」「深度」「做」「研究」" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/9_a78211c04168.mp3" },
+            { time: 45944,    cn: "接下来我们看 CBOW 的网络结构" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/10_a82f9d7b676b.mp3" },
+            { time: 50222,    cn: "输入层：将上下文词的独热向量查嵌入矩阵 W" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/11_c803723a6425.mp3" },
+            { time: 55388,    cn: "隐藏层：对所有上下文词向量取平均" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/12_bd5d40d7d8b2.mp3" },
+            { time: 59444,    cn: "输出层：通过 W' 矩阵和 Softmax 得到词表概率分布" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/13_5a9ba8f0013f.mp3" },
+            { time: 66611,    cn: "训练目标是让目标词的概率最大化" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/14_56194da5f514.mp3" },
+            { time: 70444,    cn: "损失函数采用负对数似然" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/15_bbbed85cbb8f.mp3" },
+            { time: 73444,    cn: "由于词表通常很大，实践中用负采样或层次 Softmax 加速" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/16_ccdc1103e75b.mp3" },
+            { time: 80611,    cn: "训练完成后，嵌入矩阵 W 的每一行就是对应词的词向量" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/17_66d6c99b8194.mp3" },
+            { time: 86888,    cn: "这些词向量能捕捉语义关系" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/18_1f87923c5733.mp3" },
+            { time: 90055,    cn: "例如：国王减去男人加上女人，约等于女王" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/19_b5bb447bed8f.mp3" },
+            { time: 94777,    cn: "这就是 CBOW 连续词袋模型的核心原理" , audio: "/api/tts/audio/2/2026-05-06-连续词袋模型/20_47e44f60d1cd.mp3" }
+        ];
+
+function updateProgress() {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min(elapsed / TOTAL_DURATION * 100, 100);
+    document.getElementById('progress').style.width = pct + '%';
+}
+
+function updateSubtitle(elapsed) {
+    const el = document.getElementById('subtitle-cn');
+    for (let i = subtitles.length - 1; i >= 0; i--) {
+        if (elapsed >= subtitles[i].time) {
+            if (el.textContent !== subtitles[i].cn) {
+                el.textContent = subtitles[i].cn;
+            }
+            return;
+        }
+    }
+}
+
+function el(tag, attrs, children) {
+    const e = document.createElement(tag);
+    if (attrs) {
+        for (const [k, v] of Object.entries(attrs)) {
+            if (k === 'style' && typeof v === 'object') {
+                Object.assign(e.style, v);
+            } else if (k === 'className') {
+                e.className = v;
+            } else if (k.startsWith('on')) {
+                e.addEventListener(k.slice(2).toLowerCase(), v);
+            } else {
+                e.setAttribute(k, v);
+            }
+        }
+    }
+    if (children) {
+        if (typeof children === 'string') e.textContent = children;
+        else if (Array.isArray(children)) children.forEach(c => { if (c) e.appendChild(c); });
+        else e.appendChild(children);
+    }
+    return e;
+}
+
+function makeSVG(w, h) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', h);
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    return svg;
+}
+
+function showScene(idx) {
+    const scene = document.getElementById('scene-' + idx);
+    if (scene) scene.classList.add('active');
+    document.querySelectorAll('.scene-dot').forEach((d, i) => {
+        d.classList.toggle('active', i === idx);
+    });
+    currentScene = idx;
+}
+
+function clearScene(idx) {
+    const scene = document.getElementById('scene-' + idx);
+    if (scene) {
+        scene.classList.remove('active');
+        scene.innerHTML = '';
+    }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function waitForSubtitle(keyword) {
+    return new Promise(resolve => {
+        const check = setInterval(() => {
+            const el = document.getElementById('subtitle-cn');
+            if (el && el.textContent.includes(keyword)) {
+                clearInterval(check);
+                setTimeout(resolve, 2000);
+            }
+        }, 200);
+        setTimeout(() => { clearInterval(check); resolve(); }, 15000);
+    });
+}
+
+function drawWordBox(parent, word, x, y, color, delay) {
+    const box = el('div', {
+        className: 'card',
+        style: {
+            position: 'absolute', left: x + 'px', top: y + 'px',
+            padding: '8px 16px', borderRadius: '10px',
+            background: color + '22', border: '1px solid ' + color + '66',
+            boxShadow: '0 0 12px ' + color + '33',
+            fontSize: '0.9rem', fontWeight: '600', color: color,
+            opacity: '0', transform: 'translateY(15px)',
+            animation: 'fadeInUp 0.5s ease ' + delay + 'ms forwards',
+            whiteSpace: 'nowrap', textAlign: 'center'
+        }
+    }, word);
+    parent.appendChild(box);
+    return box;
+}
+
+function drawArrowLine(svg, x1, y1, x2, y2, color, dashed) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', color || '#3b82f6');
+    line.setAttribute('stroke-width', '1.5');
+    if (dashed) line.setAttribute('stroke-dasharray', '4,4');
+    line.setAttribute('marker-end', 'url(#arrowhead)');
+    svg.appendChild(line);
+    return line;
+}
+
+// ========== Scene 0: Overview ==========
+async function scene0() {
+    const container = document.getElementById('scene-0');
+
+    // Title
+    const title = el('div', {
+        style: {
+            position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)',
+            fontSize: '1.2rem', fontWeight: '700', color: '#60a5fa',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 0.2s forwards'
+        }
+    }, 'CBOW 是什么？');
+    container.appendChild(title);
+
+    // word2vec two architectures
+    const archBox = el('div', {
+        className: 'card',
+        style: {
+            position: 'absolute', top: '60px', left: '50%', transform: 'translateX(-50%)',
+            width: '520px', padding: '16px', textAlign: 'center',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 0.5s forwards'
+        }
+    });
+    const archLabel = el('div', { style: { fontSize: '0.85rem', color: '#94a3b8', marginBottom: '12px' } }, 'word2vec 两种架构');
+    archBox.appendChild(archLabel);
+
+    const row = el('div', { style: { display: 'flex', justifyContent: 'center', gap: '40px', alignItems: 'center' } });
+
+    const cbowCard = el('div', {
+        style: {
+            padding: '14px 24px', borderRadius: '12px',
+            background: 'rgba(6, 182, 212, 0.15)', border: '2px solid rgba(6, 182, 212, 0.5)',
+            boxShadow: '0 0 20px rgba(6, 182, 212, 0.3)', textAlign: 'center'
+        }
+    });
+    cbowCard.appendChild(el('div', { style: { fontSize: '1.1rem', fontWeight: '700', color: '#22d3ee' } }, 'CBOW'));
+    cbowCard.appendChild(el('div', { style: { fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' } }, '上下文 → 目标词'));
+
+    const vs = el('div', { style: { fontSize: '1rem', color: '#64748b', fontWeight: '600' } }, 'VS');
+
+    const sgCard = el('div', {
+        style: {
+            padding: '14px 24px', borderRadius: '12px',
+            background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)',
+            textAlign: 'center', opacity: '0.5'
+        }
+    });
+    sgCard.appendChild(el('div', { style: { fontSize: '1.1rem', fontWeight: '700', color: '#a78bfa' } }, 'Skip-gram'));
+    sgCard.appendChild(el('div', { style: { fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' } }, '目标词 → 上下文'));
+
+    row.append(cbowCard, vs, sgCard);
+    archBox.appendChild(row);
+    container.appendChild(archBox);
+
+    // Core idea
+    const ideaBox = el('div', {
+        className: 'card',
+        style: {
+            position: 'absolute', top: '220px', left: '50%', transform: 'translateX(-50%)',
+            width: '460px', padding: '18px', textAlign: 'center',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 1s forwards'
+        }
+    });
+    ideaBox.appendChild(el('div', { style: { fontSize: '0.8rem', color: '#94a3b8', marginBottom: '8px' } }, '核心思想'));
+    ideaBox.appendChild(el('div', { style: { fontSize: '1rem', color: '#f1f5f9', lineHeight: '1.8' } },
+        '给定上下文窗口内的周围词\n预测中间的目标词'));
+    container.appendChild(ideaBox);
+
+    // Formula
+    const formulaBox = el('div', {
+        style: {
+            position: 'absolute', top: '340px', left: '50%', transform: 'translateX(-50%)',
+            padding: '12px 28px', borderRadius: '12px',
+            background: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.25)',
+            fontSize: '1rem', color: '#22d3ee', fontWeight: '600',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 1.4s forwards',
+            textAlign: 'center'
+        }
+    });
+    formulaBox.innerHTML = 'P(w<sub>t</sub> | w<sub>t-c</sub>, ..., w<sub>t-1</sub>, w<sub>t+1</sub>, ..., w<sub>t+c</sub>)';
+    container.appendChild(formulaBox);
+
+    await sleep(2000);
+}
+
+// ========== Scene 1: Context Window Sliding ==========
+async function scene1() {
+    const container = document.getElementById('scene-1');
+
+    const title = el('div', {
+        style: {
+            position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)',
+            fontSize: '1.1rem', fontWeight: '700', color: '#60a5fa',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 0.2s forwards'
+        }
+    }, '上下文窗口滑动示例');
+    container.appendChild(title);
+
+    const words = ['我', '喜欢', '用', '深度', '学习', '做', '研究'];
+    const wordW = 56, gap = 10, totalW = words.length * (wordW + gap) - gap;
+    const startX = (700 - totalW) / 2 + 50;
+
+    // Word row
+    words.forEach((w, i) => {
+        const x = startX + i * (wordW + gap);
+        const isTarget = i === 3;
+        const color = isTarget ? '#ef4444' : '#3b82f6';
+        drawWordBox(container, w, x, 70, color, 300 + i * 80);
+    });
+
+    // Window bracket
+    const bracket = el('div', {
+        style: {
+            position: 'absolute', left: (startX + 1 * (wordW + gap) - 5) + 'px', top: '105px',
+            width: (4 * (wordW + gap) - gap + 10) + 'px', height: '4px',
+            background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #06b6d4)',
+            borderRadius: '2px',
+            boxShadow: '0 0 10px rgba(6, 182, 212, 0.5)',
+            opacity: '0', animation: 'fadeIn 0.5s ease 1.2s forwards'
+        }
+    });
+    container.appendChild(bracket);
+
+    // Labels
+    const ctxLabel = el('div', {
+        style: {
+            position: 'absolute', left: (startX + 1 * (wordW + gap)) + 'px', top: '118px',
+            fontSize: '0.7rem', color: '#22d3ee', opacity: '0', animation: 'fadeIn 0.5s ease 1.5s forwards'
+        }
+    }, '上下文 (c=2)');
+    container.appendChild(ctxLabel);
+
+    const tgtLabel = el('div', {
+        style: {
+            position: 'absolute', left: (startX + 3 * (wordW + gap) + 8) + 'px', top: '45px',
+            fontSize: '0.7rem', color: '#ef4444', opacity: '0', animation: 'fadeIn 0.5s ease 1.5s forwards'
+        }
+    }, '↑ 目标词');
+    container.appendChild(tgtLabel);
+
+    // Training samples table
+    const tableBox = el('div', {
+        className: 'card',
+        style: {
+            position: 'absolute', top: '155px', left: '50%', transform: 'translateX(-50%)',
+            width: '520px', padding: '14px',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 2s forwards'
+        }
+    });
+    tableBox.appendChild(el('div', { style: { fontSize: '0.8rem', color: '#94a3b8', marginBottom: '10px', textAlign: 'center' } }, '生成的训练样本（窗口 c=2）'));
+
+    const samples = [
+        { ctx: '喜欢, 用', tgt: '深度' },
+        { ctx: '用, 深度', tgt: '学习' },
+        { ctx: '深度, 学习', tgt: '做' },
+    ];
+
+    samples.forEach((s, i) => {
+        const row = el('div', {
+            style: {
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+                marginBottom: '8px', opacity: '0',
+                animation: 'fadeInUp 0.4s ease ' + (2300 + i * 300) + 'ms forwards'
+            }
+        });
+        row.appendChild(el('span', { className: 'tag tag-cyan', style: { minWidth: '120px', textAlign: 'center' } }, '上下文: ' + s.ctx));
+        row.appendChild(el('span', { style: { color: '#64748b', fontSize: '0.8rem' } }, '→'));
+        row.appendChild(el('span', { className: 'tag tag-amber', style: { minWidth: '80px', textAlign: 'center' } }, '目标: ' + s.tgt));
+        tableBox.appendChild(row);
+    });
+
+    // Self-supervised note
+    const note = el('div', {
+        style: {
+            position: 'absolute', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
+            padding: '8px 20px', borderRadius: '10px',
+            background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)',
+            fontSize: '0.78rem', color: '#4ade80',
+            opacity: '0', animation: 'fadeInUp 0.5s ease 3.5s forwards'
+        }
+    }, '💡 不需要人工标注 → 自监督学习');
+    container.appendChild(note);
+
+    await sleep(2000);
+}
+
+// ========== Scene 2: Network Structure ==========
+async function scene2() {
+    const container = document.getElementById('scene-2');
+
+    const title = el('div', {
+        style: {
+            position: 'absolute', top: '5px', left: '50%', transform: 'translateX(-50%)',
+            fontSize: '1.1rem', fontWeight: '700', color: '#60a5fa',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 0.2s forwards'
+        }
+    }, 'CBOW 网络结构');
+    container.appendChild(title);
+
+    const svg = makeSVG(700, 380);
+    svg.style.cssText = 'position:absolute; top:40px; left:50%; transform:translateX(-50%);';
+
+    // Arrow marker
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', 'arrowhead');
+    marker.setAttribute('markerWidth', '8'); marker.setAttribute('markerHeight', '6');
+    marker.setAttribute('refX', '8'); marker.setAttribute('refY', '3');
+    marker.setAttribute('orient', 'auto');
+    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    polygon.setAttribute('points', '0 0, 8 3, 0 6');
+    polygon.setAttribute('fill', '#60a5fa');
+    marker.appendChild(polygon);
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
+    // Layer labels
+    const layers = [
+        { x: 100, label: '输入层', sub: '独热向量', color: '#3b82f6' },
+        { x: 280, label: '隐藏层', sub: '取平均', color: '#8b5cf6' },
+        { x: 480, label: '输出层', sub: 'Softmax', color: '#06b6d4' },
+    ];
+
+    layers.forEach((l, i) => {
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', l.x); text.setAttribute('y', '20');
+        text.setAttribute('text-anchor', 'middle'); text.setAttribute('fill', l.color);
+        text.setAttribute('font-size', '13'); text.setAttribute('font-weight', '700');
+        text.textContent = l.label;
+        svg.appendChild(text);
+
+        const sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        sub.setAttribute('x', l.x); sub.setAttribute('y', '36');
+        sub.setAttribute('text-anchor', 'middle'); sub.setAttribute('fill', '#64748b');
+        sub.setAttribute('font-size', '10');
+        sub.textContent = l.sub;
+        svg.appendChild(sub);
+    });
+
+    // Input nodes (context words)
+    const inputWords = ['w_{t-2}', 'w_{t-1}', 'w_{t+1}', 'w_{t+2}'];
+    const inputYs = [70, 120, 190, 240];
+    inputWords.forEach((w, i) => {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', '100'); circle.setAttribute('cy', inputYs[i]);
+        circle.setAttribute('r', '18'); circle.setAttribute('fill', 'rgba(59, 130, 246, 0.15)');
+        circle.setAttribute('stroke', '#3b82f6'); circle.setAttribute('stroke-width', '1.5');
+        circle.style.opacity = '0';
+        circle.style.animation = 'fadeIn 0.4s ease ' + (500 + i * 150) + 'ms forwards';
+        svg.appendChild(circle);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', '100'); text.setAttribute('y', inputYs[i] + 4);
+        text.setAttribute('text-anchor', 'middle'); text.setAttribute('fill', '#60a5fa');
+        text.setAttribute('font-size', '11');
+        text.textContent = w;
+        text.style.opacity = '0';
+        text.style.animation = 'fadeIn 0.4s ease ' + (500 + i * 150) + 'ms forwards';
+        svg.appendChild(text);
+    });
+
+    // W matrix label
+    const wLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    wLabel.setAttribute('x', '190'); wLabel.setAttribute('y', '155');
+    wLabel.setAttribute('text-anchor', 'middle'); wLabel.setAttribute('fill', '#a78bfa');
+    wLabel.setAttribute('font-size', '12'); wLabel.setAttribute('font-weight', '700');
+    wLabel.textContent = 'W';
+    wLabel.style.opacity = '0';
+    wLabel.style.animation = 'fadeIn 0.5s ease 1.2s forwards';
+    svg.appendChild(wLabel);
+
+    // Arrows: input -> hidden
+    inputYs.forEach((y, i) => {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', '118'); line.setAttribute('y1', y);
+        line.setAttribute('x2', '262'); line.setAttribute('y2', '155');
+        line.setAttribute('stroke', 'rgba(139, 92, 246, 0.3)'); line.setAttribute('stroke-width', '1');
+        line.setAttribute('marker-end', 'url(#arrowhead)');
+        line.style.opacity = '0';
+        line.style.animation = 'fadeIn 0.4s ease ' + (800 + i * 100) + 'ms forwards';
+        svg.appendChild(line);
+    });
+
+    // Hidden node (average)
+    const hCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    hCircle.setAttribute('cx', '280'); hCircle.setAttribute('cy', '155');
+    hCircle.setAttribute('r', '28'); hCircle.setAttribute('fill', 'rgba(139, 92, 246, 0.15)');
+    hCircle.setAttribute('stroke', '#8b5cf6'); hCircle.setAttribute('stroke-width', '2');
+    hCircle.style.opacity = '0';
+    hCircle.style.animation = 'fadeIn 0.5s ease 1.5s forwards';
+    svg.appendChild(hCircle);
+
+    const hText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    hText.setAttribute('x', '280'); hText.setAttribute('y', '152');
+    hText.setAttribute('text-anchor', 'middle'); hText.setAttribute('fill', '#a78bfa');
+    hText.setAttribute('font-size', '11'); hText.setAttribute('font-weight', '600');
+    hText.textContent = 'h = avg';
+    hText.style.opacity = '0';
+    hText.style.animation = 'fadeIn 0.5s ease 1.8s forwards';
+    svg.appendChild(hText);
+
+    const hText2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    hText2.setAttribute('x', '280'); hText2.setAttribute('y', '168');
+    hText2.setAttribute('text-anchor', 'middle'); hText2.setAttribute('fill', '#a78bfa');
+    hText2.setAttribute('font-size', '10');
+    hText2.textContent = '(v₁+v₂+...+vₙ)/n';
+    hText2.style.opacity = '0';
+    hText2.style.animation = 'fadeIn 0.5s ease 1.8s forwards';
+    svg.appendChild(hText2);
+
+    // W' matrix label
+    const wpLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    wpLabel.setAttribute('x', '380'); wpLabel.setAttribute('y', '155');
+    wpLabel.setAttribute('text-anchor', 'middle'); wpLabel.setAttribute('fill', '#22d3ee');
+    wpLabel.setAttribute('font-size', '12'); wpLabel.setAttribute('font-weight', '700');
+    wpLabel.textContent = "W'";
+    wpLabel.style.opacity = '0';
+    wpLabel.style.animation = 'fadeIn 0.5s ease 2.2s forwards';
+    svg.appendChild(wpLabel);
+
+    // Arrow: hidden -> output
+    const arrow2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    arrow2.setAttribute('x1', '308'); arrow2.setAttribute('y1', '155');
+    arrow2.setAttribute('x2', '450'); arrow2.setAttribute('y2', '155');
+    arrow2.setAttribute('stroke', 'rgba(6, 182, 212, 0.4)'); arrow2.setAttribute('stroke-width', '1.5');
+    arrow2.setAttribute('marker-end', 'url(#arrowhead)');
+    arrow2.style.opacity = '0';
+    arrow2.style.animation = 'fadeIn 0.5s ease 2.2s forwards';
+    svg.appendChild(arrow2);
+
+    // Output node (softmax)
+    const oCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    oCircle.setAttribute('cx', '480'); oCircle.setAttribute('cy', '155');
+    oCircle.setAttribute('r', '28'); oCircle.setAttribute('fill', 'rgba(6, 182, 212, 0.15)');
+    oCircle.setAttribute('stroke', '#06b6d4'); oCircle.setAttribute('stroke-width', '2');
+    oCircle.style.opacity = '0';
+    oCircle.style.animation = 'fadeIn 0.5s ease 2.5s forwards';
+    svg.appendChild(oCircle);
+
+    const oText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    oText.setAttribute('x', '480'); oText.setAttribute('y', '158');
+    oText.setAttribute('text-anchor', 'middle'); oText.setAttribute('fill', '#22d3ee');
+    oText.setAttribute('font-size', '10'); oText.setAttribute('font-weight', '600');
+    oText.textContent = 'Softmax';
+    oText.style.opacity = '0';
+    oText.style.animation = 'fadeIn 0.5s ease 2.8s forwards';
+    svg.appendChild(oText);
+
+    // Target word
+    const targetBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    targetBox.setAttribute('x', '560'); targetBox.setAttribute('y', '135');
+    targetBox.setAttribute('width', '80'); targetBox.setAttribute('height', '40');
+    targetBox.setAttribute('rx', '10'); targetBox.setAttribute('fill', 'rgba(239, 68, 68, 0.15)');
+    targetBox.setAttribute('stroke', '#ef4444'); targetBox.setAttribute('stroke-width', '1.5');
+    targetBox.style.opacity = '0';
+    targetBox.style.animation = 'fadeIn 0.5s ease 3s forwards';
+    svg.appendChild(targetBox);
+
+    const targetText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    targetText.setAttribute('x', '600'); targetText.setAttribute('y', '160');
+    targetText.setAttribute('text-anchor', 'middle'); targetText.setAttribute('fill', '#f87171');
+    targetText.setAttribute('font-size', '13'); targetText.setAttribute('font-weight', '700');
+    targetText.textContent = '深度';
+    targetText.style.opacity = '0';
+    targetText.style.animation = 'fadeIn 0.5s ease 3.2s forwards';
+    svg.appendChild(targetText);
+
+    // Arrow to target
+    const arrow3 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    arrow3.setAttribute('x1', '508'); arrow3.setAttribute('y1', '155');
+    arrow3.setAttribute('x2', '555'); arrow3.setAttribute('y2', '155');
+    arrow3.setAttribute('stroke', 'rgba(239, 68, 68, 0.4)'); arrow3.setAttribute('stroke-width', '1.5');
+    arrow3.setAttribute('marker-end', 'url(#arrowhead)');
+    arrow3.style.opacity = '0';
+    arrow3.style.animation = 'fadeIn 0.5s ease 3s forwards';
+    svg.appendChild(arrow3);
+
+    container.appendChild(svg);
+
+    // Data flow note
+    const note = el('div', {
+        style: {
+            position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)',
+            fontSize: '0.75rem', color: '#94a3b8', textAlign: 'center',
+            opacity: '0', animation: 'fadeIn 0.5s ease 3.5s forwards'
+        }
+    }, '独热向量 × W 查表 → 词向量 → 取平均 → W\' 投影 → Softmax 概率');
+    container.appendChild(note);
+
+    await sleep(2000);
+}
+
+// ========== Scene 3: Training Objective ==========
+async function scene3() {
+    const container = document.getElementById('scene-3');
+
+    const title = el('div', {
+        style: {
+            position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)',
+            fontSize: '1.1rem', fontWeight: '700', color: '#60a5fa',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 0.2s forwards'
+        }
+    }, '训练目标与损失函数');
+    container.appendChild(title);
+
+    // Step 1: Conditional probability
+    const step1 = el('div', {
+        className: 'card',
+        style: {
+            position: 'absolute', top: '60px', left: '50%', transform: 'translateX(-50%)',
+            width: '480px', padding: '14px',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 0.5s forwards'
+        }
+    });
+    step1.appendChild(el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } }, [
+        el('span', { className: 'tag tag-blue' }, 'Step 1'),
+        el('span', { style: { fontSize: '0.85rem', color: '#94a3b8' } }, '条件概率')
+    ]));
+    const pDiv = el('div', {
+        style: { padding: '10px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.08)', textAlign: 'center' }
+    });
+    pDiv.innerHTML = '<span style="color:#60a5fa; font-size:1rem; font-weight:600;">P(w<sub>t</sub> | context) = Softmax(W\' · h)</span>';
+    step1.appendChild(pDiv);
+    container.appendChild(step1);
+
+    // Step 2: Likelihood
+    const step2 = el('div', {
+        className: 'card',
+        style: {
+            position: 'absolute', top: '170px', left: '50%', transform: 'translateX(-50%)',
+            width: '480px', padding: '14px',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 1.2s forwards'
+        }
+    });
+    step2.appendChild(el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } }, [
+        el('span', { className: 'tag tag-purple' }, 'Step 2'),
+        el('span', { style: { fontSize: '0.85rem', color: '#94a3b8' } }, '最大化似然')
+    ]));
+    const lDiv = el('div', {
+        style: { padding: '10px', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.08)', textAlign: 'center' }
+    });
+    lDiv.innerHTML = '<span style="color:#a78bfa; font-size:1rem; font-weight:600;">L = ∏<sub>t=1</sub><sup>T</sup> P(w<sub>t</sub> | context<sub>t</sub>)</span>';
+    step2.appendChild(lDiv);
+    container.appendChild(step2);
+
+    // Step 3: Negative log likelihood
+    const step3 = el('div', {
+        className: 'card glow-border',
+        style: {
+            position: 'absolute', top: '275px', left: '50%', transform: 'translateX(-50%)',
+            width: '480px', padding: '14px',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 1.9s forwards'
+        }
+    });
+    step3.appendChild(el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' } }, [
+        el('span', { className: 'tag tag-amber' }, 'Step 3'),
+        el('span', { style: { fontSize: '0.85rem', color: '#94a3b8' } }, '负对数似然损失')
+    ]));
+    const nllDiv = el('div', {
+        style: { padding: '10px', borderRadius: '8px', background: 'rgba(234, 179, 8, 0.08)', textAlign: 'center' }
+    });
+    nllDiv.innerHTML = '<span style="color:#facc15; font-size:1rem; font-weight:600;">L = − ∑<sub>t=1</sub><sup>T</sup> log P(w<sub>t</sub> | context<sub>t</sub>)</span>';
+    step3.appendChild(nllDiv);
+    container.appendChild(step3);
+
+    // Optimization tricks
+    const tricksBox = el('div', {
+        style: {
+            position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', gap: '16px',
+            opacity: '0', animation: 'fadeInUp 0.5s ease 2.8s forwards'
+        }
+    });
+    const trick1 = el('div', {
+        style: {
+            padding: '8px 16px', borderRadius: '10px',
+            background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)',
+            fontSize: '0.78rem', color: '#4ade80', textAlign: 'center'
+        }
+    });
+    trick1.innerHTML = '⚡ 负采样<br><span style="font-size:0.7rem; color:#94a3b8;">只更新部分权重</span>';
+
+    const trick2 = el('div', {
+        style: {
+            padding: '8px 16px', borderRadius: '10px',
+            background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)',
+            fontSize: '0.78rem', color: '#4ade80', textAlign: 'center'
+        }
+    });
+    trick2.innerHTML = '🌳 层次 Softmax<br><span style="font-size:0.7rem; color:#94a3b8;">二叉树加速计算</span>';
+
+    tricksBox.append(trick1, trick2);
+    container.appendChild(tricksBox);
+
+    await sleep(2000);
+}
+
+// ========== Scene 4: Word Vectors Result ==========
+async function scene4() {
+    const container = document.getElementById('scene-4');
+
+    const title = el('div', {
+        style: {
+            position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)',
+            fontSize: '1.1rem', fontWeight: '700', color: '#60a5fa',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 0.2s forwards'
+        }
+    }, '训练结果：词向量');
+    container.appendChild(title);
+
+    // W matrix visualization
+    const matrixBox = el('div', {
+        className: 'card',
+        style: {
+            position: 'absolute', top: '55px', left: '50%', transform: 'translateX(-50%)',
+            width: '480px', padding: '14px', textAlign: 'center',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 0.5s forwards'
+        }
+    });
+    matrixBox.appendChild(el('div', { style: { fontSize: '0.8rem', color: '#94a3b8', marginBottom: '10px' } }, '嵌入矩阵 W（Vocab × Dim）'));
+
+    const table = el('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' } });
+    const header = el('tr', { style: { borderBottom: '1px solid rgba(59, 130, 246, 0.2)' } });
+    ['词', '维度1', '维度2', '维度3', '...', '维度d'].forEach(h => {
+        header.appendChild(el('th', { style: { padding: '6px', color: '#60a5fa', fontWeight: '600', fontSize: '0.72rem' } }, h));
+    });
+    table.appendChild(header);
+
+    const rows = [
+        ['喜欢', '0.23', '-0.41', '0.87', '...', '0.12'],
+        ['深度', '0.56', '0.12', '-0.33', '...', '0.78'],
+        ['学习', '0.45', '0.08', '-0.21', '...', '0.65'],
+        ['研究', '0.41', '0.15', '-0.28', '...', '0.71'],
+    ];
+    rows.forEach((r, i) => {
+        const tr = el('tr', { style: { borderBottom: '1px solid rgba(59, 130, 246, 0.08)', opacity: '0', animation: 'fadeIn 0.3s ease ' + (800 + i * 200) + 'ms forwards' } });
+        r.forEach((cell, j) => {
+            tr.appendChild(el('td', {
+                style: { padding: '5px', color: j === 0 ? '#f1f5f9' : '#94a3b8', fontWeight: j === 0 ? '600' : '400', textAlign: 'center' }
+            }, cell));
+        });
+        table.appendChild(tr);
+    });
+    matrixBox.appendChild(table);
+    container.appendChild(matrixBox);
+
+    // Semantic relationship
+    const semBox = el('div', {
+        className: 'card glow-border',
+        style: {
+            position: 'absolute', top: '245px', left: '50%', transform: 'translateX(-50%)',
+            width: '440px', padding: '16px', textAlign: 'center',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 2s forwards'
+        }
+    });
+    semBox.appendChild(el('div', { style: { fontSize: '0.8rem', color: '#94a3b8', marginBottom: '10px' } }, '语义关系捕捉'));
+    const formula = el('div', {
+        style: { fontSize: '1rem', color: '#22d3ee', fontWeight: '600', marginBottom: '8px' }
+    });
+    formula.innerHTML = '国王 − 男人 + 女人 ≈ 女王';
+    semBox.appendChild(formula);
+    semBox.appendChild(el('div', { style: { fontSize: '0.75rem', color: '#94a3b8' } }, '词向量空间中的线性关系'));
+    container.appendChild(semBox);
+
+    // Comparison table
+    const compBox = el('div', {
+        className: 'card',
+        style: {
+            position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)',
+            width: '480px', padding: '12px',
+            opacity: '0', animation: 'fadeInUp 0.6s ease 2.8s forwards'
+        }
+    });
+    compBox.appendChild(el('div', { style: { fontSize: '0.8rem', color: '#94a3b8', marginBottom: '8px', textAlign: 'center' } }, '独热编码 vs 词向量'));
+
+    const compRow = el('div', { style: { display: 'flex', gap: '12px', justifyContent: 'center' } });
+
+    const onehot = el('div', {
+        style: { flex: '1', padding: '10px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', textAlign: 'center' }
+    });
+    onehot.appendChild(el('div', { style: { fontSize: '0.8rem', color: '#f87171', fontWeight: '600', marginBottom: '4px' } }, '独热编码'));
+    onehot.appendChild(el('div', { style: { fontSize: '0.7rem', color: '#94a3b8', lineHeight: '1.6' } }, '稀疏、高维\n语义距离均相等'));
+
+    const dense = el('div', {
+        style: { flex: '1', padding: '10px', borderRadius: '8px', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)', textAlign: 'center' }
+    });
+    dense.appendChild(el('div', { style: { fontSize: '0.8rem', color: '#4ade80', fontWeight: '600', marginBottom: '4px' } }, 'CBOW 词向量'));
+    dense.appendChild(el('div', { style: { fontSize: '0.7rem', color: '#94a3b8', lineHeight: '1.6' } }, '稠密、低维\n语义相似词距离近'));
+
+    compRow.append(onehot, dense);
+    compBox.appendChild(compRow);
+    container.appendChild(compBox);
+
+    await sleep(2500);
+}
+
+// ========== Run Animation ==========
+async function runAnimation() {
+    startTime = Date.now();
+    const timer = setInterval(() => {
+        updateProgress();
+        updateSubtitle(Date.now() - startTime);
+    }, 100);
+
+    showScene(0);
+    await scene0();
+    await waitForSubtitle('CBOW 是什么');
+    clearScene(0);
+
+    showScene(1);
+    await scene1();
+    await waitForSubtitle('上下文窗口滑动');
+    clearScene(1);
+
+    showScene(2);
+    await scene2();
+    await waitForSubtitle('CBOW 网络结构');
+    clearScene(2);
+
+    showScene(3);
+    await scene3();
+    await waitForSubtitle('训练目标');
+    clearScene(3);
+
+    showScene(4);
+    await scene4();
+    await waitForSubtitle('连续词袋模型');
+
+    clearInterval(timer);
+    document.getElementById('progress').style.width = '100%';
+}
+
+window.onload = runAnimation;
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "id": "tuxterm",
+  "displayName": "TuxTerm",
+  "description": "A tiny glossy black Tux penguin coding on a small laptop with a terminal prompt logo.",
+  "spritesheetPath": "spritesheet.webp"
+}

@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformer 架构可视化</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface: #1e293b;
+            --primary: #3b82f6;
+            --primary-light: #60a5fa;
+            --secondary: #8b5cf6;
+            --accent: #f59e0b;
+            --accent-light: #fbbf24;
+            --success: #10b981;
+            --danger: #ef4444;
+            --text-main: #f1f5f9;
+            --text-sub: #94a3b8;
+            --text-dim: #64748b;
+            --glow-blue: rgba(59, 130, 246, 0.4);
+            --glow-purple: rgba(139, 92, 246, 0.4);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        #viewport {
+            width: 100vw;
+            height: 56.25vw;
+            max-height: 100vh;
+            max-width: 177.78vh;
+            background: var(--bg-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Grid background */
+        #viewport::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        /* Header */
+        #header {
+            position: absolute;
+            top: 32px;
+            left: 48px;
+            z-index: 10;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #header.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+        }
+        #header p {
+            font-size: 0.95rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* Progress bar */
+        #progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            z-index: 100;
+            transition: width 0.3s linear;
+            box-shadow: 0 0 10px var(--glow-blue);
+        }
+
+        /* Scene indicator */
+        #scene-indicator {
+            position: absolute;
+            top: 36px;
+            right: 48px;
+            z-index: 10;
+            display: flex;
+            gap: 6px;
+        }
+        .scene-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            transition: all 0.4s ease;
+        }
+        .scene-dot.active {
+            background: var(--primary-light);
+            box-shadow: 0 0 8px var(--glow-blue);
+            transform: scale(1.3);
+        }
+        .scene-dot.done {
+            background: var(--success);
+        }
+
+        /* Stage */
+        #stage {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Subtitle */
+        #subtitle-container {
+            position: absolute;
+            bottom: 40px;
+            width: 100%;
+            text-align: center;
+            padding: 0 80px;
+            z-index: 20;
+        }
+        #subtitle-box {
+            display: inline-block;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 12px 28px;
+            max-width: 80%;
+        }
+        #subtitle-cn {
+            font-size: 1.2rem;
+            color: var(--text-main);
+            font-weight: 500;
+            line-height: 1.6;
+        }
+
+        /* ============ Scene-specific styles ============ */
+
+        /* Architecture blocks */
+        .arch-block {
+            position: absolute;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 2px solid transparent;
+        }
+        .arch-block.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .arch-block.highlight {
+            border-color: var(--accent-light);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        }
+        .arch-block .icon {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        /* Arrow */
+        .arch-arrow {
+            position: absolute;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .arch-arrow.visible { opacity: 1; }
+
+        /* Embedding tokens */
+        .token {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .token.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .token.embedding {
+            background: linear-gradient(135deg, #1e3a5f, #1e293b);
+            border: 1px solid var(--primary);
+        }
+        .token.encoded {
+            background: linear-gradient(135deg, #3b1f5e, #1e293b);
+            border: 1px solid var(--secondary);
+        }
+
+        /* Positional encoding wave */
+        .pe-wave {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--secondary), transparent);
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        .pe-wave.visible { opacity: 0.7; }
+
+        /* Q K V matrices */
+        .qkv-matrix {
+            position: absolute;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            opacity: 0;
+            transform: translateY(15px);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .qkv-matrix.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .qkv-matrix.q { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
+        .qkv-matrix.k { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; }
+        .qkv-matrix.v { background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #93c5fd; }
+
+        /* Attention scores */
+        .attn-grid {
+            position: absolute;
+            display: grid;
+            gap: 3px;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        .attn-grid.visible { opacity: 1; }
+        .attn-cell {
+            width: 36px;
+            height: 28px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: var(--text-main);
+            transition: background 0.4s ease;
+        }
+
+        /* Multi-head */
+        .head-block {
+            position: absolute;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: var(--text-main);
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .head-block.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Feed-forward */
+        .ffn-layer {
+            position: absolute;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            opacity: 0;
+            transform: scaleX(0.5);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .ffn-layer.visible {
+            opacity: 1;
+            transform: scaleX(1);
+        }
+
+        /* Add & Norm */
+        .add-norm {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            background: rgba(16, 185, 129, 0.15);
+            border: 2px solid var(--success);
+            color: var(--success);
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .add-norm.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Residual arrow */
+        .residual-path {
+            position: absolute;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .residual-path.visible { opacity: 0.6; }
+
+        /* Encoder-Decoder flow */
+        .flow-box {
+            position: absolute;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .flow-box.visible {
+            opacity: 1;
+        }
+
+        /* Summary points */
+        .summary-item {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0;
+            transform: translateX(-30px);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .summary-item.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .summary-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .summary-text {
+            font-size: 1.05rem;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        /* Floating particles */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .particle.float {
+            animation: float-up 3s ease-in-out infinite;
+            opacity: 0.4;
+        }
+        @keyframes float-up {
+            0% { transform: translateY(0) scale(1); opacity: 0.4; }
+            50% { transform: translateY(-40px) scale(1.2); opacity: 0.2; }
+            100% { transform: translateY(-80px) scale(0.8); opacity: 0; }
+        }
+
+        /* Glow pulse */
+        @keyframes glow-pulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); }
+            50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.5); }
+        }
+
+        /* Soft blink */
+        @keyframes soft-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Data flow arrow animation */
+        @keyframes flow-down {
+            0% { stroke-dashoffset: 20; }
+            100% { stroke-dashoffset: 0; }
+        }
+
+        .flow-line {
+            stroke-dasharray: 8, 6;
+            animation: flow-down 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="viewport">
+        <div id="progress" style="width: 0%"></div>
+
+        <div id="header">
+            <h1>Transformer</h1>
+            <p>Attention Is All You Need</p>
+        </div>
+
+        <div id="scene-indicator">
+            <div class="scene-dot active" data-scene="0"></div>
+            <div class="scene-dot" data-scene="1"></div>
+            <div class="scene-dot" data-scene="2"></div>
+            <div class="scene-dot" data-scene="3"></div>
+            <div class="scene-dot" data-scene="4"></div>
+            <div class="scene-dot" data-scene="5"></div>
+            <div class="scene-dot" data-scene="6"></div>
+        </div>
+
+        <div id="stage">
+            <!-- Scene 0: Overview Architecture -->
+            <div id="scene-0"></div>
+
+            <!-- Scene 1: Input Embedding -->
+            <div id="scene-1"></div>
+
+            <!-- Scene 2: Self-Attention QKV -->
+            <div id="scene-2"></div>
+
+            <!-- Scene 3: Attention Scores -->
+            <div id="scene-3"></div>
+
+            <!-- Scene 4: Multi-Head Attention -->
+            <div id="scene-4"></div>
+
+            <!-- Scene 5: Feed-Forward + Add&Norm -->
+            <div id="scene-5"></div>
+
+            <!-- Scene 6: Full Encoder-Decoder -->
+            <div id="scene-6"></div>
+        </div>
+
+        <div id="subtitle-container">
+            <div id="subtitle-box">
+                <div id="subtitle-cn">准备开始...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Subtitles timeline ──
+        const subtitles = [
+            { time:     0,    cn: "2017 年，Google 团队发表了划时代的论文 —— Attention Is All You Need", audio: "/api/tts/audio/2/transformer动画/0_942c358e5b10.mp3" },
+            { time: 12500,    cn: "提出了 Transformer 架构，彻底改变了自然语言处理的格局", audio: "/api/tts/audio/2/transformer动画/1_a5f4f31730ed.mp3" },
+            { time: 20333,    cn: "整个架构由 Encoder 编码器 和 Decoder 解码器 两大部分组成", audio: "/api/tts/audio/2/transformer动画/2_306dd56bbca2.mp3" },
+            { time: 29277,    cn: "左侧编码器负责理解输入，右侧解码器负责生成输出", audio: "/api/tts/audio/2/transformer动画/3_3090908280ee.mp3" },
+            { time: 34888,    cn: "让我们从输入开始，逐步拆解它的内部机制", audio: "/api/tts/audio/2/transformer动画/4_369f3e9d93d6.mp3" },
+            { time: 39611,    cn: "第一步：输入文本被切分为 token，每个 token 通过词嵌入层转换为向量", audio: "/api/tts/audio/2/transformer动画/5_44505376bd69.mp3" },
+            { time: 48777,    cn: "但 Transformer 没有循环结构，无法感知词序", audio: "/api/tts/audio/2/transformer动画/6_fada57b051e9.mp3" },
+            { time: 55277,    cn: "因此需要加入位置编码 —— 用正弦余弦函数为每个位置注入独特信号", audio: "/api/tts/audio/2/transformer动画/7_67dce5a6aaac.mp3" },
+            { time: 62888,    cn: "嵌入向量与位置编码相加，每个 token 同时携带了语义和位置信息", audio: "/api/tts/audio/2/transformer动画/8_725e8427bd4e.mp3" },
+            { time: 70722,    cn: "接下来是最核心的部分 —— 自注意力机制", audio: "/api/tts/audio/2/transformer动画/9_2b0528b1b0c9.mp3" },
+            { time: 75666,    cn: "每个输入向量经过三个线性变换，生成 Query、Key、Value 三个向量", audio: "/api/tts/audio/2/transformer动画/10_03d6498f0194.mp3" },
+            { time: 84611,    cn: "Query 是「我在找什么」，Key 是「我能提供什么」，Value 是「我的实际内容」", audio: "/api/tts/audio/2/transformer动画/11_04454ae5693e.mp3" },
+            { time: 94888,    cn: "注意力分数等于 Query 与 Key 的点积，再除以维度的平方根来稳定梯度", audio: "/api/tts/audio/2/transformer动画/12_5c85a02985d7.mp3" },
+            { time: 103833,    cn: "Softmax 将分数转化为权重，再与 Value 加权求和，得到最终的注意力输出", audio: "/api/tts/audio/2/transformer动画/13_73926d324dfd.mp3" },
+            { time: 113444,    cn: "Multi-Head Attention：不是做一次注意力，而是并行做多次", audio: "/api/tts/audio/2/transformer动画/14_1db0b11c1c14.mp3" },
+            { time: 122166,    cn: "每个头关注不同的子空间 —— 语法关系、语义相似、长距离依赖……", audio: "/api/tts/audio/2/transformer动画/15_9eda59e6c2ef.mp3" },
+            { time: 129777,    cn: "所有头的输出拼接后通过线性层投影，融合多视角信息", audio: "/api/tts/audio/2/transformer动画/16_e241a0a7ca47.mp3" },
+            { time: 135611,    cn: "经过注意力后，数据流入前馈网络 —— 两层全连接，中间用 ReLU 激活", audio: "/api/tts/audio/2/transformer动画/17_b133546f73be.mp3" },
+            { time: 144111,    cn: "关键设计：残差连接 + 层归一化，让梯度可以跳过复杂层直接回传", audio: "/api/tts/audio/2/transformer动画/18_9cdc45d01e81.mp3" },
+            { time: 151500,    cn: "这就是一个完整的 Encoder 层，可以堆叠 N 次逐步抽象", audio: "/api/tts/audio/2/transformer动画/19_7dfec5ab06b2.mp3" },
+            { time: 158888,    cn: "解码器额外增加了交叉注意力层 —— 让输出能「回看」编码器的信息", audio: "/api/tts/audio/2/transformer动画/20_5b0ac2073c72.mp3" },
+            { time: 166500,    cn: "最终经过线性层和 Softmax，输出下一个 token 的概率分布", audio: "/api/tts/audio/2/transformer动画/21_b0eeb5f03d16.mp3" },
+            { time: 174555,    cn: "自注意力的并行计算让训练速度远超 RNN，这就是 Transformer 的核心优势", audio: "/api/tts/audio/2/transformer动画/22_66f48a7bbb06.mp3" },
+            { time: 184388,    cn: "从 BERT 到 GPT，所有现代大语言模型都建立在 Transformer 之上", audio: "/api/tts/audio/2/transformer动画/23_35164324e48e.mp3" }
+        ];
+
+        // ── Helpers ──
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        function show(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('visible');
+        }
+
+        function hide(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('visible');
+        }
+
+        function setClass(id, cls, on) {
+            const el = document.getElementById(id);
+            if (el) el.classList[on ? 'add' : 'remove'](cls);
+        }
+
+        function el(tag, attrs = {}, children = []) {
+            const e = document.createElement(tag);
+            Object.entries(attrs).forEach(([k, v]) => {
+                if (k === 'class') e.className = v;
+                else if (k === 'style') Object.assign(e.style, v);
+                else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+                else e.setAttribute(k, v);
+            });
+            children.forEach(c => {
+                if (typeof c === 'string') e.appendChild(document.createTextNode(c));
+                else if (c) e.appendChild(c);
+            });
+            return e;
+        }
+
+        function makeSVG(w, h) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', w);
+            svg.setAttribute('height', h);
+            svg.style.position = 'absolute';
+            svg.style.inset = '0';
+            return svg;
+        }
+
+        // ── Scene Dots ──
+        function setScene(n) {
+            document.querySelectorAll('.scene-dot').forEach((d, i) => {
+                d.classList.toggle('active', i === n);
+                d.classList.toggle('done', i < n);
+            });
+        }
+
+        // ── Progress bar ──
+        const TOTAL_DURATION = 193500;
+        let startTime;
+        function updateProgress() {
+            const elapsed = Date.now() - startTime;
+            const pct = Math.min(100, (elapsed / TOTAL_DURATION) * 100);
+            document.getElementById('progress').style.width = pct + '%';
+            return elapsed;
+        }
+
+        // ── Subtitle update ──
+        function updateSubtitle(elapsed) {
+            const entry = [...subtitles].reverse().find(s => s.time <= elapsed);
+            if (entry) {
+                const cn = document.getElementById('subtitle-cn');
+                if (cn.innerText !== entry.cn) cn.innerText = entry.cn;
+            }
+        }
+
+        // ── Floating particles ──
+        function spawnParticles(container, count = 8) {
+            for (let i = 0; i < count; i++) {
+                const p = el('div', { class: 'particle', style: {
+                    left: Math.random() * 100 + '%',
+                    top: Math.random() * 100 + '%',
+                    animationDelay: Math.random() * 2 + 's',
+                    width: (2 + Math.random() * 4) + 'px',
+                    height: (2 + Math.random() * 4) + 'px',
+                    background: Math.random() > 0.5 ? 'var(--primary-light)' : 'var(--secondary)',
+                }});
+                container.appendChild(p);
+                requestAnimationFrame(() => p.classList.add('float'));
+            }
+        }
+
+        // ══════════════════════════════════════════════
+        // SCENE 0: Architecture Overview
+        // ══════════════════════════════════════════════
+        async function scene0() {
+            const stage = document.getElementById('scene-0');
+            stage.style.cssText = 'position:absolute;inset:0;';
+
+            show('header');
+            await sleep(2000);
+
+            // Encoder block
+            const encoder = el('div', { id: 'enc-block', class: 'arch-block', style: {
+                left: '20%', top: '25%', width: '200px', height: '300px',
+                background: 'linear-gradient(180deg, rgba(59,130,246,0.15), rgba(59,130,246,0.05))',
+                border: '2px solid rgba(59,130,246,0.4)',
+            }}, [
+                el('div', { class: 'icon' }, ['📝']),
+                el('div', { style: { fontSize: '1.1rem', fontWeight: '800' } }, ['Encoder']),
+                el('div', { style: { fontSize: '0.7rem', color: 'var(--text-sub)', marginTop: '4px' } }, ['× N 层']),
+                el('div', { style: { fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '12px', textAlign: 'center', lineHeight: '1.6' } }, [
+                    'Self-Attention',
+                    el('br'), 'Add & Norm',
+                    el('br'), 'Feed-Forward',
+                    el('br'), 'Add & Norm',
+                ]),
+            ]);
+            stage.appendChild(encoder);
+
+            // Decoder block
+            const decoder = el('div', { id: 'dec-block', class: 'arch-block', style: {
+                left: '58%', top: '25%', width: '200px', height: '300px',
+                background: 'linear-gradient(180deg, rgba(139,92,246,0.15), rgba(139,92,246,0.05))',
+                border: '2px solid rgba(139,92,246,0.4)',
+            }}, [
+                el('div', { class: 'icon' }, ['🎯']),
+                el('div', { style: { fontSize: '1.1rem', fontWeight: '800' } }, ['Decoder']),
+                el('div', { style: { fontSize: '0.7rem', color: 'var(--text-sub)', marginTop: '4px' } }, ['× N 层']),
+                el('div', { style: { fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '12px', textAlign: 'center', lineHeight: '1.6' } }, [
+                    'Masked Self-Attn',
+                    el('br'), 'Cross-Attention',
+                    el('br'), 'Add & Norm',
+                    el('br'), 'Feed-Forward',
+                ]),
+            ]);
+            stage.appendChild(decoder);
+
+            await sleep(800);
+            requestAnimationFrame(() => encoder.classList.add('visible'));
+            await sleep(600);
+            requestAnimationFrame(() => decoder.classList.add('visible'));
+
+            // Connection arrow (SVG)
+            const svg = makeSVG('100%', '100%');
+            svg.innerHTML = `
+                <defs>
+                    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                        <polygon points="0 0, 8 3, 0 6" fill="#60a5fa"/>
+                    </marker>
+                </defs>
+                <line x1="42%" y1="50%" x2="56%" y2="50%"
+                    stroke="#60a5fa" stroke-width="2" class="flow-line"
+                    marker-end="url(#arrowhead)"/>
+            `;
+            svg.style.opacity = '0';
+            svg.style.transition = 'opacity 0.5s ease';
+            stage.appendChild(svg);
+            await sleep(400);
+            svg.style.opacity = '1';
+
+            // Input/Output labels
+            const inputLabel = el('div', { style: {
+                position: 'absolute', left: '8%', top: '45%',
+                color: 'var(--text-sub)', fontSize: '0.85rem', fontWeight: '600',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['输入序列']);
+            stage.appendChild(inputLabel);
+
+            const outputLabel = el('div', { style: {
+                position: 'absolute', right: '8%', top: '45%',
+                color: 'var(--text-sub)', fontSize: '0.85rem', fontWeight: '600',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['输出序列']);
+            stage.appendChild(outputLabel);
+
+            inputLabel.style.opacity = '1';
+            outputLabel.style.opacity = '1';
+
+            await sleep(500);
+
+            // Glow effect
+            encoder.style.animation = 'glow-pulse 2s ease-in-out infinite';
+            decoder.style.animation = 'glow-pulse 2s ease-in-out infinite 1s';
+        }
+
+        // ══════════════════════════════════════════════
+        // SCENE 1: Input Embedding + Positional Encoding
+        // ══════════════════════════════════════════════
+        async function scene1() {
+            // Clear scene 0
+            document.getElementById('scene-0').innerHTML = '';
+            setScene(1);
+
+            const stage = document.getElementById('scene-1');
+            stage.style.cssText = 'position:absolute;inset:0;';
+
+            const words = ['The', 'cat', 'sat', 'on', 'mat'];
+            const tokens = [];
+            const baseY = 30;
+
+            // Input tokens
+            for (let i = 0; i < words.length; i++) {
+                const t = el('div', {
+                    id: `token-${i}`,
+                    class: 'token embedding',
+                    style: {
+                        position: 'absolute',
+                        left: (18 + i * 14) + '%',
+                        top: baseY + '%',
+                    }
+                }, [words[i]]);
+                stage.appendChild(t);
+                await sleep(300);
+                t.classList.add('visible');
+            }
+
+            await sleep(800);
+
+            // Embedding arrow and label
+            const embedLabel = el('div', { style: {
+                position: 'absolute', left: '50%', top: (baseY + 10) + '%',
+                transform: 'translateX(-50%)',
+                color: 'var(--primary-light)', fontSize: '0.8rem', fontWeight: '600',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['↓ 词嵌入 Embedding']);
+            stage.appendChild(embedLabel);
+            await sleep(400);
+            embedLabel.style.opacity = '1';
+
+            // Embedded vectors
+            for (let i = 0; i < words.length; i++) {
+                const vec = el('div', {
+                    id: `vec-${i}`,
+                    class: 'token embedding',
+                    style: {
+                        position: 'absolute',
+                        left: (18 + i * 14) + '%',
+                        top: (baseY + 18) + '%',
+                        background: 'linear-gradient(135deg, #1e3a5f, #0f2942)',
+                        fontSize: '0.75rem',
+                    }
+                }, [`[${(0.12 + i * 0.05).toFixed(2)}, ...]`]);
+                stage.appendChild(vec);
+                await sleep(200);
+                vec.classList.add('visible');
+            }
+
+            await sleep(1000);
+
+            // Positional encoding
+            const peLabel = el('div', { style: {
+                position: 'absolute', left: '50%', top: (baseY + 32) + '%',
+                transform: 'translateX(-50%)',
+                color: 'var(--secondary)', fontSize: '0.8rem', fontWeight: '600',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['↓ + 位置编码 Positional Encoding']);
+            stage.appendChild(peLabel);
+            await sleep(400);
+            peLabel.style.opacity = '1';
+
+            // Draw sine wave
+            const waveSvg = makeSVG('60%', '60px');
+            waveSvg.style.left = '20%';
+            waveSvg.style.top = (baseY + 38) + '%';
+            let pathD = 'M 0 30';
+            for (let x = 0; x <= 500; x += 2) {
+                const y = 30 + 18 * Math.sin(x * 0.04) * Math.cos(x * 0.015);
+                pathD += ` L ${x} ${y}`;
+            }
+            waveSvg.innerHTML = `
+                <path d="${pathD}" fill="none" stroke="rgba(139,92,246,0.5)" stroke-width="2"/>
+                <text x="250" y="55" text-anchor="middle" fill="#94a3b8" font-size="11">sin(pos) / cos(pos)</text>
+            `;
+            waveSvg.style.opacity = '0';
+            waveSvg.style.transition = 'opacity 0.8s ease';
+            stage.appendChild(waveSvg);
+            await sleep(600);
+            waveSvg.style.opacity = '1';
+
+            await sleep(1000);
+
+            // Final combined vectors
+            const finalLabel = el('div', { style: {
+                position: 'absolute', left: '50%', top: (baseY + 56) + '%',
+                transform: 'translateX(-50%)',
+                color: 'var(--accent)', fontSize: '0.8rem', fontWeight: '600',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['= 最终输入向量（语义 + 位置）']);
+            stage.appendChild(finalLabel);
+            await sleep(400);
+            finalLabel.style.opacity = '1';
+
+            for (let i = 0; i < words.length; i++) {
+                const final = el('div', {
+                    id: `final-${i}`,
+                    class: 'token encoded',
+                    style: {
+                        position: 'absolute',
+                        left: (18 + i * 14) + '%',
+                        top: (baseY + 63) + '%',
+                    }
+                }, [`vec_${i}`]);
+                stage.appendChild(final);
+                await sleep(200);
+                final.classList.add('visible');
+            }
+
+            spawnParticles(stage, 6);
+        }
+
+        // ══════════════════════════════════════════════
+        // SCENE 2: Self-Attention Q K V
+        // ══════════════════════════════════════════════
+        async function scene2() {
+            document.getElementById('scene-1').innerHTML = '';
+            setScene(2);
+
+            const stage = document.getElementById('scene-2');
+            stage.style.cssText = 'position:absolute;inset:0;';
+
+            // Input vectors
+            const words = ['x₁', 'x₂', 'x₃'];
+            for (let i = 0; i < 3; i++) {
+                const t = el('div', {
+                    id: `x-${i}`,
+                    class: 'token encoded',
+                    style: {
+                        position: 'absolute',
+                        left: (15 + i * 20) + '%',
+                        top: '22%',
+                    }
+                }, [words[i]]);
+                stage.appendChild(t);
+                await sleep(250);
+                t.classList.add('visible');
+            }
+
+            await sleep(600);
+
+            // Q K V arrows and labels
+            const qLabel = el('div', { id: 'q-label', class: 'qkv-matrix q', style: {
+                left: '15%', top: '42%',
+            }}, ['Q  Query']);
+            const kLabel = el('div', { id: 'k-label', class: 'qkv-matrix k', style: {
+                left: '38%', top: '42%',
+            }}, ['K  Key']);
+            const vLabel = el('div', { id: 'v-label', class: 'qkv-matrix v', style: {
+                left: '61%', top: '42%',
+            }}, ['V  Value']);
+
+            stage.appendChild(qLabel);
+            stage.appendChild(kLabel);
+            stage.appendChild(vLabel);
+
+            // Arrows
+            const arrowSvg = makeSVG('100%', '100%');
+            arrowSvg.innerHTML = `
+                <defs>
+                    <marker id="aq" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                        <polygon points="0 0, 8 3, 0 6" fill="#ef4444"/>
+                    </marker>
+                    <marker id="ak" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                        <polygon points="0 0, 8 3, 0 6" fill="#10b981"/>
+                    </marker>
+                    <marker id="av" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                        <polygon points="0 0, 8 3, 0 6" fill="#3b82f6"/>
+                    </marker>
+                </defs>
+                <line x1="21%" y1="30%" x2="21%" y2="40%" stroke="#ef4444" stroke-width="2" marker-end="url(#aq)" class="flow-line"/>
+                <line x1="41%" y1="30%" x2="44%" y2="40%" stroke="#10b981" stroke-width="2" marker-end="url(#ak)" class="flow-line"/>
+                <line x1="61%" y1="30%" x2="67%" y2="40%" stroke="#3b82f6" stroke-width="2" marker-end="url(#av)" class="flow-line"/>
+            `;
+            arrowSvg.style.opacity = '0';
+            arrowSvg.style.transition = 'opacity 0.5s ease';
+            stage.appendChild(arrowSvg);
+
+            await sleep(500);
+            qLabel.classList.add('visible');
+            await sleep(300);
+            kLabel.classList.add('visible');
+            await sleep(300);
+            vLabel.classList.add('visible');
+            arrowSvg.style.opacity = '1';
+
+            await sleep(1000);
+
+            // Formula
+            const formula = el('div', { style: {
+                position: 'absolute', left: '50%', top: '65%',
+                transform: 'translateX(-50%)',
+                color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: '700',
+                opacity: '0', transition: 'opacity 0.6s ease',
+                textAlign: 'center', lineHeight: '1.8',
+                background: 'rgba(30,41,59,0.8)', padding: '16px 32px',
+                borderRadius: '12px', border: '1px solid rgba(59,130,246,0.3)',
+            }}, [
+                el('div', {}, ['Attention(Q, K, V) = softmax(QKᵀ / √dₖ) · V']),
+                el('div', { style: { fontSize: '0.75rem', color: 'var(--text-sub)', marginTop: '8px' } }, [
+                    '点积 → 缩放 → Softmax → 加权求和'
+                ]),
+            ]);
+            stage.appendChild(formula);
+            await sleep(600);
+            formula.style.opacity = '1';
+
+            await sleep(800);
+
+            // Explanation labels
+            const explain = el('div', { style: {
+                position: 'absolute', left: '50%', top: '82%',
+                transform: 'translateX(-50%)',
+                display: 'flex', gap: '32px',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, [
+                el('span', { style: { color: '#fca5a5', fontSize: '0.8rem', fontWeight: '600' } }, ['Q = 我在找什么']),
+                el('span', { style: { color: '#6ee7b7', fontSize: '0.8rem', fontWeight: '600' } }, ['K = 我能提供什么']),
+                el('span', { style: { color: '#93c5fd', fontSize: '0.8rem', fontWeight: '600' } }, ['V = 我的实际内容']),
+            ]);
+            stage.appendChild(explain);
+            await sleep(400);
+            explain.style.opacity = '1';
+        }
+
+        // ══════════════════════════════════════════════
+        // SCENE 3: Attention Score Matrix
+        // ══════════════════════════════════════════════
+        async function scene3() {
+            document.getElementById('scene-2').innerHTML = '';
+            setScene(3);
+
+            const stage = document.getElementById('scene-3');
+            stage.style.cssText = 'position:absolute;inset:0;';
+
+            // Title
+            const title = el('div', { style: {
+                position: 'absolute', left: '50%', top: '15%',
+                transform: 'translateX(-50%)',
+                color: 'var(--text-main)', fontSize: '1.3rem', fontWeight: '700',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['注意力权重矩阵']);
+            stage.appendChild(title);
+            await sleep(300);
+            title.style.opacity = '1';
+
+            const tokens = ['The', 'cat', 'sat', 'on', 'mat'];
+
+            // Column headers
+            for (let j = 0; j < 5; j++) {
+                const h = el('div', { style: {
+                    position: 'absolute',
+                    left: (38 + j * 7) + '%', top: '25%',
+                    color: 'var(--text-sub)', fontSize: '0.75rem', fontWeight: '600',
+                    textAlign: 'center', width: '36px',
+                    opacity: '0', transition: 'opacity 0.4s ease',
+                }}, [tokens[j]]);
+                stage.appendChild(h);
+                await sleep(100);
+                h.style.opacity = '1';
+            }
+
+            // Row headers
+            for (let i = 0; i < 5; i++) {
+                const h = el('div', { style: {
+                    position: 'absolute',
+                    left: '30%', top: (32 + i * 10) + '%',
+                    color: 'var(--text-sub)', fontSize: '0.75rem', fontWeight: '600',
+                    textAlign: 'right', width: '36px',
+                    opacity: '0', transition: 'opacity 0.4s ease',
+                }}, [tokens[i]]);
+                stage.appendChild(h);
+                await sleep(100);
+                h.style.opacity = '1';
+            }
+
+            // Attention scores (example)
+            const scores = [
+                [0.6, 0.1, 0.1, 0.1, 0.1],
+                [0.1, 0.5, 0.2, 0.1, 0.1],
+                [0.1, 0.3, 0.3, 0.2, 0.1],
+                [0.1, 0.1, 0.2, 0.4, 0.2],
+                [0.1, 0.1, 0.1, 0.2, 0.5],
+            ];
+
+            // Grid
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
+                    const val = scores[i][j];
+                    const intensity = Math.round(val * 255);
+                    const cell = el('div', {
+                        id: `cell-${i}-${j}`,
+                        class: 'attn-cell',
+                        style: {
+                            position: 'absolute',
+                            left: (38 + j * 7) + '%',
+                            top: (32 + i * 10) + '%',
+                            width: '36px', height: '28px',
+                            background: `rgba(59, 130, 246, ${val})`,
+                            borderRadius: '4px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.6rem', fontWeight: '600', color: '#fff',
+                            opacity: '0', transform: 'scale(0.5)',
+                            transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                        }
+                    }, [val.toFixed(1)]);
+                    stage.appendChild(cell);
+                }
+            }
+
+            // Stagger reveal
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
+                    await sleep(60);
+                    const cell = document.getElementById(`cell-${i}-${j}`);
+                    if (cell) {
+                        cell.style.opacity = '1';
+                        cell.style.transform = 'scale(1)';
+                    }
+                }
+            }
+
+            await sleep(1000);
+
+            // Highlight the "cat" row (row 1) - it attends strongly to itself
+            for (let j = 0; j < 5; j++) {
+                const cell = document.getElementById(`cell-1-${j}`);
+                if (cell) {
+                    cell.style.boxShadow = scores[1][j] > 0.3 ? '0 0 12px rgba(245,158,11,0.5)' : 'none';
+                    if (scores[1][j] > 0.3) {
+                        cell.style.border = '1px solid var(--accent)';
+                    }
+                }
+            }
+
+            await sleep(800);
+
+            // Explanation
+            const explain = el('div', { style: {
+                position: 'absolute', left: '50%', top: '85%',
+                transform: 'translateX(-50%)',
+                color: 'var(--text-sub)', fontSize: '0.85rem', fontWeight: '500',
+                opacity: '0', transition: 'opacity 0.5s ease',
+                textAlign: 'center', maxWidth: '70%',
+            }}, ['每一行表示一个 token 对其他所有 token 的关注度，高亮区域表示强关联']);
+            stage.appendChild(explain);
+            await sleep(400);
+            explain.style.opacity = '1';
+        }
+
+        // ══════════════════════════════════════════════
+        // SCENE 4: Multi-Head Attention
+        // ══════════════════════════════════════════════
+        async function scene4() {
+            document.getElementById('scene-3').innerHTML = '';
+            setScene(4);
+
+            const stage = document.getElementById('scene-4');
+            stage.style.cssText = 'position:absolute;inset:0;';
+
+            // Input
+            const input = el('div', { id: 'mha-input', class: 'token encoded', style: {
+                position: 'absolute', left: '50%', top: '15%', transform: 'translateX(-50%)',
+            }}, ['输入向量 X']);
+            stage.appendChild(input);
+            await sleep(300);
+            input.classList.add('visible');
+
+            // Heads
+            const heads = [
+                { name: 'Head 1', desc: '语法关系', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+                { name: 'Head 2', desc: '语义相似', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+                { name: 'Head 3', desc: '位置距离', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+                { name: 'Head 4', desc: '长距离依赖', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+            ];
+
+            for (let i = 0; i < heads.length; i++) {
+                const h = heads[i];
+                const block = el('div', {
+                    id: `head-${i}`,
+                    class: 'head-block',
+                    style: {
+                        left: (12 + i * 20) + '%',
+                        top: '35%',
+                        width: '150px', height: '100px',
+                        background: h.bg,
+                        border: `1px solid ${h.color}`,
+                    }
+                }, [
+                    el('div', { style: { fontSize: '1rem', fontWeight: '800', color: h.color } }, [h.name]),
+                    el('div', { style: { fontSize: '0.7rem', color: 'var(--text-sub)', marginTop: '6px' } }, [h.desc]),
+                    el('div', { style: { fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '4px' } }, ['Q·K·V → Attn']),
+                ]);
+                stage.appendChild(block);
+
+                // Arrow from input to head
+                const arrowSvg = makeSVG('100%', '100%');
+                const startX = 50;
+                const endX = 19 + i * 20;
+                arrowSvg.innerHTML = `
+                    <line x1="${startX}%" y1="22%" x2="${endX}%" y2="33%"
+                        stroke="${h.color}" stroke-width="1.5" stroke-dasharray="4,4"
+                        opacity="0.5"/>
+                `;
+                stage.appendChild(arrowSvg);
+
+                await sleep(400);
+                block.classList.add('visible');
+            }
+
+            await sleep(1000);
+
+            // Concat + Linear
+            const concat = el('div', { id: 'concat-block', class: 'arch-block', style: {
+                left: '50%', top: '60%', transform: 'translateX(-50%)',
+                width: '280px', height: '60px',
+                background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(59,130,246,0.2))',
+                border: '2px solid rgba(139,92,246,0.5)',
+                fontSize: '0.9rem',
+            }}, [
+                el('div', { style: { fontWeight: '800' } }, ['Concat + Linear']),
+                el('div', { style: { fontSize: '0.65rem', color: 'var(--text-sub)', marginTop: '2px' } }, ['拼接所有头的输出 → 线性投影']),
+            ]);
+            stage.appendChild(concat);
+
+            // Arrows from heads to concat
+            const mergeSvg = makeSVG('100%', '100%');
+            for (let i = 0; i < 4; i++) {
+                const x = 19 + i * 20;
+                mergeSvg.innerHTML += `
+                    <line x1="${x}%" y1="47%" x2="50%" y2="58%"
+                        stroke="var(--text-dim)" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+                `;
+            }
+            stage.appendChild(mergeSvg);
+
+            await sleep(500);
+            concat.classList.add('visible');
+
+            // Output
+            const output = el('div', { id: 'mha-output', class: 'token encoded', style: {
+                position: 'absolute', left: '50%', top: '78%', transform: 'translateX(-50%)',
+                background: 'linear-gradient(135deg, #2d1b69, #1e293b)',
+            }}, ['MultiHead Output']);
+            stage.appendChild(output);
+
+            const outArrow = makeSVG('100%', '100%');
+            outArrow.innerHTML = `
+                <line x1="50%" y1="66%" x2="50%" y2="75%" stroke="var(--secondary)" stroke-width="2"
+                    marker-end="url(#arrowhead)" class="flow-line"/>
+            `;
+            stage.appendChild(outArrow);
+
+            await sleep(600);
+            output.classList.add('visible');
+
+            spawnParticles(stage, 5);
+        }
+
+        // ══════════════════════════════════════════════
+        // SCENE 5: Feed-Forward + Add & Norm
+        // ══════════════════════════════════════════════
+        async function scene5() {
+            document.getElementById('scene-4').innerHTML = '';
+            setScene(5);
+
+            const stage = document.getElementById('scene-5');
+            stage.style.cssText = 'position:absolute;inset:0;';
+
+            // Left: Encoder layer stack
+            const layerTitle = el('div', { style: {
+                position: 'absolute', left: '50%', top: '10%',
+                transform: 'translateX(-50%)',
+                color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: '700',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['一个 Encoder 层的内部结构']);
+            stage.appendChild(layerTitle);
+            await sleep(300);
+            layerTitle.style.opacity = '1';
+
+            // Self-Attention block
+            const sa = el('div', { id: 'sa-block', class: 'ffn-layer', style: {
+                left: '30%', top: '22%', width: '180px', height: '50px',
+                background: 'rgba(59,130,246,0.15)', border: '1px solid var(--primary)',
+                fontSize: '0.85rem', color: 'var(--primary-light)',
+            }}, ['Self-Attention']);
+            stage.appendChild(sa);
+
+            // Add & Norm 1
+            const an1 = el('div', { id: 'an1', class: 'add-norm', style: {
+                left: '54%', top: '23.5%',
+            }}, ['⊕']);
+            stage.appendChild(an1);
+
+            // FFN block
+            const ffn = el('div', { id: 'ffn-block', class: 'ffn-layer', style: {
+                left: '30%', top: '42%', width: '180px', height: '50px',
+                background: 'rgba(245,158,11,0.15)', border: '1px solid var(--accent)',
+                fontSize: '0.85rem', color: 'var(--accent-light)',
+            }}, ['Feed-Forward Network']);
+            stage.appendChild(ffn);
+
+            // Add & Norm 2
+            const an2 = el('div', { id: 'an2', class: 'add-norm', style: {
+                left: '54%', top: '43.5%',
+            }}, ['⊕']);
+            stage.appendChild(an2);
+
+            // Residual connection SVG
+            const resSvg = makeSVG('100%', '100%');
+            resSvg.innerHTML = `
+                <path d="M 28% 26% C 22% 26%, 22% 34%, 28% 34%"
+                    fill="none" stroke="var(--success)" stroke-width="1.5"
+                    stroke-dasharray="4,3" opacity="0.6"/>
+                <text x="18%" y="31%" fill="var(--success)" font-size="9" font-weight="600">残差</text>
+                <path d="M 28% 46% C 22% 46%, 22% 54%, 28% 54%"
+                    fill="none" stroke="var(--success)" stroke-width="1.5"
+                    stroke-dasharray="4,3" opacity="0.6"/>
+                <text x="18%" y="51%" fill="var(--success)" font-size="9" font-weight="600">残差</text>
+            `;
+            resSvg.style.opacity = '0';
+            resSvg.style.transition = 'opacity 0.5s ease';
+            stage.appendChild(resSvg);
+
+            // Arrows
+            const flowSvg = makeSVG('100%', '100%');
+            flowSvg.innerHTML = `
+                <defs>
+                    <marker id="arrow-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                        <polygon points="0 0, 8 3, 0 6" fill="#94a3b8"/>
+                    </marker>
+                </defs>
+                <line x1="45%" y1="29%" x2="52%" y2="29%" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-g)"/>
+                <line x1="56%" y1="29%" x2="45%" y2="40%" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-g)"/>
+                <line x1="45%" y1="49%" x2="52%" y2="49%" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-g)"/>
+            `;
+            flowSvg.style.opacity = '0';
+            flowSvg.style.transition = 'opacity 0.5s ease';
+            stage.appendChild(flowSvg);
+
+            // Stagger reveal
+            await sleep(500);
+            sa.classList.add('visible');
+            await sleep(500);
+            an1.classList.add('visible');
+            resSvg.style.opacity = '1';
+            flowSvg.style.opacity = '1';
+            await sleep(800);
+            ffn.classList.add('visible');
+            await sleep(500);
+            an2.classList.add('visible');
+
+            await sleep(1000);
+
+            // Explanation
+            const explain = el('div', { style: {
+                position: 'absolute', left: '50%', top: '68%',
+                transform: 'translateX(-50%)',
+                display: 'flex', gap: '40px',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, [
+                el('div', { style: {
+                    textAlign: 'center', padding: '16px 24px',
+                    background: 'rgba(30,41,59,0.8)', borderRadius: '10px',
+                    border: '1px solid rgba(59,130,246,0.3)',
+                }}, [
+                    el('div', { style: { color: 'var(--primary-light)', fontWeight: '700', fontSize: '0.9rem' } }, ['Feed-Forward']),
+                    el('div', { style: { color: 'var(--text-sub)', fontSize: '0.75rem', marginTop: '6px' } }, [
+                        'Linear → ReLU → Linear',
+                        el('br'), '逐位置独立处理',
+                        el('br'), '扩展维度再压缩回来',
+                    ]),
+                ]),
+                el('div', { style: {
+                    textAlign: 'center', padding: '16px 24px',
+                    background: 'rgba(30,41,59,0.8)', borderRadius: '10px',
+                    border: '1px solid rgba(16,185,129,0.3)',
+                }}, [
+                    el('div', { style: { color: 'var(--success)', fontWeight: '700', fontSize: '0.9rem' } }, ['Add & Norm']),
+                    el('div', { style: { color: 'var(--text-sub)', fontSize: '0.75rem', marginTop: '6px' } }, [
+                        '残差连接: x + SubLayer(x)',
+                        el('br'), '层归一化: 稳定训练',
+                        el('br'), '梯度直通: 缓解退化',
+                    ]),
+                ]),
+            ]);
+            stage.appendChild(explain);
+            await sleep(500);
+            explain.style.opacity = '1';
+        }
+
+        // ══════════════════════════════════════════════
+        // SCENE 6: Full Encoder-Decoder Flow
+        // ══════════════════════════════════════════════
+        async function scene6() {
+            document.getElementById('scene-5').innerHTML = '';
+            setScene(6);
+
+            const stage = document.getElementById('scene-6');
+            stage.style.cssText = 'position:absolute;inset:0;';
+
+            // Encoder stack
+            const encGroup = el('div', { style: {
+                position: 'absolute', left: '10%', top: '15%', width: '30%',
+            }});
+
+            const encTitle = el('div', { style: {
+                color: 'var(--primary-light)', fontSize: '1rem', fontWeight: '700',
+                marginBottom: '12px', opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['Encoder × N']);
+            encGroup.appendChild(encTitle);
+
+            const encLayers = ['Self-Attention', 'Add & Norm', 'FFN', 'Add & Norm'];
+            for (let i = 0; i < encLayers.length; i++) {
+                const layer = el('div', {
+                    id: `enc-layer-${i}`,
+                    style: {
+                        padding: '8px 16px', marginBottom: '4px', borderRadius: '6px',
+                        background: i % 2 === 0 ? 'rgba(59,130,246,0.12)' : 'rgba(16,185,129,0.08)',
+                        border: `1px solid ${i % 2 === 0 ? 'rgba(59,130,246,0.3)' : 'rgba(16,185,129,0.2)'}`,
+                        color: 'var(--text-main)', fontSize: '0.75rem', fontWeight: '600',
+                        textAlign: 'center',
+                        opacity: '0', transform: 'translateX(-15px)',
+                        transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                    }
+                }, [encLayers[i]]);
+                encGroup.appendChild(layer);
+            }
+            stage.appendChild(encGroup);
+
+            // Decoder stack
+            const decGroup = el('div', { style: {
+                position: 'absolute', left: '55%', top: '12%', width: '30%',
+            }});
+
+            const decTitle = el('div', { style: {
+                color: 'var(--secondary)', fontSize: '1rem', fontWeight: '700',
+                marginBottom: '12px', opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['Decoder × N']);
+            decGroup.appendChild(decTitle);
+
+            const decLayers = ['Masked Self-Attn', 'Add & Norm', 'Cross-Attention', 'Add & Norm', 'FFN', 'Add & Norm'];
+            for (let i = 0; i < decLayers.length; i++) {
+                const isCross = i === 2;
+                const layer = el('div', {
+                    id: `dec-layer-${i}`,
+                    style: {
+                        padding: '6px 14px', marginBottom: '3px', borderRadius: '6px',
+                        background: isCross ? 'rgba(245,158,11,0.15)' : (i % 2 === 0 ? 'rgba(139,92,246,0.12)' : 'rgba(16,185,129,0.08)'),
+                        border: `1px solid ${isCross ? 'rgba(245,158,11,0.4)' : (i % 2 === 0 ? 'rgba(139,92,246,0.3)' : 'rgba(16,185,129,0.2)')}`,
+                        color: isCross ? 'var(--accent-light)' : 'var(--text-main)',
+                        fontSize: '0.72rem', fontWeight: '600', textAlign: 'center',
+                        opacity: '0', transform: 'translateX(15px)',
+                        transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                    }
+                }, [decLayers[i]]);
+                decGroup.appendChild(layer);
+            }
+            stage.appendChild(decGroup);
+
+            // Cross-attention arrow
+            const crossSvg = makeSVG('100%', '100%');
+            crossSvg.innerHTML = `
+                <defs>
+                    <marker id="arrow-y" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                        <polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/>
+                    </marker>
+                </defs>
+                <line x1="42%" y1="33%" x2="53%" y2="33%"
+                    stroke="#f59e0b" stroke-width="2" stroke-dasharray="6,4"
+                    marker-end="url(#arrow-y)" opacity="0.7"/>
+                <text x="47.5%" y="31%" text-anchor="middle" fill="#f59e0b" font-size="9" font-weight="600">KV</text>
+            `;
+            crossSvg.style.opacity = '0';
+            crossSvg.style.transition = 'opacity 0.6s ease';
+            stage.appendChild(crossSvg);
+
+            // Reveal encoder
+            await sleep(400);
+            encTitle.style.opacity = '1';
+            for (let i = 0; i < 4; i++) {
+                await sleep(250);
+                document.getElementById(`enc-layer-${i}`).style.opacity = '1';
+                document.getElementById(`enc-layer-${i}`).style.transform = 'translateX(0)';
+            }
+
+            await sleep(400);
+            decTitle.style.opacity = '1';
+            crossSvg.style.opacity = '1';
+
+            // Reveal decoder
+            for (let i = 0; i < 6; i++) {
+                await sleep(250);
+                document.getElementById(`dec-layer-${i}`).style.opacity = '1';
+                document.getElementById(`dec-layer-${i}`).style.transform = 'translateX(0)';
+            }
+
+            await sleep(800);
+
+            // Output: Linear + Softmax
+            const outputBox = el('div', { id: 'output-box', style: {
+                position: 'absolute', left: '55%', top: '62%', width: '30%',
+                padding: '12px', borderRadius: '10px',
+                background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                opacity: '0', transform: 'translateY(15px)',
+                transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}, [
+                el('div', { style: { color: '#fca5a5', fontWeight: '700', fontSize: '0.85rem', textAlign: 'center' } }, ['Linear + Softmax']),
+                el('div', { style: { color: 'var(--text-sub)', fontSize: '0.7rem', textAlign: 'center', marginTop: '4px' } }, ['输出下一个 token 的概率分布']),
+            ]);
+            stage.appendChild(outputBox);
+
+            const outArrow = makeSVG('100%', '100%');
+            outArrow.innerHTML = `
+                <line x1="70%" y1="55%" x2="70%" y2="60%" stroke="#ef4444" stroke-width="2"
+                    marker-end="url(#arrow-y)" class="flow-line"/>
+            `;
+            stage.appendChild(outArrow);
+
+            await sleep(500);
+            outputBox.style.opacity = '1';
+            outputBox.style.transform = 'translateY(0)';
+
+            await sleep(800);
+
+            // Bottom: key innovations
+            const innovTitle = el('div', { style: {
+                position: 'absolute', left: '50%', top: '78%',
+                transform: 'translateX(-50%)',
+                color: 'var(--text-main)', fontSize: '0.95rem', fontWeight: '700',
+                opacity: '0', transition: 'opacity 0.5s ease',
+            }}, ['核心创新']);
+            stage.appendChild(innovTitle);
+
+            const innovations = [
+                { icon: '⚡', text: '并行计算: 所有位置同时处理', color: 'var(--accent)' },
+                { icon: '🔗', text: '自注意力: 任意距离直接关联', color: 'var(--primary-light)' },
+                { icon: '📐', text: '位置编码: 注入序列顺序信息', color: 'var(--secondary)' },
+            ];
+
+            for (let i = 0; i < innovations.length; i++) {
+                const item = el('div', {
+                    id: `innov-${i}`,
+                    class: 'summary-item',
+                    style: {
+                        position: 'absolute',
+                        left: (12 + i * 28) + '%',
+                        top: '85%',
+                    }
+                }, [
+                    el('span', { style: { fontSize: '1.2rem' } }, [innovations[i].icon]),
+                    el('span', { style: { color: innovations[i].color, fontSize: '0.8rem', fontWeight: '600' } }, [innovations[i].text]),
+                ]);
+                stage.appendChild(item);
+            }
+
+            await sleep(400);
+            innovTitle.style.opacity = '1';
+            for (let i = 0; i < 3; i++) {
+                await sleep(300);
+                document.getElementById(`innov-${i}`).classList.add('visible');
+            }
+        }
+
+        // ── Wait for subtitle to reach a specific text ──
+        function waitForSubtitle(textFragment) {
+            return new Promise(resolve => {
+                const el = document.getElementById('subtitle-cn');
+                if (el && el.innerText.includes(textFragment)) { resolve(); return; }
+                const obs = new MutationObserver(() => {
+                    if (el.innerText.includes(textFragment)) { obs.disconnect(); resolve(); }
+                });
+                obs.observe(el, { childList: true, characterData: true, subtree: true });
+            });
+        }
+
+        // ══════════════════════════════════════════════
+        // MAIN
+        // ══════════════════════════════════════════════
+        async function runAnimation() {
+            startTime = Date.now();
+            const timer = setInterval(() => {
+                const elapsed = updateProgress();
+                updateSubtitle(elapsed);
+            }, 100);
+
+            await scene0();
+            await waitForSubtitle('左侧编码器负责理解输入');
+
+            await scene1();
+            await waitForSubtitle('嵌入向量与位置编码相加');
+
+            await scene2();
+            await waitForSubtitle('Softmax 将分数转化为权重');
+
+            await scene3();
+            await waitForSubtitle('所有头的输出拼接后通过线性层投影');
+
+            await scene4();
+            await waitForSubtitle('残差连接 + 层归一化');
+
+            await scene5();
+            await waitForSubtitle('交叉注意力层');
+
+            await scene6();
+
+            clearInterval(timer);
+            document.getElementById('progress').style.width = '100%';
+        }
+
+        window.onload = runAnimation;
+    </script>
+</body>
+</html>

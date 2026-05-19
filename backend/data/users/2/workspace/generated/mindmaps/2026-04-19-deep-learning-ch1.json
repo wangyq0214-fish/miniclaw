@@ -1,0 +1,91 @@
+{
+  "title": "深度学习与开发环境",
+  "topic_slug": "deep-learning-ch1",
+  "node_count": 18,
+  "max_depth": 3,
+  "generated_at": "2026-04-19T10:00:00Z",
+  "generated_by": "mindmap_designer",
+  "tree": {
+    "title": "深度学习与开发环境",
+    "summary": "深度学习入门章节，涵盖概念与发展历史及开发环境配置",
+    "details": [
+      "深度学习基本概念",
+      "深度学习发展历程",
+      "开发环境配置要点"
+    ],
+    "children": [
+      {
+        "title": "深度学习概述",
+        "summary": "深度学习的基本概念与发展历史",
+        "details": [
+          "人工智能的重要分支",
+          "基于多层神经网络",
+          "自动特征提取能力"
+        ],
+        "children": [
+          {
+            "title": "概念定义",
+            "summary": "基于多层神经网络的机器学习方法",
+            "details": [
+              "模仿人脑神经元结构",
+              "逐层抽象特征表示",
+              "端到端学习模式"
+            ],
+            "children": []
+          },
+          {
+            "title": "发展历程",
+            "summary": "从感知机到深度学习的演进",
+            "details": [
+              "1958 年感知机提出",
+              "2006 年深度信念网络",
+              "2012 年 ImageNet 突破"
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "title": "开发环境配置",
+        "summary": "深度学习开发工具与环境搭建",
+        "details": [
+          "Python 虚拟环境管理",
+          "Jupyter 交互式开发",
+          "PyCharm 远程调试"
+        ],
+        "children": [
+          {
+            "title": "Python 虚拟环境",
+            "summary": "隔离依赖包的 Python 环境管理",
+            "details": [
+              "conda 创建虚拟环境",
+              "pip 安装依赖包",
+              "环境切换与管理"
+            ],
+            "children": []
+          },
+          {
+            "title": "Jupyter 开发环境",
+            "summary": "交互式 Notebook 开发工具",
+            "details": [
+              "支持代码与文档混排",
+              "实时运行代码验证",
+              "可视化结果展示"
+            ],
+            "children": []
+          },
+          {
+            "title": "PyCharm 远程调试",
+            "summary": "IDE 远程连接服务器开发",
+            "details": [
+              "SSH 连接 Linux 服务器",
+              "远程解释器配置",
+              "GPU 环境调试"
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

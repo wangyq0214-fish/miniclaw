@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RNN讲解视频</title>
+    <style>
+        :root {
+            --bg-color: #f8faff;
+            --primary-color: #4a90e2;
+            --secondary-color: #50e3c2;
+            --accent-color: #f5a623;
+            --text-main: #2c3e50;
+            --text-sub: #7f8c8d;
+            --node-bg: #ffffff;
+            --line-color: #d1d8e0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        #canvas-container {
+            width: 1920px;
+            height: 1080px;
+            background: white;
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transform-origin: center;
+        }
+        
+        #header {
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        
+        #stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        
+        #main-svg {
+            width: 100%;
+            height: 100%;
+            max-width: 1600px;
+            max-height: 800px;
+        }
+        
+        #subtitle-container {
+            height: 120px;
+            background: rgba(0,0,0,0.03);
+            border-top: 1px solid var(--line-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 40px;
+        }
+        
+        .subtitle-zh {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--text-main);
+            text-align: center;
+            margin-bottom: 8px;
+            min-height: 40px;
+        }
+        
+        .subtitle-en {
+            font-size: 20px;
+            color: var(--text-sub);
+            text-align: center;
+            text-transform: uppercase;
+            min-height: 24px;
+        }
+        
+        #progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--line-color);
+        }
+        
+        #progress {
+            height: 100%;
+            background: var(--primary-color);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        
+        [id^="scene-"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease;
+        }
+        
+        [id^="scene-"].active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .node {
+            fill: var(--node-bg);
+            stroke: var(--primary-color);
+            stroke-width: 4;
+            transition: all 0.3s ease;
+        }
+        
+        .node:hover {
+            filter: drop-shadow(0 0 15px var(--primary-color));
+        }
+        
+        .hidden-node {
+            fill: var(--secondary-color);
+            stroke: #38b2ac;
+            stroke-width: 4;
+        }
+        
+        .accent-node {
+            fill: var(--accent-color);
+            stroke: #e89b2d;
+            stroke-width: 4;
+        }
+        
+        .line {
+            stroke: var(--line-color);
+            stroke-width: 3;
+            stroke-dasharray: 10 5;
+            stroke-dashoffset: 1000;
+            animation: dash 2s linear forwards;
+        }
+        
+        @keyframes dash {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+        
+        .data-particle {
+            fill: var(--accent-color);
+            filter: blur(2px);
+            animation: particleMove 3s linear infinite;
+        }
+        
+        @keyframes particleMove {
+            0% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(200px); opacity: 0; }
+        }
+        
+        .label {
+            font-size: 24px;
+            font-weight: bold;
+            fill: var(--text-main);
+            text-anchor: middle;
+        }
+        
+        .sublabel {
+            font-size: 18px;
+            fill: var(--text-sub);
+            text-anchor: middle;
+        }
+        
+        .fadeIn {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fadeOut {
+            animation: fadeOut 0.8s ease-in forwards;
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        .highlight {
+            filter: drop-shadow(0 0 15px var(--primary-color));
+        }
+        
+        .sequence-item {
+            transition: all 0.5s ease;
+        }
+        
+        .sequence-item.active {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 10px var(--accent-color));
+        }
+        
+        .loop-arrow {
+            stroke: var(--accent-color);
+            stroke-width: 3;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="header">
+            <h1>RNN 循环神经网络讲解</h1>
+        </div>
+        
+        <div id="stage">
+            <svg id="main-svg" viewBox="0 0 1600 800">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#f5a623" />
+                    </marker>
+                </defs>
+                <g id="scene-content"></g>
+            </svg>
+        </div>
+        
+        <div id="subtitle-container">
+            <div class="subtitle-zh" id="subtitle-cn"></div>
+            <div class="subtitle-en" id="subtitle-en"></div>
+        </div>
+        
+        <div id="progress-container">
+            <div id="progress"></div>
+        </div>
+    </div>
+
+    <script>
+        const TOTAL_DURATION = 263277;
+        const TOTAL_SCENES = 6;
+        let startTime;
+        
+        const subtitles = [
+            { time: 0,    cn: "欢迎来到RNN循环神经网络讲解", en: "Welcome to RNN Recurrent Neural Network" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/0_513ea44b7f67.mp3" },
+            { time: 14277,    cn: "现实世界中有很多序列数据需要处理", en: "Many sequence data in the real world need processing" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/1_a7cde7b2c6ec.mp3" },
+            { time: 31666,    cn: "比如文本、语音、时间序列等", en: "Such as text, speech, time series" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/2_856d7ee7609c.mp3" },
+            { time: 44166,    cn: "传统神经网络无法处理序列依赖关系", en: "Traditional neural networks cannot handle sequence dependencies" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/3_79bbc4d4c9c8.mp3" },
+            { time: 64000,    cn: "RNN通过循环连接解决这个问题", en: "RNN solves this problem through recurrent connections" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/4_230eb7c7b733.mp3" },
+            { time: 81388,    cn: "每个时间步接收当前输入和上一时刻的隐藏状态", en: "Each time step receives current input and previous hidden state" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/5_466be51fc275.mp3" },
+            { time: 102333,    cn: "隐藏状态存储了历史信息", en: "Hidden state stores historical information" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/6_55cdf61edfbc.mp3" },
+            { time: 116388,    cn: "通过时间展开可以看到完整的信息流", en: "Unfolding through time shows the complete information flow" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/7_19aa02b5246a.mp3" },
+            { time: 135111,    cn: "RNN可以处理任意长度的序列", en: "RNN can handle sequences of any length" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/8_15f274988aba.mp3" },
+            { time: 148944,    cn: "在语言模型中预测下一个词", en: "In language models, predict the next word" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/9_912e36fd9613.mp3" },
+            { time: 163000,    cn: "在机器翻译中处理输入序列", en: "In machine translation, process input sequences" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/10_a18e3abc7ddd.mp3" },
+            { time: 178388,    cn: "RNN面临梯度消失的挑战", en: "RNN faces the challenge of vanishing gradients" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/11_4fd53f091e1b.mp3" },
+            { time: 193555,    cn: "LSTM和GRU是改进的解决方案", en: "LSTM and GRU are improved solutions" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/12_0735f5aa693b.mp3" },
+            { time: 207166,    cn: "这些门控机制帮助保留长期依赖", en: "These gating mechanisms help preserve long-term dependencies" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/13_37aa5e570110.mp3" },
+            { time: 225888,    cn: "RNN是序列建模的基础架构", en: "RNN is the foundational architecture for sequence modeling" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/14_b5af9d9a8228.mp3" },
+            { time: 243944,    cn: "理解RNN是学习现代NLP的重要一步", en: "Understanding RNN is an important step in learning modern NLP" , audio: "/api/tts/audio/2/2026-05-15-RNN讲解视频/15_ac330751fa59.mp3" }
+        ];
+        
+        function updateProgress() {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / TOTAL_DURATION * 100, 100);
+            document.getElementById('progress').style.width = progress + '%';
+        }
+        
+        let currentAudio = null;
+        let lastSubtitleIdx = -1;
+
+        function updateSubtitle(elapsed) {
+            const subtitleCn = document.getElementById('subtitle-cn');
+            const subtitleEn = document.getElementById('subtitle-en');
+
+            let currentIdx = 0;
+            for (let i = subtitles.length - 1; i >= 0; i--) {
+                if (elapsed >= subtitles[i].time) {
+                    currentIdx = i;
+                    break;
+                }
+            }
+
+            const currentSubtitle = subtitles[currentIdx];
+            subtitleCn.textContent = currentSubtitle.cn;
+            subtitleEn.textContent = currentSubtitle.en;
+
+            // 动态检测前端是否已注入音频脚本
+            if (!window.__frontendAudioSync && currentIdx !== lastSubtitleIdx && currentSubtitle.audio) {
+                lastSubtitleIdx = currentIdx;
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                const audio = new Audio(currentSubtitle.audio);
+                audio.play().catch(() => {});
+                currentAudio = audio;
+            }
+        }
+        
+        function el(tag, attrs, children) {
+            const element = document.createElementNS('http://www.w3.org/2000/svg', tag);
+            if (attrs) {
+                Object.entries(attrs).forEach(([key, value]) => {
+                    if (key === 'textContent') {
+                        element.textContent = value;
+                    } else {
+                        element.setAttribute(key, value);
+                    }
+                });
+            }
+            if (children) {
+                children.forEach(child => element.appendChild(child));
+            }
+            return element;
+        }
+        
+        function makeSVG(w, h) {
+            return el('svg', {
+                viewBox: `0 0 ${w} ${h}`,
+                width: '100%',
+                height: '100%'
+            });
+        }
+        
+        function showScene(idx) {
+            const scene = document.getElementById(`scene-${idx}`);
+            if (scene) {
+                scene.classList.add('active');
+            }
+        }
+        
+        function clearScene(idx) {
+            const scene = document.getElementById(`scene-${idx}`);
+            if (scene) {
+                scene.innerHTML = '';
+                scene.classList.remove('active');
+            }
+        }
+        
+        function sleep(ms) {
+            return new Promise(r => setTimeout(r, ms));
+        }
+        
+        function waitForSubtitle(keyword) {
+            return new Promise(resolve => {
+                const check = setInterval(() => {
+                    const cn = document.getElementById('subtitle-cn').textContent;
+                    if (cn.includes(keyword)) {
+                        clearInterval(check);
+                        resolve();
+                    }
+                }, 200);
+                setTimeout(() => {
+                    clearInterval(check);
+                    resolve();
+                }, 15000);
+            });
+        }
+        
+        async function scene0() {
+            const scene = document.getElementById('scene-0');
+            
+            // 创建标题和介绍
+            const title = el('text', {
+                x: 800, y: 200,
+                textContent: '什么是RNN？',
+                class: 'label fadeIn',
+                'font-size': '48px'
+            });
+            
+            const subtitle = el('text', {
+                x: 800, y: 280,
+                textContent: '循环神经网络 (Recurrent Neural Network)',
+                class: 'sublabel fadeIn',
+                'font-size': '24px'
+            });
+            
+            // 创建序列数据示例
+            const sequenceGroup = el('g', { class: 'fadeIn' });
+            
+            // 文本序列
+            const textSeq = el('text', {
+                x: 400, y: 400,
+                textContent: '文本序列: "我 爱 学习 深度学习"',
+                class: 'label',
+                'font-size': '20px'
+            });
+            
+            // 时间序列
+            const timeSeq = el('text', {
+                x: 400, y: 450,
+                textContent: '时间序列: 股票价格、温度变化',
+                class: 'label',
+                'font-size': '20px'
+            });
+            
+            // 语音序列
+            const speechSeq = el('text', {
+                x: 400, y: 500,
+                textContent: '语音序列: 音频信号、语音识别',
+                class: 'label',
+                'font-size': '20px'
+            });
+            
+            sequenceGroup.appendChild(textSeq);
+            sequenceGroup.appendChild(timeSeq);
+            sequenceGroup.appendChild(speechSeq);
+            
+            scene.appendChild(title);
+            scene.appendChild(subtitle);
+            scene.appendChild(sequenceGroup);
+            
+            await sleep(5000);
+        }
+        
+        async function scene1() {
+            const scene = document.getElementById('scene-1');
+            
+            // 创建RNN基本结构图
+            const rnnDiagram = el('g', { class: 'fadeIn' });
+            
+            // 输入层
+            const inputLayer = el('g');
+            for (let i = 0; i < 3; i++) {
+                const circle = el('circle', {
+                    cx: 300, cy: 300 + i * 100,
+                    r: 30,
+                    class: 'node'
+                });
+                const label = el('text', {
+                    x: 300, y: 305 + i * 100,
+                    textContent: `x${i}`,
+                    class: 'label',
+                    'font-size': '18px'
+                });
+                inputLayer.appendChild(circle);
+                inputLayer.appendChild(label);
+            }
+            
+            // 隐藏层
+            const hiddenLayer = el('g');
+            for (let i = 0; i < 3; i++) {
+                const circle = el('circle', {
+                    cx: 800, cy: 300 + i * 100,
+                    r: 30,
+                    class: 'hidden-node'
+                });
+                const label = el('text', {
+                    x: 800, y: 305 + i * 100,
+                    textContent: `h${i}`,
+                    class: 'label',
+                    'font-size': '18px'
+                });
+                hiddenLayer.appendChild(circle);
+                hiddenLayer.appendChild(label);
+            }
+            
+            // 输出层
+            const outputLayer = el('g');
+            for (let i = 0; i < 3; i++) {
+                const circle = el('circle', {
+                    cx: 1300, cy: 300 + i * 100,
+                    r: 30,
+                    class: 'node'
+                });
+                const label = el('text', {
+                    x: 1300, y: 305 + i * 100,
+                    textContent: `y${i}`,
+                    class: 'label',
+                    'font-size': '18px'
+                });
+                outputLayer.appendChild(circle);
+                outputLayer.appendChild(label);
+            }
+            
+            // 连接线
+            const connections = el('g');
+            
+            // 输入到隐藏
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const line = el('line', {
+                        x1: 330, y1: 300 + i * 100,
+                        x2: 770, y2: 300 + j * 100,
+                        class: 'line'
+                    });
+                    connections.appendChild(line);
+                }
+            }
+            
+            // 隐藏到输出
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    const line = el('line', {
+                        x1: 830, y1: 300 + i * 100,
+                        x2: 1270, y2: 300 + j * 100,
+                        class: 'line'
+                    });
+                    connections.appendChild(line);
+                }
+            }
+            
+            // 循环连接（关键！）
+            const loopArrow = el('path', {
+                d: 'M 830 300 C 900 300, 900 400, 830 400',
+                class: 'loop-arrow'
+            });
+            
+            // 标签
+            const inputLabel = el('text', {
+                x: 300, y: 250,
+                textContent: '输入层',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            const hiddenLabel = el('text', {
+                x: 800, y: 250,
+                textContent: '隐藏层 (循环)',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            const outputLabel = el('text', {
+                x: 1300, y: 250,
+                textContent: '输出层',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            rnnDiagram.appendChild(inputLayer);
+            rnnDiagram.appendChild(hiddenLayer);
+            rnnDiagram.appendChild(outputLayer);
+            rnnDiagram.appendChild(connections);
+            rnnDiagram.appendChild(loopArrow);
+            rnnDiagram.appendChild(inputLabel);
+            rnnDiagram.appendChild(hiddenLabel);
+            rnnDiagram.appendChild(outputLabel);
+            
+            scene.appendChild(rnnDiagram);
+            
+            await sleep(6000);
+        }
+        
+        async function scene2() {
+            const scene = document.getElementById('scene-2');
+            
+            // 创建时间展开图
+            const timeline = el('g', { class: 'fadeIn' });
+            
+            // 时间轴
+            const timeAxis = el('line', {
+                x1: 100, y1: 400,
+                x2: 1500, y2: 400,
+                stroke: '#d1d8e0',
+                'stroke-width': 4
+            });
+            
+            // 时间点
+            const timePoints = [];
+            for (let t = 0; t < 4; t++) {
+                const x = 300 + t * 300;
+                
+                // 时间标签
+                const timeLabel = el('text', {
+                    x: x, y: 450,
+                    textContent: `t=${t}`,
+                    class: 'label',
+                    'font-size': '20px'
+                });
+                
+                // RNN单元
+                const rnnUnit = el('rect', {
+                    x: x - 40, y: 300,
+                    width: 80, height: 80,
+                    rx: 10,
+                    class: 'hidden-node'
+                });
+                
+                // 输入
+                const input = el('text', {
+                    x: x, y: 280,
+                    textContent: `x${t}`,
+                    class: 'label',
+                    'font-size': '18px'
+                });
+                
+                // 输出
+                const output = el('text', {
+                    x: x, y: 420,
+                    textContent: `y${t}`,
+                    class: 'label',
+                    'font-size': '18px'
+                });
+                
+                // 隐藏状态
+                const hiddenState = el('text', {
+                    x: x, y: 345,
+                    textContent: `h${t}`,
+                    class: 'label',
+                    'font-size': '16px',
+                    fill: 'white'
+                });
+                
+                timePoints.push(timeLabel);
+                timePoints.push(rnnUnit);
+                timePoints.push(input);
+                timePoints.push(output);
+                timePoints.push(hiddenState);
+            }
+            
+            // 连接线
+            const connections = el('g');
+            for (let t = 0; t < 3; t++) {
+                const x1 = 300 + t * 300 + 40;
+                const x2 = 300 + (t + 1) * 300 - 40;
+                
+                const line = el('line', {
+                    x1: x1, y1: 340,
+                    x2: x2, y2: 340,
+                    class: 'loop-arrow'
+                });
+                connections.appendChild(line);
+            }
+            
+            // 标题
+            const title = el('text', {
+                x: 800, y: 200,
+                textContent: 'RNN的时间展开',
+                class: 'label',
+                'font-size': '36px'
+            });
+            
+            const subtitle = el('text', {
+                x: 800, y: 250,
+                textContent: '每个时间步共享相同的参数',
+                class: 'sublabel',
+                'font-size': '20px'
+            });
+            
+            timeline.appendChild(timeAxis);
+            timePoints.forEach(point => timeline.appendChild(point));
+            timeline.appendChild(connections);
+            timeline.appendChild(title);
+            timeline.appendChild(subtitle);
+            
+            scene.appendChild(timeline);
+            
+            await sleep(6000);
+        }
+        
+        async function scene3() {
+            const scene = document.getElementById('scene-3');
+            
+            // 创建计算过程图
+            const computation = el('g', { class: 'fadeIn' });
+            
+            // 当前时间步
+            const currentStep = el('g');
+            
+            // 输入
+            const inputX = el('circle', {
+                cx: 400, cy: 400,
+                r: 40,
+                class: 'node'
+            });
+            const inputLabel = el('text', {
+                x: 400, y: 410,
+                textContent: 'x_t',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            // 上一隐藏状态
+            const prevHidden = el('circle', {
+                cx: 800, cy: 300,
+                r: 40,
+                class: 'hidden-node'
+            });
+            const prevHiddenLabel = el('text', {
+                x: 800, y: 310,
+                textContent: 'h_{t-1}',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            // 当前隐藏状态
+            const currentHidden = el('circle', {
+                cx: 800, cy: 500,
+                r: 40,
+                class: 'hidden-node'
+            });
+            const currentHiddenLabel = el('text', {
+                x: 800, y: 510,
+                textContent: 'h_t',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            // 输出
+            const outputY = el('circle', {
+                cx: 1200, cy: 400,
+                r: 40,
+                class: 'node'
+            });
+            const outputLabel = el('text', {
+                x: 1200, y: 410,
+                textContent: 'y_t',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            // 连接线
+            const connections = el('g');
+            
+            // 输入到当前隐藏状态
+            const line1 = el('line', {
+                x1: 440, y1: 400,
+                x2: 760, y2: 500,
+                class: 'line'
+            });
+            
+            // 上一隐藏状态到当前隐藏状态
+            const line2 = el('line', {
+                x1: 800, y1: 340,
+                x2: 800, y2: 460,
+                class: 'line'
+            });
+            
+            // 当前隐藏状态到输出
+            const line3 = el('line', {
+                x1: 840, y1: 500,
+                x2: 1160, y2: 400,
+                class: 'line'
+            });
+            
+            // 公式
+            const formula = el('text', {
+                x: 800, y: 600,
+                textContent: 'h_t = tanh(W_xh * x_t + W_hh * h_{t-1} + b_h)',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            const outputFormula = el('text', {
+                x: 800, y: 650,
+                textContent: 'y_t = W_hy * h_t + b_y',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            // 标题
+            const title = el('text', {
+                x: 800, y: 200,
+                textContent: 'RNN的计算过程',
+                class: 'label',
+                'font-size': '36px'
+            });
+            
+            currentStep.appendChild(inputX);
+            currentStep.appendChild(inputLabel);
+            currentStep.appendChild(prevHidden);
+            currentStep.appendChild(prevHiddenLabel);
+            currentStep.appendChild(currentHidden);
+            currentStep.appendChild(currentHiddenLabel);
+            currentStep.appendChild(outputY);
+            currentStep.appendChild(outputLabel);
+            
+            connections.appendChild(line1);
+            connections.appendChild(line2);
+            connections.appendChild(line3);
+            
+            computation.appendChild(currentStep);
+            computation.appendChild(connections);
+            computation.appendChild(formula);
+            computation.appendChild(outputFormula);
+            computation.appendChild(title);
+            
+            scene.appendChild(computation);
+            
+            await sleep(6000);
+        }
+        
+        async function scene4() {
+            const scene = document.getElementById('scene-4');
+            
+            // 创建应用场景图
+            const applications = el('g', { class: 'fadeIn' });
+            
+            // 语言模型
+            const languageModel = el('g');
+            const lmTitle = el('text', {
+                x: 400, y: 200,
+                textContent: '语言模型',
+                class: 'label',
+                'font-size': '28px'
+            });
+            
+            const lmExample = el('text', {
+                x: 400, y: 250,
+                textContent: '"我 爱 学习" → 预测 "深度学习"',
+                class: 'sublabel',
+                'font-size': '20px'
+            });
+            
+            // 机器翻译
+            const machineTranslation = el('g');
+            const mtTitle = el('text', {
+                x: 800, y: 200,
+                textContent: '机器翻译',
+                class: 'label',
+                'font-size': '28px'
+            });
+            
+            const mtExample = el('text', {
+                x: 800, y: 250,
+                textContent: '"I love learning" → "我爱学习"',
+                class: 'sublabel',
+                'font-size': '20px'
+            });
+            
+            // 语音识别
+            const speechRecognition = el('g');
+            const srTitle = el('text', {
+                x: 1200, y: 200,
+                textContent: '语音识别',
+                class: 'label',
+                'font-size': '28px'
+            });
+            
+            const srExample = el('text', {
+                x: 1200, y: 250,
+                textContent: '音频信号 → 文字转录',
+                class: 'sublabel',
+                'font-size': '20px'
+            });
+            
+            // 可视化示例
+            const visualization = el('g');
+            
+            // 文本生成示例
+            const textGen = el('text', {
+                x: 400, y: 400,
+                textContent: '文本生成示例:',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            const genExample = el('text', {
+                x: 400, y: 450,
+                textContent: '输入: "今天天气" → 输出: "很好"',
+                class: 'sublabel',
+                'font-size': '20px'
+            });
+            
+            // 时间序列预测
+            const timeSeries = el('text', {
+                x: 800, y: 400,
+                textContent: '时间序列预测:',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            const tsExample = el('text', {
+                x: 800, y: 450,
+                textContent: '历史数据 → 未来趋势预测',
+                class: 'sublabel',
+                'font-size': '20px'
+            });
+            
+            // 标题
+            const title = el('text', {
+                x: 800, y: 150,
+                textContent: 'RNN的应用场景',
+                class: 'label',
+                'font-size': '36px'
+            });
+            
+            languageModel.appendChild(lmTitle);
+            languageModel.appendChild(lmExample);
+            
+            machineTranslation.appendChild(mtTitle);
+            machineTranslation.appendChild(mtExample);
+            
+            speechRecognition.appendChild(srTitle);
+            speechRecognition.appendChild(srExample);
+            
+            visualization.appendChild(textGen);
+            visualization.appendChild(genExample);
+            visualization.appendChild(timeSeries);
+            visualization.appendChild(tsExample);
+            
+            applications.appendChild(languageModel);
+            applications.appendChild(machineTranslation);
+            applications.appendChild(speechRecognition);
+            applications.appendChild(visualization);
+            applications.appendChild(title);
+            
+            scene.appendChild(applications);
+            
+            await sleep(6000);
+        }
+        
+        async function scene5() {
+            const scene = document.getElementById('scene-5');
+            
+            // 创建挑战与改进图
+            const challenges = el('g', { class: 'fadeIn' });
+            
+            // 梯度消失问题
+            const vanishingGradient = el('g');
+            const vgTitle = el('text', {
+                x: 400, y: 200,
+                textContent: '梯度消失问题',
+                class: 'label',
+                'font-size': '28px'
+            });
+            
+            const vgExplanation = el('text', {
+                x: 400, y: 250,
+                textContent: '长期依赖难以学习',
+                class: 'sublabel',
+                'font-size': '20px'
+            });
+            
+            // LSTM解决方案
+            const lstmSolution = el('g');
+            const lstmTitle = el('text', {
+                x: 800, y: 200,
+                textContent: 'LSTM解决方案',
+                class: 'label',
+                'font-size': '28px'
+            });
+            
+            const lstmFeatures = el('text', {
+                x: 800, y: 250,
+                textContent: '输入门、遗忘门、输出门',
+                class: 'sublabel',
+                'font-size': '20px'
+            });
+            
+            // GRU解决方案
+            const gruSolution = el('g');
+            const gruTitle = el('text', {
+                x: 1200, y: 200,
+                textContent: 'GRU解决方案',
+                class: 'label',
+                'font-size': '28px'
+            });
+            
+            const gruFeatures = el('text', {
+                x: 1200, y: 250,
+                textContent: '更新门、重置门',
+                class: 'sublabel',
+                'font-size': '20px'
+            });
+            
+            // 可视化对比
+            const comparison = el('g');
+            
+            // 标准RNN
+            const standardRNN = el('text', {
+                x: 400, y: 400,
+                textContent: '标准RNN:',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            const rnnFormula = el('text', {
+                x: 400, y: 450,
+                textContent: 'h_t = tanh(W_xh * x_t + W_hh * h_{t-1})',
+                class: 'sublabel',
+                'font-size': '18px'
+            });
+            
+            // LSTM
+            const lstm = el('text', {
+                x: 800, y: 400,
+                textContent: 'LSTM:',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            const lstmFormula = el('text', {
+                x: 800, y: 450,
+                textContent: '包含细胞状态和门控机制',
+                class: 'sublabel',
+                'font-size': '18px'
+            });
+            
+            // 标题
+            const title = el('text', {
+                x: 800, y: 150,
+                textContent: 'RNN的挑战与改进',
+                class: 'label',
+                'font-size': '36px'
+            });
+            
+            const conclusion = el('text', {
+                x: 800, y: 600,
+                textContent: 'LSTM和GRU解决了长期依赖问题，是现代序列建模的基础',
+                class: 'label',
+                'font-size': '24px'
+            });
+            
+            vanishingGradient.appendChild(vgTitle);
+            vanishingGradient.appendChild(vgExplanation);
+            
+            lstmSolution.appendChild(lstmTitle);
+            lstmSolution.appendChild(lstmFeatures);
+            
+            gruSolution.appendChild(gruTitle);
+            gruSolution.appendChild(gruFeatures);
+            
+            comparison.appendChild(standardRNN);
+            comparison.appendChild(rnnFormula);
+            comparison.appendChild(lstm);
+            comparison.appendChild(lstmFormula);
+            
+            challenges.appendChild(vanishingGradient);
+            challenges.appendChild(lstmSolution);
+            challenges.appendChild(gruSolution);
+            challenges.appendChild(comparison);
+            challenges.appendChild(title);
+            challenges.appendChild(conclusion);
+            
+            scene.appendChild(challenges);
+            
+            await sleep(6000);
+        }
+        
+        async function runAnimation() {
+            startTime = Date.now();
+            const timer = setInterval(() => {
+                updateProgress();
+                updateSubtitle(Date.now() - startTime);
+            }, 100);
+            
+            showScene(0);
+            await scene0();
+            await waitForSubtitle('序列数据');
+            clearScene(0);
+            
+            showScene(1);
+            await scene1();
+            await waitForSubtitle('循环连接');
+            clearScene(1);
+            
+            showScene(2);
+            await scene2();
+            await waitForSubtitle('时间展开');
+            clearScene(2);
+            
+            showScene(3);
+            await scene3();
+            await waitForSubtitle('计算过程');
+            clearScene(3);
+            
+            showScene(4);
+            await scene4();
+            await waitForSubtitle('应用场景');
+            clearScene(4);
+            
+            showScene(5);
+            await scene5();
+            await waitForSubtitle('挑战与改进');
+            
+            clearInterval(timer);
+            document.getElementById('progress').style.width = '100%';
+        }
+        
+        // 响应式缩放
+        function scaleCanvas() {
+            const container = document.getElementById('canvas-container');
+            const scaleX = window.innerWidth / 1920;
+            const scaleY = window.innerHeight / 1080;
+            const scale = Math.min(scaleX, scaleY);
+            container.style.transform = `scale(${scale})`;
+        }
+        
+        window.onload = function() {
+            scaleCanvas();
+            window.addEventListener('resize', scaleCanvas);
+            runAnimation();
+        };
+    </script>
+</body>
+</html>

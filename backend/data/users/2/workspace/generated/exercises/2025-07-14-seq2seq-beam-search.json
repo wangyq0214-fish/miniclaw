@@ -1,0 +1,206 @@
+
+
+{
+  "topic": "序列到序列模型与束搜索",
+  "total": 7,
+  "difficulty_distribution": {"基础": 3, "中等": 3, "困难": 1},
+  "generated_at": "2025-07-14T10:30:00",
+  "generated_by": "exercise_composer",
+  "covered_topics": ["序列到序列模型", "编码器-解码器架构", "束搜索", "束宽", "贪心搜索", "自回归解码"],
+  "recommended_topics": ["注意力机制", "Transformer", "BLEU评估指标", "Teacher Forcing", "序列结束词元"],
+  "questions": [
+    {
+      "question_id": "q1",
+      "question_text_md": "序列到序列（Seq2Seq）模型由哪两部分组成？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "编码器和解码器",
+          "explanation_md": "Seq2Seq 模型的核心结构就是编码器-解码器架构：编码器将输入序列压缩为一个上下文向量，解码器基于该向量逐步生成输出序列。这是序列到序列模型最基本的定义。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "特征提取器和分类器",
+          "explanation_md": "特征提取器+分类器是典型的图像分类流水线结构，不是 Seq2Seq 的组成。Seq2Seq 面向的是序列生成任务，而非分类任务。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "卷积层和池化层",
+          "explanation_md": "卷积层和池化层是卷积神经网络（CNN）的核心组件，用于图像等网格数据的特征提取。Seq2Seq 模型通常基于循环神经网络或 Transformer 构建，与 CNN 组件无关。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "注意力层和前馈层",
+          "explanation_md": "注意力层和前馈层是 Transformer 内部的子模块，属于更细粒度的组件。Seq2Seq 的两大部分是编码器和解码器，注意力机制可以作为其中一个模块被嵌入，但它本身不构成 Seq2Seq 的顶层结构。"
+        }
+      ]
+    },
+    {
+      "question_id": "q2",
+      "question_text_md": "束搜索（beam search）在每一步解码时如何选择候选序列？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "只保留概率最高的1个候选",
+          "explanation_md": "只保留1个最高概率候选是贪心搜索（greedy search）的策略。贪心搜索每步只选最优，容易陷入局部最优，束搜索正是为了缓解这一问题而提出的。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "保留累积概率最高的k个候选（k为束宽）",
+          "explanation_md": "束搜索的核心思想是在每一步保留束宽（beam width）k 个最优候选序列，而非只保留1个。这样可以在搜索宽度和计算开销之间取得平衡，兼顾输出质量和效率。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "保留所有可能的候选序列",
+          "explanation_md": "保留所有候选序列是穷举搜索（exhaustive search）的做法。虽然能保证找到全局最优，但计算复杂度随序列长度指数增长，在实际中不可行。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "随机采样若干个候选序列",
+          "explanation_md": "随机采样是一种解码策略（如 temperature sampling），但它不保证选择高概率序列。束搜索是确定性的、基于概率排序的选择方法，和随机采样有本质区别。"
+        }
+      ]
+    },
+    {
+      "question_id": "q3",
+      "question_text_md": "Seq2Seq 模型的解码器在生成第 t 个词元时，只能依赖已生成的前 t-1 个词元和编码器的输出，不能看到未来的词元。",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "正确",
+          "explanation_md": "这正是自回归解码器的核心特性：每一步只基于已生成的历史词元和编码器的上下文向量来预测下一个词元。通过掩码机制屏蔽未来位置的信息，保证生成过程的因果性。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "错误",
+          "explanation_md": "如果解码器能看到未来的词元，就违反了自回归生成的基本原则，相当于「偷看答案」。实际中解码器通过因果掩码（causal mask）确保每个位置只能注意到之前的词元。"
+        }
+      ]
+    },
+    {
+      "question_id": "q4",
+      "question_text_md": "当束宽 k=1 时，束搜索等价于哪种搜索策略？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "穷举搜索",
+          "explanation_md": "穷举搜索会枚举所有可能的输出序列并选最优，复杂度是指数级的。k=1 的束搜索每步只保留1个候选，远比穷举搜索简单。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "贪心搜索",
+          "explanation_md": "当束宽 k=1 时，束搜索每步只保留概率最高的1个候选序列，这与贪心搜索的策略完全一致。可以说贪心搜索是束搜索在 k=1 时的特例。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "随机搜索",
+          "explanation_md": "随机搜索根据概率分布随机采样，结果具有随机性。而 k=1 的束搜索是确定性地选择概率最高的候选，两者机制完全不同。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "双向搜索",
+          "explanation_md": "双向搜索通常指从序列两端同时搜索的策略，与束宽无关。k=1 的束搜索仍然是从左到右的单向解码，只是每步只保留1个候选。"
+        }
+      ]
+    },
+    {
+      "question_id": "q5",
+      "question_text_md": "束搜索一定能找到全局概率最高的输出序列。",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "正确",
+          "explanation_md": "束搜索是启发式搜索方法，每步只保留 k 个候选，这意味着在剪枝过程中可能丢弃全局最优路径。只有穷举搜索才能保证找到全局最优。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "错误",
+          "explanation_md": "束搜索通过保留 top-k 候选来近似搜索，但每一步的剪枝都可能丢弃最终全局最优的路径。它是对穷举搜索的一种高效近似，不保证全局最优性。"
+        }
+      ]
+    },
+    {
+      "question_id": "q6",
+      "question_text_md": "在 Seq2Seq 模型中，序列结束词元（如 <EOS>）的主要作用是什么？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "标记输入序列的开始位置",
+          "explanation_md": "标记序列开始通常使用 <BOS>（Beginning of Sequence）词元，而非 <EOS>。两者功能不同：<BOS> 放在序列开头，<EOS> 放在序列末尾。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "作为填充符对齐不同长度的序列",
+          "explanation_md": "对齐不同长度序列通常使用 <PAD>（padding）词元来补齐。<EOS> 的作用不是对齐，而是标识序列的自然结束。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "告诉解码器停止生成，标识输出序列结束",
+          "explanation_md": "当解码器生成 <EOS> 词元时，表示输出序列已经完成，解码过程应终止。这是 Seq2Seq 模型处理变长输出的关键机制，使模型能自主决定何时停止生成。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "分隔编码器输出和解码器输入",
+          "explanation_md": "编码器和解码器之间通过上下文向量或注意力机制连接，不需要特殊的分隔词元。<EOS> 是在序列层面起作用，用于标识生成结束，而非分隔模型的不同模块。"
+        }
+      ]
+    },
+    {
+      "question_id": "q7",
+      "question_text_md": "随着束宽 k 增大，束搜索的输出质量通常会提升，但主要代价是什么？",
+      "difficulty": "困难",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "模型参数量增加",
+          "explanation_md": "束搜索是解码阶段的搜索策略，不改变模型本身的参数。无论 k 取多大，编码器和解码器的网络参数都不变。参数量由模型架构决定，与束宽无关。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "计算时间和内存消耗显著增加",
+          "explanation_md": "每步需要维护 k 个候选序列，计算量和内存占用随 k 线性增长。k 越大，每一步需要计算和存储的候选越多，解码速度会明显变慢，这是束搜索最主要的工程代价。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "输出序列的长度变短",
+          "explanation_md": "束宽增大不会直接导致输出变短。实际上，较大的束宽有时反而会生成更长的序列，因为更宽的搜索空间能找到更优的长序列路径。输出长度主要由 <EOS> 的生成概率决定。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "编码器的表示能力下降",
+          "explanation_md": "束搜索只在解码阶段起作用，编码器的前向计算在束搜索之前就已经完成。增大束宽不会对编码器的表示产生任何影响，两者是完全独立的过程。"
+        }
+      ]
+    }
+  ]
+}
