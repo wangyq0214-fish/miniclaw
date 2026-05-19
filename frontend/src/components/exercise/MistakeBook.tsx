@@ -115,24 +115,37 @@ export function MistakeBook() {
                     const isCorrect = opt.is_correct;
                     const isUserSelected = opt.id === m.user_selected_id;
 
-                    let bg = 'bg-muted/30';
-                    if (isCorrect) bg = 'bg-green-50';
-                    else if (isUserSelected) bg = 'bg-red-50';
+                    let containerClass = 'bg-muted/30 dark:bg-neutral-800/50';
+                    let idClass = 'text-muted-foreground';
+                    let textClass = '';
+                    let badgeClass = '';
+
+                    if (isCorrect) {
+                      containerClass = 'bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/30';
+                      idClass = 'text-green-600 dark:text-emerald-400';
+                      textClass = 'text-green-800 dark:text-emerald-300';
+                      badgeClass = 'text-green-600 dark:text-emerald-400';
+                    } else if (isUserSelected) {
+                      containerClass = 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30';
+                      idClass = 'text-red-500 dark:text-red-400';
+                      textClass = 'text-red-800 dark:text-red-300';
+                      badgeClass = 'text-red-500 dark:text-red-400';
+                    }
 
                     return (
-                      <div key={opt.id} className={`rounded-lg p-3 ${bg}`}>
+                      <div key={opt.id} className={`rounded-lg p-3 ${containerClass}`}>
                         <div className="flex items-start gap-2">
-                          <span className="text-xs font-medium text-muted-foreground shrink-0 w-4">
+                          <span className={`text-xs font-medium shrink-0 w-4 ${idClass}`}>
                             {opt.id}
                           </span>
-                          <div className="flex-1 text-sm">
+                          <div className={`flex-1 text-sm ${textClass}`}>
                             <MarkdownRenderer content={opt.text_md} />
                           </div>
                           {isCorrect && (
-                            <span className="text-xs text-green-600 font-medium shrink-0">正确</span>
+                            <span className={`text-xs font-medium shrink-0 ${badgeClass}`}>正确</span>
                           )}
                           {isUserSelected && !isCorrect && (
-                            <span className="text-xs text-red-500 font-medium shrink-0">你的选择</span>
+                            <span className={`text-xs font-medium shrink-0 ${badgeClass}`}>你的选择</span>
                           )}
                         </div>
                         {(isCorrect || isUserSelected) && opt.explanation_md && (

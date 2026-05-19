@@ -463,8 +463,8 @@ ${optionsText}
               const showWrong = isLocked && isSelected && !option.is_correct;
 
               let bgClass = 'bg-white dark:bg-card border border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-accent';
-              if (showCorrect) bgClass = 'bg-green-50 dark:bg-green-500/10';
-              else if (showWrong) bgClass = 'bg-red-50 dark:bg-red-500/10';
+              if (showCorrect) bgClass = 'bg-green-50 dark:bg-emerald-500/10 border border-green-200 dark:border-emerald-500/30';
+              else if (showWrong) bgClass = 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30';
 
               return (
                 <div key={option.id}>
@@ -476,10 +476,18 @@ ${optionsText}
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="text-sm font-medium text-gray-400 dark:text-zinc-400 shrink-0 w-5">
+                      <span className={`text-sm font-medium shrink-0 w-5 ${
+                        showCorrect ? 'text-green-500 dark:text-emerald-400' :
+                        showWrong ? 'text-red-500 dark:text-red-400' :
+                        'text-gray-400 dark:text-zinc-400'
+                      }`}>
                         {option.id}
                       </span>
-                      <span className="flex-1 text-[15px] text-gray-800 dark:text-zinc-200">
+                      <span className={`flex-1 text-[15px] ${
+                        showCorrect ? 'text-green-800 dark:text-emerald-300' :
+                        showWrong ? 'text-red-800 dark:text-red-300' :
+                        'text-gray-800 dark:text-zinc-200'
+                      }`}>
                         <MarkdownRenderer content={option.text_md} />
                       </span>
                     </div>
@@ -489,8 +497,8 @@ ${optionsText}
                   {showWrong && (
                     <div className="mt-2 ml-5 space-y-2">
                       <div className="flex items-center gap-1.5">
-                        <X className="w-4 h-4 text-red-500" />
-                        <span className="text-sm font-semibold text-red-600">不太对</span>
+                        <X className="w-4 h-4 text-red-500 dark:text-red-400" />
+                        <span className="text-sm font-semibold text-red-600 dark:text-red-400">不太对</span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-zinc-400 prose prose-sm max-w-none">
                         <MarkdownRenderer content={option.explanation_md} />
@@ -502,8 +510,8 @@ ${optionsText}
                   {showCorrect && !isSelected && (
                     <div className="mt-2 ml-5 space-y-2">
                       <div className="flex items-center gap-1.5">
-                        <Check className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-semibold text-green-700">正确答案</span>
+                        <Check className="w-4 h-4 text-green-600 dark:text-emerald-400" />
+                        <span className="text-sm font-semibold text-green-700 dark:text-emerald-400">正确答案</span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-zinc-400 prose prose-sm max-w-none">
                         <MarkdownRenderer content={option.explanation_md} />
@@ -515,8 +523,8 @@ ${optionsText}
                   {showCorrect && isSelected && (
                     <div className="mt-2 ml-5 space-y-2">
                       <div className="flex items-center gap-1.5">
-                        <Check className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-semibold text-green-700">回答正确</span>
+                        <Check className="w-4 h-4 text-green-600 dark:text-emerald-400" />
+                        <span className="text-sm font-semibold text-green-700 dark:text-emerald-400">回答正确</span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-zinc-400 prose prose-sm max-w-none">
                         <MarkdownRenderer content={option.explanation_md} />

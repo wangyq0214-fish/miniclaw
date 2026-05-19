@@ -1,3 +1,6 @@
+/* Decorative fonts for landing page headings */
+@import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Ma+Shan+Zheng&family=ZCOOL+QingKe+HuangYou&family=Zhi+Mang+Xing&family=Long+Cang&family=Liu+Jian+Mao+Cao&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -130,5 +133,28 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(264 50% 60% / 0.3);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(264 50% 60% / 0.5);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(264 50% 60% / 0.3) transparent;
 }

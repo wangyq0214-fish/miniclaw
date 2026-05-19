@@ -17,9 +17,14 @@ function getApiBase() {
   return '';
 }
 
-// SSE streaming requests — use relative path to go through Next.js proxy
+// SSE streaming requests must bypass Next.js proxy (it buffers SSE responses).
+// Connect directly to backend for streaming endpoints.
 function getStreamingApiBase() {
-  return '';
+  if (typeof window === 'undefined') return 'http://localhost:8002';
+  // Use NEXT_PUBLIC_API_URL if configured
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  // Same host, backend port
+  return `${window.location.protocol}//${window.location.hostname}:8002`;
 }
 
 // Helper function to get auth headers
