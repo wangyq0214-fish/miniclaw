@@ -114,7 +114,7 @@ async def login(
 
     logger.info(f"User logged in: {user.username}")
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "user_id": user.id}
 
 
 @router.post("/auth/logout")

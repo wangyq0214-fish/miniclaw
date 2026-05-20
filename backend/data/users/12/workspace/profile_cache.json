@@ -1,0 +1,177 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-05-20T09:36:50.695850+00:00",
+  "dimensions": {
+    "knowledge_foundation": {
+      "score": 58.0,
+      "concepts": [
+        {
+          "name": "线性回归",
+          "mastery": 0.4
+        },
+        {
+          "name": "CNN",
+          "mastery": 0.3
+        },
+        {
+          "name": "梯度下降",
+          "mastery": 0.3
+        },
+        {
+          "name": "最小二乘法",
+          "mastery": 0.3
+        },
+        {
+          "name": "模型评估",
+          "mastery": 0.3
+        },
+        {
+          "name": "过拟合",
+          "mastery": 0.3
+        }
+      ],
+      "summary": "初步接触了线性回归、CNN等基础概念，但所有概念的掌握度均偏低，处于知识框架的早期构建阶段",
+      "style": null,
+      "traits": null,
+      "patterns": null,
+      "pace": null,
+      "mood": null,
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "cognitive_style": {
+      "score": 50.0,
+      "concepts": null,
+      "summary": null,
+      "style": "数据不足，待观察",
+      "traits": [],
+      "patterns": null,
+      "pace": null,
+      "mood": null,
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "error_patterns": {
+      "score": 65.0,
+      "concepts": null,
+      "summary": "测验数据有限，暂未发现稳定错误模式，平均测验分数(64.3)表明存在一定的理解或应用不足",
+      "style": null,
+      "traits": null,
+      "patterns": [],
+      "pace": null,
+      "mood": null,
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "learning_rhythm": {
+      "score": 55.0,
+      "concepts": null,
+      "summary": null,
+      "style": null,
+      "traits": [
+        "学习周期尚短",
+        "单日学习话题多样"
+      ],
+      "patterns": null,
+      "pace": "刚开始学习",
+      "mood": null,
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "affective_state": {
+      "score": 50.0,
+      "concepts": null,
+      "summary": null,
+      "style": null,
+      "traits": [],
+      "patterns": null,
+      "pace": null,
+      "mood": "态度中性，待观察",
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "goal_progress": {
+      "score": 45.0,
+      "concepts": null,
+      "summary": null,
+      "style": null,
+      "traits": null,
+      "patterns": null,
+      "pace": null,
+      "mood": null,
+      "short_term": "目标待明确",
+      "long_term": "目标待明确",
+      "progress": "处于学习初期，覆盖了基础主题，但目标与进展不明确"
+    }
+  },
+  "knowledge_graph": {
+    "nodes": [
+      {
+        "id": "线性回归",
+        "mastery": 0.4,
+        "category": "基础"
+      },
+      {
+        "id": "CNN",
+        "mastery": 0.3,
+        "category": "进阶"
+      },
+      {
+        "id": "梯度下降",
+        "mastery": 0.3,
+        "category": "进阶"
+      },
+      {
+        "id": "最小二乘法",
+        "mastery": 0.3,
+        "category": "基础"
+      },
+      {
+        "id": "模型评估",
+        "mastery": 0.3,
+        "category": "应用"
+      },
+      {
+        "id": "过拟合",
+        "mastery": 0.3,
+        "category": "进阶"
+      }
+    ],
+    "edges": [
+      {
+        "source": "梯度下降",
+        "target": "线性回归",
+        "relation": "相关"
+      },
+      {
+        "source": "最小二乘法",
+        "target": "线性回归",
+        "relation": "相关"
+      },
+      {
+        "source": "线性回归",
+        "target": "模型评估",
+        "relation": "相关"
+      },
+      {
+        "source": "线性回归",
+        "target": "过拟合",
+        "relation": "相关"
+      }
+    ]
+  },
+  "overall_score": 55.0,
+  "insight_text": "根据目前非常初期的学习记录，你的**知识基础**框架刚刚开始搭建，对线性回归和CNN有初步接触。其他维度如认知风格、学习目标等因数据有限，有待进一步观察。",
+  "action_item": "建议先巩固已接触的概念（如线性回归的数学表达），并明确下一步的学习目标（例如：系统学习机器学习基础）。",
+  "highlight_tags": [
+    "初步建立知识框架",
+    "测验表现尚可",
+    "学习数据待积累"
+  ],
+  "needs_onboarding": false
+}

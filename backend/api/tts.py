@@ -61,6 +61,9 @@ async def _generate_single_audio(text: str, output_path: Path) -> bool:
         "Authorization": f"Bearer {TTS_API_KEY}",
         "Content-Type": "application/json; charset=utf-8",
     }
+    text = text.strip()
+    logger.info("TTS generating for: %s", text[:60])
+
     payload = {
         "model": TTS_MODEL,
         "messages": [

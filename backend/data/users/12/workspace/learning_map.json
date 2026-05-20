@@ -1,0 +1,141 @@
+{
+  "title": "深度学习第三章：线性神经网络",
+  "subtitle": "2026-05-20 起 · 10天计划 · 每天2-3小时",
+  "nodes": [
+    {
+      "id": "day1",
+      "title": "Day 1: 线性回归基础",
+      "description": "线性回归的含义与数学表达、显式解析解（正规方程）、梯度下降迭代解、线性计算的向量化加速",
+      "status": "active",
+      "phase": "线性回归",
+      "checkpoint": "手推解析解 + 实现梯度下降 + 比较向量化性能差异",
+      "children": [
+        { "id": "day1-1", "title": "线性回归的含义与数学表达", "status": "active" },
+        { "id": "day1-2", "title": "显式解析解（正规方程）推导", "status": "locked" },
+        { "id": "day1-3", "title": "梯度下降迭代解原理与实现", "status": "locked" },
+        { "id": "day1-4", "title": "线性计算的向量化加速", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day2",
+      "title": "Day 2: 从线性回归到神经网络",
+      "description": "线性回归与神经网络的关系、同步更新机制、神经网络的基本结构",
+      "status": "locked",
+      "phase": "线性回归",
+      "checkpoint": "绘制结构对比图 + 实现简单前向传播",
+      "children": [
+        { "id": "day2-1", "title": "线性回归与神经网络的关系", "status": "locked" },
+        { "id": "day2-2", "title": "同步更新机制", "status": "locked" },
+        { "id": "day2-3", "title": "神经网络的基本结构", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day3",
+      "title": "Day 3: 线性回归的从零实现",
+      "description": "数据集准备与预处理、模型构建与参数初始化、损失函数定义、优化算法实现、模型训练流程",
+      "status": "locked",
+      "phase": "线性回归",
+      "checkpoint": "使用Python从零实现线性回归 + 在合成数据集上训练 + 可视化训练过程",
+      "children": [
+        { "id": "day3-1", "title": "数据集准备与预处理", "status": "locked" },
+        { "id": "day3-2", "title": "模型构建与参数初始化", "status": "locked" },
+        { "id": "day3-3", "title": "损失函数定义", "status": "locked" },
+        { "id": "day3-4", "title": "优化算法实现", "status": "locked" },
+        { "id": "day3-5", "title": "模型训练流程与可视化", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day4",
+      "title": "Day 4: PyTorch实现线性回归",
+      "description": "PyTorch基础：tensor操作、自动微分；使用PyTorch实现线性回归；模块化实现与简洁实现对比",
+      "status": "locked",
+      "phase": "线性回归",
+      "checkpoint": "使用PyTorch重写线性回归 + 比较手动实现与框架实现的代码差异",
+      "children": [
+        { "id": "day4-1", "title": "PyTorch基础：tensor操作与自动微分", "status": "locked" },
+        { "id": "day4-2", "title": "使用PyTorch实现线性回归（模块化）", "status": "locked" },
+        { "id": "day4-3", "title": "简洁实现与手动实现对比", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day5",
+      "title": "Day 5: softmax回归基础",
+      "description": "神经元数匹配类别数、多输出转概率分布（softmax函数）、概率分布差异（交叉熵损失）",
+      "status": "locked",
+      "phase": "Softmax回归",
+      "checkpoint": "实现softmax函数 + 实现交叉熵损失函数 + 在简单分类问题上测试",
+      "children": [
+        { "id": "day5-1", "title": "神经元数匹配类别数", "status": "locked" },
+        { "id": "day5-2", "title": "softmax函数原理与实现", "status": "locked" },
+        { "id": "day5-3", "title": "交叉熵损失函数原理与实现", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day6",
+      "title": "Day 6: softmax回归完整实现",
+      "description": "数据准备（Fashion-MNIST数据集）、模型构建和初始化、损失函数和优化函数定义、模型训练与评估",
+      "status": "locked",
+      "phase": "Softmax回归",
+      "checkpoint": "在Fashion-MNIST数据集上训练softmax回归模型 + 评估性能并可视化结果",
+      "children": [
+        { "id": "day6-1", "title": "Fashion-MNIST数据集准备", "status": "locked" },
+        { "id": "day6-2", "title": "softmax回归模型构建与初始化", "status": "locked" },
+        { "id": "day6-3", "title": "损失函数和优化函数定义", "status": "locked" },
+        { "id": "day6-4", "title": "模型训练、评估与可视化", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day7",
+      "title": "Day 7: 优化算法（一）",
+      "description": "梯度下降算法详解、动量法（Momentum）、AdaGrad算法",
+      "status": "locked",
+      "phase": "优化算法",
+      "checkpoint": "实现梯度下降/动量法/AdaGrad + 比较不同优化算法的收敛速度",
+      "children": [
+        { "id": "day7-1", "title": "梯度下降算法详解", "status": "locked" },
+        { "id": "day7-2", "title": "动量法（Momentum）原理与实现", "status": "locked" },
+        { "id": "day7-3", "title": "AdaGrad算法原理与实现", "status": "locked" },
+        { "id": "day7-4", "title": "不同优化算法收敛速度对比", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day8",
+      "title": "Day 8: 优化算法（二）",
+      "description": "RMSProp算法、Adadelta算法、Adam算法",
+      "status": "locked",
+      "phase": "优化算法",
+      "checkpoint": "实现RMSProp和Adam算法 + 在实际问题上比较不同优化算法性能",
+      "children": [
+        { "id": "day8-1", "title": "RMSProp算法原理与实现", "status": "locked" },
+        { "id": "day8-2", "title": "Adadelta算法原理与实现", "status": "locked" },
+        { "id": "day8-3", "title": "Adam算法原理与实现", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day9",
+      "title": "Day 9: 学习率调度",
+      "description": "基于时间/epoch的调度器、循环学习率调度器、学习率调度的使用方法",
+      "status": "locked",
+      "phase": "优化算法",
+      "checkpoint": "实现不同的学习率调度器 + 分析学习率调度对训练过程的影响",
+      "children": [
+        { "id": "day9-1", "title": "基于时间/epoch的学习率调度器", "status": "locked" },
+        { "id": "day9-2", "title": "循环学习率调度器", "status": "locked" },
+        { "id": "day9-3", "title": "学习率调度在训练中的应用与影响分析", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day10",
+      "title": "Day 10: 综合实践与复习",
+      "description": "综合项目：完整的线性神经网络实现、知识点回顾与总结、常见问题与解决方案",
+      "status": "locked",
+      "phase": "综合实践",
+      "checkpoint": "完成综合项目（房价预测/手写数字识别）+ 编写学习总结文档",
+      "children": [
+        { "id": "day10-1", "title": "综合项目：完整的线性神经网络实现", "status": "locked" },
+        { "id": "day10-2", "title": "知识点回顾与总结", "status": "locked" },
+        { "id": "day10-3", "title": "常见问题与解决方案梳理", "status": "locked" }
+      ]
+    }
+  ]
+}

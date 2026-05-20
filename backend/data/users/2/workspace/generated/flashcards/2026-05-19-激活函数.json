@@ -1,0 +1,132 @@
+
+{
+  "topic": "激活函数",
+  "total": 15,
+  "difficulty_distribution": {"基础": 6, "中等": 5, "困难": 4},
+  "generated_at": "2025-03-24T10:30:00",
+  "generated_by": "flashcard_composer",
+  "covered_topics": ["激活函数", "ReLU", "Sigmoid", "tanh", "梯度消失", "ReLU变体"],
+  "recommended_topics": ["损失函数", "反向传播", "权重初始化", "批归一化", "优化算法"],
+  "cards": [
+    {
+      "id": "fc1",
+      "front": "什么是激活函数？",
+      "back": "激活函数是隐藏层神经元中的非线性函数，用来判断神经元是否被激活，将输入信号转换为可微的输出。它为神经网络引入非线性能力，使网络能够拟合复杂函数。",
+      "difficulty": "基础",
+      "category": "概念",
+      "tags": ["激活函数", "非线性"]
+    },
+    {
+      "id": "fc2",
+      "front": "为什么神经网络必须使用激活函数？",
+      "back": "没有激活函数，多层网络等价于单层线性变换（矩阵连乘仍是矩阵），无法学习非线性关系。激活函数赋予网络「通用近似」能力——即使只有一个隐藏层，只要有足够神经元和合适的非线性激活，就能拟合任意连续函数。",
+      "difficulty": "基础",
+      "category": "原理",
+      "tags": ["非线性", "通用近似"]
+    },
+    {
+      "id": "fc3",
+      "front": "Sigmoid 函数的定义和值域是什么？",
+      "back": "Sigmoid 函数公式为 $\\sigma(x) = \frac{1}{1+e^{-x}}$，将任意实数映射到 $(0, 1)$ 区间。它是一个平滑可微的近似阈值函数，早期用于模拟生物神经元的激发与不激发。",
+      "difficulty": "基础",
+      "category": "公式",
+      "tags": ["Sigmoid", "激活函数"]
+    },
+    {
+      "id": "fc4",
+      "front": "Sigmoid 函数的导数有什么特点？",
+      "back": "Sigmoid 导数为 $\\sigma'(x) = \\sigma(x)(1-\\sigma(x))$，最大值仅为 0.25（在 $x=0$ 处）。当输入远离 0 时，导数趋近于 0。这意味着在深层网络中梯度会逐层衰减，容易引发梯度消失。",
+      "difficulty": "中等",
+      "category": "公式",
+      "tags": ["Sigmoid", "梯度消失"]
+    },
+    {
+      "id": "fc5",
+      "front": "tanh 函数的定义和值域是什么？",
+      "back": "tanh 函数公式为 $\tanh(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}$，将输入映射到 $(-1, 1)$ 区间。与 Sigmoid 不同，tanh 关于原点中心对称，当输入接近 0 时近似线性变换。",
+      "difficulty": "基础",
+      "category": "公式",
+      "tags": ["tanh", "激活函数"]
+    },
+    {
+      "id": "fc6",
+      "front": "ReLU 函数的定义是什么？",
+      "back": "ReLU（修正线性单元）公式为 $\text{ReLU}(x) = \\max(0, x)$。输入大于 0 时输出本身，输入小于等于 0 时输出 0。计算简单高效，是目前最受欢迎的激活函数。",
+      "difficulty": "基础",
+      "category": "公式",
+      "tags": ["ReLU", "激活函数"]
+    },
+    {
+      "id": "fc7",
+      "front": "ReLU 的导数有什么特点？",
+      "back": "ReLU 在 $x > 0$ 时导数恒为 1，$x < 0$ 时导数为 0。正区间导数不衰减，有效缓解梯度消失问题。但在 $x=0$ 处不可导（实践中取 0 或 1）。负区间梯度为 0 会导致「死亡 ReLU」现象。",
+      "difficulty": "中等",
+      "category": "原理",
+      "tags": ["ReLU", "梯度消失"]
+    },
+    {
+      "id": "fc8",
+      "front": "Sigmoid 和 tanh 的关键区别是什么？",
+      "back": "①值域：Sigmoid 输出 $(0,1)$，tanh 输出 $(-1,1)$；②中心化：tanh 关于原点对称，输出均值接近 0，有利于下一层学习；Sigmoid 输出恒正，可能导致梯度更新呈锯齿状。③梯度：tanh 导数最大值为 1，Sigmoid 最大仅 0.25，tanh 梯度更强。",
+      "difficulty": "中等",
+      "category": "对比",
+      "tags": ["Sigmoid", "tanh"]
+    },
+    {
+      "id": "fc9",
+      "front": "ReLU 相比 Sigmoid 的主要优势是什么？",
+      "back": "①缓解梯度消失：正区间导数恒为 1，梯度不衰减；②计算高效：只需比较和赋值，无需指数运算；③稀疏激活：负输入输出 0，约 50% 神经元被抑制，形成稀疏表示，提升泛化能力。因此 ReLU 已成为深度学习隐藏层的默认选择。",
+      "difficulty": "中等",
+      "category": "对比",
+      "tags": ["ReLU", "Sigmoid"]
+    },
+    {
+      "id": "fc10",
+      "front": "什么是梯度消失？与激活函数有何关系？",
+      "back": "深层网络反向传播时，梯度是多个矩阵的连乘积。使用 Sigmoid 等饱和激活函数时，导数最大仅 0.25，层数越深梯度越趋近 0，前层参数几乎不更新，模型无法学习。ReLU 正区间导数为 1，从根本上缓解了这一问题。",
+      "difficulty": "中等",
+      "category": "原理",
+      "tags": ["梯度消失", "Sigmoid", "ReLU"]
+    },
+    {
+      "id": "fc11",
+      "front": "什么是「死亡 ReLU」问题？",
+      "back": "当神经元输入恒为负时，ReLU 输出和梯度均为 0，该神经元永远无法被激活或更新，形同「死亡」。原因包括学习率过大导致权重偏移、初始化不当等。解决方案：使用 Leaky ReLU、PReLU 等变体，让负区间也有少量梯度通过。",
+      "difficulty": "困难",
+      "category": "概念",
+      "tags": ["ReLU", "死亡ReLU"]
+    },
+    {
+      "id": "fc12",
+      "front": "Leaky ReLU 和 PReLU 分别是什么？",
+      "back": "Leaky ReLU：$f(x) = \\max(\\alpha x, x)$，负区间斜率 $\\alpha$ 为小常数（如 0.01），避免死亡 ReLU。PReLU（参数化 ReLU）：$\\alpha$ 作为可学习参数，由网络自动调节负区间斜率。两者都保留了 ReLU 的优点，同时让负输入也能传递少量信息。",
+      "difficulty": "困难",
+      "category": "概念",
+      "tags": ["Leaky ReLU", "PReLU", "ReLU变体"]
+    },
+    {
+      "id": "fc13",
+      "front": "Sigmoid 在现代网络中的典型应用场景？",
+      "back": "Sigmoid 在隐藏层中已被 ReLU 取代，但在输出层仍广泛使用：①二分类任务的输出层，将输出映射为概率；②门控机制中（如 LSTM 的输入门、遗忘门、输出门，GRU 的更新门和重置门），用 Sigmoid 将门值控制在 0~1 之间实现信息筛选。",
+      "difficulty": "困难",
+      "category": "应用",
+      "tags": ["Sigmoid", "门控机制", "二分类"]
+    },
+    {
+      "id": "fc14",
+      "front": "tanh 在循环神经网络中的典型应用？",
+      "back": "在 LSTM 和 GRU 中，tanh 常用于计算候选记忆元和候选隐状态。因为 tanh 输出范围 $(-1, 1)$ 且关于原点对称，适合表示可正可负的状态信息，与 Sigmoid 门控配合使用，实现信息的写入与擦除。",
+      "difficulty": "困难",
+      "category": "应用",
+      "tags": ["tanh", "LSTM", "GRU"]
+    },
+    {
+      "id": "fc15",
+      "front": "如何选择激活函数？",
+      "back": "①隐藏层首选 ReLU（默认选择），训练快、效果好；②若出现死亡 ReLU，换用 Leaky ReLU 或 PReLU；③输出层根据任务选择：二分类用 Sigmoid，多分类用 Softmax，回归用线性激活；④RNN/LSTM 门控中用 Sigmoid，状态计算用 tanh。",
+      "difficulty": "基础",
+      "category": "应用",
+      "tags": ["激活函数", "选择策略"]
+    }
+  ]
+}

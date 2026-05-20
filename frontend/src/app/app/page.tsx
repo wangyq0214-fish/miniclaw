@@ -100,6 +100,7 @@ function MainContent() {
       try {
         await authApi.logout(token);
         tokenManager.removeToken();
+        localStorage.removeItem('miniclaw_user_id');
         toast.success('已登出');
         router.push('/login');
       } catch (error) {

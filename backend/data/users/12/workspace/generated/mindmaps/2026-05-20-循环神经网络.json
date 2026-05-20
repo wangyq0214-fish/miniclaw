@@ -1,0 +1,113 @@
+{
+  "title": "循环神经网络",
+  "topic_slug": "rnn-interactive",
+  "node_count": 20,
+  "max_depth": 3,
+  "generated_at": "2026-05-02T12:00:00Z",
+  "generated_by": "mindmap_designer",
+  "tree": {
+    "title": "RNN 循环神经网络",
+    "summary": "处理序列数据的神经网络，具有记忆能力",
+    "details": ["通过隐藏状态传递时序信息", "适用于文本、语音等序列任务", "参数在时间步间共享"],
+    "children": [
+      {
+        "title": "核心结构",
+        "summary": "RNN 的基本组成和数据流",
+        "details": ["循环层为核心计算单元", "输出层将隐状态映射为结果", "时间步间共享参数"],
+        "children": [
+          {
+            "title": "隐藏状态",
+            "summary": "传递时序信息的记忆载体",
+            "details": ["融合当前输入与历史信息", "逐时间步更新", "是 RNN 记忆的关键"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "循环层",
+            "summary": "执行时间步计算的核心层",
+            "details": ["接收输入与上一隐状态", "通过权重矩阵计算新状态", "每个时间步复用同一组参数"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "输出层",
+            "summary": "将隐状态映射为最终输出",
+            "details": ["常用全连接层实现", "可选择性输出时间步", "输出维度由任务决定"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "训练问题",
+        "summary": "RNN 训练中的核心挑战",
+        "details": ["反向传播通过时间展开", "长序列导致梯度不稳定", "需要特殊技巧缓解"],
+        "children": [
+          {
+            "title": "梯度消失",
+            "summary": "长序列训练时梯度趋近于零",
+            "details": ["连乘小梯度导致消失", "远距离依赖难以学习", "LSTM/GRU 可缓解"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "梯度爆炸",
+            "summary": "梯度值指数级增长导致训练崩溃",
+            "details": ["连乘大梯度导致爆炸", "参数更新剧烈震荡", "梯度裁剪可控制"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "参数更新",
+            "summary": "通过 BPTT 算法更新共享参数",
+            "details": ["沿时间步反向传播梯度", "所有时间步梯度累加", "学习率需谨慎设置"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "改进变体",
+        "summary": "解决原始 RNN 缺陷的高级架构",
+        "details": ["引入门控机制选择记忆", "更好捕捉长距离依赖", "现代 NLP 的基础组件"],
+        "children": [
+          {
+            "title": "LSTM",
+            "summary": "长短期记忆网络，引入三重门控",
+            "details": ["遗忘门、输入门、输出门", "独立的细胞状态通道", "有效缓解梯度消失"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "GRU",
+            "summary": "门控循环单元，LSTM 的简化版",
+            "details": ["仅用更新门和重置门", "参数更少训练更快", "性能常与 LSTM 相当"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "应用场景",
+        "summary": "RNN 擅长处理的序列任务",
+        "details": ["自然语言处理核心模型", "时序预测与语音识别", "逐步被 Transformer 替代"],
+        "children": [
+          {
+            "title": "序列数据",
+            "summary": "具有时间或顺序关系的数据",
+            "details": ["文本、语音、时间序列", "前后元素存在依赖", "变长输入是常见特点"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "编码器-解码器",
+            "summary": "处理序列到序列任务的经典架构",
+            "details": ["编码器压缩输入序列", "解码器生成输出序列", "结合注意力机制效果更佳"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      }
+    ]
+  }
+}

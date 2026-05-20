@@ -1057,3 +1057,196 @@ export async function getEvaluationHistory(limit: number = 30): Promise<{ report
   if (!response.ok) throw new Error(`API error: ${response.statusText}`);
   return response.json();
 }
+
+// ── Learning Progress ──
+
+export interface LearningProgressItem {
+  node_id: string;
+  action: string;
+  phase: string;
+  score?: number;
+  total?: number;
+  correct?: number;
+  file_path?: string;
+  completed_at?: string;
+}
+
+export async function loadLearningProgress(): Promise<LearningProgressItem[]> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(
+    `${getApiBase()}/api/learning-progress`,
+    { headers },
+  );
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.items ?? [];
+}
+
+export async function saveLearningProgress(params: {
+  node_id: string;
+  action: string;
+  phase: string;
+  score?: number;
+  total?: number;
+  correct?: number;
+  file_path?: string;
+  node_title?: string;
+}): Promise<void> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
+  const response = await fetch(
+    `${getApiBase()}/api/learning-progress`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(params),
+    },
+  );
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+}
+
+// ── Student Profile ──
+
+export interface DimensionDetail {
+  score: number;
+  concepts?: { name: string; mastery: number }[];
+  summary?: string;
+  style?: string;
+  traits?: string[];
+  patterns?: { topic: string; type: string; count: number }[];
+  pace?: string;
+  mood?: string;
+  short_term?: string;
+  long_term?: string;
+  progress?: string;
+}
+
+export interface KnowledgeGraphNode {
+  id: string;
+  mastery: number;
+  category: string;
+}
+
+export interface KnowledgeGraphEdge {
+  source: string;
+  target: string;
+  relation: string;
+}
+
+export interface KnowledgeGraph {
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+}
+
+export interface StudentProfile {
+  schema_version: string;
+  generated_at: string;
+  dimensions: {
+    knowledge_foundation: DimensionDetail;
+    cognitive_style: DimensionDetail;
+    error_patterns: DimensionDetail;
+    learning_rhythm: DimensionDetail;
+    affective_state: DimensionDetail;
+    goal_progress: DimensionDetail;
+  };
+  knowledge_graph: KnowledgeGraph;
+  overall_score: number;
+  insight_text: string;
+  action_item: string;
+  highlight_tags: string[];
+  needs_onboarding?: boolean;
+}
+
+export const DIMENSION_LABELS: Record<string, string> = {
+  knowledge_foundation: '知识基础',
+  cognitive_style: '认知风格',
+  error_patterns: '易错分析',
+  learning_rhythm: '学习节奏',
+  affective_state: '情感态度',
+  goal_progress: '目标达成',
+};
+
+export async function generateProfile(forceRefresh: boolean = false): Promise<StudentProfile> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
+  const response = await fetch(
+    `${getApiBase()}/api/profile/generate`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ force_refresh: forceRefresh }),
+    },
+  );
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function initProfile(major: string, goal: string, grade?: string): Promise<void> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
+  const response = await fetch(
+    `${getApiBase()}/api/profile/init`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ major, goal, grade }),
+    },
+  );
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+}
+
+export async function appendMistake(mistake: {
+  question_text: string;
+  topic: string;
+  user_answer: string;
+  correct_answer: string;
+  error_type?: string;
+}): Promise<void> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
+  const response = await fetch(
+    `${getApiBase()}/api/profile/mistakes`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(mistake),
+    },
+  );
+  if (!response.ok) {
+    // Non-critical, just log warning
+    console.warn('Failed to append mistake:', response.statusText);
+  }
+}

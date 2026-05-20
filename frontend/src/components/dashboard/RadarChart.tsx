@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import type { RadarScores } from '@/lib/api';
+import type { DimensionDetail, StudentProfile } from '@/lib/api';
+import { DIMENSION_LABELS } from '@/lib/api';
 
 function useIsDark() {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -13,25 +14,21 @@ function useIsDark() {
   return isDark;
 }
 
-const DIMENSIONS: { key: keyof RadarScores; label: string }[] = [
-  { key: 'memory', label: '基础记忆' },
-  { key: 'logic', label: '逻辑推演' },
-  { key: 'application', label: '综合应用' },
-  { key: 'innovation', label: '创新思维' },
-  { key: 'breadth', label: '知识广度' },
-];
-
-const NUM_AXES = DIMENSIONS.length;
-const ANGLE_STEP = (2 * Math.PI) / NUM_AXES;
-const START_ANGLE = -Math.PI / 2; // Start from top
 const CENTER = 150;
 const MAX_RADIUS = 110;
 
-interface RadarChartProps {
-  scores: RadarScores;
+interface RadarDimension {
+  key: string;
+  label: string;
+  score: number;
+  detail?: string;
 }
 
-export function RadarChart({ scores }: RadarChartProps) {
+interface RadarChartProps {
+  profile: StudentProfile;
+}
+
+export function RadarChart({ profile }: RadarChartProps) {
   const isDark = useIsDark();
 
   // Theme-aware colors
@@ -40,9 +37,23 @@ export function RadarChart({ scores }: RadarChartProps) {
   const pointFill = isDark ? '#18181b' : '#ffffff';
   const pointStroke = isDark ? 'rgba(59, 130, 246, 1)' : '#3b82f6';
 
+  // Build dimensions from profile
+  const dimensions: RadarDimension[] = useMemo(() => {
+    return Object.entries(profile.dimensions).map(([key, dim]) => ({
+      key,
+      label: DIMENSION_LABELS[key] || key,
+      score: dim.score,
+      detail: dim.summary || dim.style || dim.mood || dim.pace || dim.progress || '',
+    }));
+  }, [profile.dimensions]);
+
+  const numAxes = dimensions.length;
+  const angleStep = (2 * Math.PI) / numAxes;
+  const startAngle = -Math.PI / 2; // Start from top
+
   const axes = useMemo(() => {
-    return DIMENSIONS.map((dim, i) => {
-      const angle = START_ANGLE + i * ANGLE_STEP;
+    return dimensions.map((dim, i) => {
+      const angle = startAngle + i * angleStep;
       return {
         ...dim,
         angle,
@@ -50,19 +61,19 @@ export function RadarChart({ scores }: RadarChartProps) {
         y: CENTER + MAX_RADIUS * Math.sin(angle),
       };
     });
-  }, []);
+  }, [dimensions, angleStep]);
 
   const dataPolygon = useMemo(() => {
     return axes
       .map((axis) => {
-        const value = (scores[axis.key] ?? 0) / 100;
+        const value = axis.score / 100;
         const r = MAX_RADIUS * value;
         const x = CENTER + r * Math.cos(axis.angle);
         const y = CENTER + r * Math.sin(axis.angle);
         return `${x},${y}`;
       })
       .join(' ');
-  }, [axes, scores]);
+  }, [axes]);
 
   // Grid rings (20%, 40%, 60%, 80%, 100%)
   const rings = [0.2, 0.4, 0.6, 0.8, 1.0];
@@ -113,7 +124,7 @@ export function RadarChart({ scores }: RadarChartProps) {
 
         {/* Data points */}
         {axes.map((axis, i) => {
-          const value = (scores[axis.key] ?? 0) / 100;
+          const value = axis.score / 100;
           const r = MAX_RADIUS * value;
           const cx = CENTER + r * Math.cos(axis.angle);
           const cy = CENTER + r * Math.sin(axis.angle);

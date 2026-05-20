@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Minus, Clock, Brain } from 'lucide-react';
+import { getUserItem, setUserItem } from '@/lib/userStorage';
 
 interface StatCardsProps {
   summaryScore: number;
-  effectiveSeconds: number;
   masteredPoints: number;
+  highlightTags?: string[];
   previousScore?: number;
 }
 
@@ -19,23 +20,25 @@ function formatDuration(totalSeconds: number): string {
   return `${seconds}秒`;
 }
 
-// Track online duration with localStorage persistence
+// Track online duration with user-scoped localStorage persistence
+const ONLINE_KEY = 'online_start';
+
 function useOnlineDuration() {
   const [seconds, setSeconds] = useState(() => {
     if (typeof window === 'undefined') return 0;
-    const stored = localStorage.getItem('online_start');
+    const stored = getUserItem(ONLINE_KEY);
     if (stored) {
       const start = parseInt(stored, 10);
       return Math.floor((Date.now() - start) / 1000);
     }
     const now = Date.now();
-    localStorage.setItem('online_start', String(now));
+    setUserItem(ONLINE_KEY, String(now));
     return 0;
   });
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const stored = localStorage.getItem('online_start');
+      const stored = getUserItem(ONLINE_KEY);
       if (stored) {
         const start = parseInt(stored, 10);
         setSeconds(Math.floor((Date.now() - start) / 1000));
@@ -47,7 +50,7 @@ function useOnlineDuration() {
   return seconds;
 }
 
-export function StatCards({ summaryScore, effectiveSeconds, masteredPoints, previousScore }: StatCardsProps) {
+export function StatCards({ summaryScore, masteredPoints, highlightTags, previousScore }: StatCardsProps) {
   const onlineSeconds = useOnlineDuration();
   const diff = previousScore != null ? summaryScore - previousScore : 0;
   const trend = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';

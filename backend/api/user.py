@@ -8,8 +8,10 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from auth.security import get_current_user
 from models import User
+from config import get_user_memory_dir
 import os
 import yaml
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -66,45 +68,45 @@ def parse_user_md(file_path: str) -> Dict[str, Any]:
         for line in lines:
             line = line.strip()
 
-            if '## 1. 基础信息' in line:
+            if '## 基本信息' in line or '## 1. 基础信息' in line:
                 current_section = 'basic'
-            elif '## 2. 学习目标' in line:
+            elif '## 学习目标' in line or '## 2. 学习目标' in line:
                 current_section = 'goals'
-            elif '## 4. 认知风格' in line:
+            elif '## 学习偏好' in line or '## 4. 认知风格' in line:
                 current_section = 'cognitive'
             elif line.startswith('##'):
                 current_section = None
 
             if current_section == 'basic':
-                if line.startswith('- 姓名 / 昵称:'):
+                if line.startswith('- 姓名') and ':' in line:
                     name = line.split(':', 1)[1].strip()
                     if name and name != '未知':
                         basic_info['name'] = name
-                elif line.startswith('- 专业:'):
+                elif line.startswith('- 专业') and ':' in line:
                     major = line.split(':', 1)[1].strip()
                     if major and major != '未知':
                         basic_info['major'] = major
-                elif line.startswith('- 年级 / 学段:'):
+                elif line.startswith('- 年级') and ':' in line:
                     grade = line.split(':', 1)[1].strip()
                     if grade and grade != '未知':
                         basic_info['grade'] = grade
-                elif line.startswith('- 所在学校:'):
+                elif line.startswith('- 学校') and ':' in line:
                     school = line.split(':', 1)[1].strip()
                     if school and school != '未知':
                         basic_info['school'] = school
 
             elif current_section == 'goals':
-                if line.startswith('- 短期目标'):
-                    goal = line.split(':', 1)[1].strip() if ':' in line else ''
+                if line.startswith('- 短期目标') and ':' in line:
+                    goal = line.split(':', 1)[1].strip()
                     if goal and goal != '未知':
                         learning_goals['short_term'] = goal
-                elif line.startswith('- 长期目标'):
-                    goal = line.split(':', 1)[1].strip() if ':' in line else ''
+                elif line.startswith('- 长期目标') and ':' in line:
+                    goal = line.split(':', 1)[1].strip()
                     if goal and goal != '未知':
                         learning_goals['long_term'] = goal
 
             elif current_section == 'cognitive':
-                if line.startswith('- 示例驱动 vs 理论驱动:'):
+                if line.startswith('- 偏好') and ':' in line:
                     pref = line.split(':', 1)[1].strip()
                     if pref and pref != '未知':
                         cognitive_style['preference'] = pref
@@ -120,77 +122,47 @@ def parse_user_md(file_path: str) -> Dict[str, Any]:
 
 
 def update_user_md(file_path: str, profile: UserProfileUpdate):
-    """Update USER.md file with new profile information"""
-    if not os.path.exists(file_path):
-        # Create default USER.md if not exists
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write("""---
-schema_version: 1.0
-last_updated: null
-confidence_overall: 0.0
----
+    """Update USER.md file with new profile information (overwrite)."""
+    # Read existing to merge with new values
+    existing = {}
+    if os.path.exists(file_path):
+        existing = parse_user_md(file_path)
 
-# 学生画像(Student Profile)
+    # Merge: new values override existing
+    basic = existing.get('basic_info') or {}
+    if profile.basic_info:
+        for field in ['name', 'major', 'grade', 'school']:
+            val = getattr(profile.basic_info, field, None)
+            if val:
+                basic[field] = val
 
-## 1. 基础信息(Basic Info)
-- 姓名 / 昵称:未知
-- 专业:未知
-- 年级 / 学段:未知
-- 所在学校:未知
-- last_updated: null
-- confidence: 0.0
+    goals = existing.get('learning_goals') or {}
+    if profile.learning_goals:
+        for field in ['short_term', 'long_term']:
+            val = getattr(profile.learning_goals, field, None)
+            if val:
+                goals[field] = val
 
-## 2. 学习目标(Learning Goals)
-- 短期目标(1-4 周):未知
-- 长期目标(学期级):未知
-- last_updated: null
-- confidence: 0.0
+    cog = existing.get('cognitive_style') or {}
+    if profile.cognitive_style and profile.cognitive_style.preference:
+        cog['preference'] = profile.cognitive_style.preference
 
-## 4. 认知风格(Cognitive Style)
-- 示例驱动 vs 理论驱动:未知
-- last_updated: null
-- confidence: 0.0
-""")
+    # Write clean format
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    content = "# 用户信息\n\n"
+    content += "## 基本信息\n"
+    content += f"- 姓名：{basic.get('name', '未知')}\n"
+    content += f"- 专业：{basic.get('major', '未知')}\n"
+    content += f"- 年级：{basic.get('grade', '未知')}\n"
+    content += f"- 学校：{basic.get('school', '未知')}\n"
+    content += "\n## 学习目标\n"
+    content += f"- 短期目标：{goals.get('short_term', '未知')}\n"
+    content += f"- 长期目标：{goals.get('long_term', '未知')}\n"
+    content += "\n## 学习偏好\n"
+    content += f"- 偏好：{cog.get('preference', '未知')}\n"
 
-    # Read current content
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    lines = content.split('\n')
-    new_lines = []
-
-    for line in lines:
-        new_line = line
-
-        # Update basic info
-        if profile.basic_info:
-            if line.strip().startswith('- 姓名 / 昵称:') and profile.basic_info.name:
-                new_line = f"- 姓名 / 昵称:{profile.basic_info.name}"
-            elif line.strip().startswith('- 专业:') and profile.basic_info.major:
-                new_line = f"- 专业:{profile.basic_info.major}"
-            elif line.strip().startswith('- 年级 / 学段:') and profile.basic_info.grade:
-                new_line = f"- 年级 / 学段:{profile.basic_info.grade}"
-            elif line.strip().startswith('- 所在学校:') and profile.basic_info.school:
-                new_line = f"- 所在学校:{profile.basic_info.school}"
-
-        # Update learning goals
-        if profile.learning_goals:
-            if line.strip().startswith('- 短期目标') and profile.learning_goals.short_term:
-                new_line = f"- 短期目标(1-4 周):{profile.learning_goals.short_term}"
-            elif line.strip().startswith('- 长期目标') and profile.learning_goals.long_term:
-                new_line = f"- 长期目标(学期级):{profile.learning_goals.long_term}"
-
-        # Update cognitive style
-        if profile.cognitive_style:
-            if line.strip().startswith('- 示例驱动 vs 理论驱动:') and profile.cognitive_style.preference:
-                new_line = f"- 示例驱动 vs 理论驱动:{profile.cognitive_style.preference}"
-
-        new_lines.append(new_line)
-
-    # Write back
     with open(file_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(new_lines))
+        f.write(content)
 
 
 @router.get("/profile", response_model=UserProfileResponse)
@@ -222,6 +194,57 @@ async def get_user_profile(current_user: User = Depends(get_current_user)):
     )
 
 
+def _sync_to_memory(user_id: int, profile: UserProfileUpdate):
+    """Write changed fields to memory.md, replacing the last settings entry."""
+    import re as _re
+    try:
+        memory_dir = get_user_memory_dir(user_id)
+        memory_dir.mkdir(parents=True, exist_ok=True)
+        memory_file = memory_dir / "memory.md"
+
+        parts = []
+        if profile.basic_info:
+            bi = profile.basic_info
+            if bi.name:
+                parts.append(f"姓名：{bi.name}")
+            if bi.major:
+                parts.append(f"专业：{bi.major}")
+            if bi.grade:
+                parts.append(f"年级：{bi.grade}")
+            if bi.school:
+                parts.append(f"学校：{bi.school}")
+        if profile.learning_goals:
+            lg = profile.learning_goals
+            if lg.short_term:
+                parts.append(f"短期目标：{lg.short_term}")
+            if lg.long_term:
+                parts.append(f"长期目标：{lg.long_term}")
+        if profile.cognitive_style and profile.cognitive_style.preference:
+            parts.append(f"学习偏好：{profile.cognitive_style.preference}")
+
+        if not parts:
+            return
+
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        new_entry = f"\n## {now} — 用户设置更新\n" + "\n".join(f"- {p}" for p in parts) + "\n"
+
+        existing = ""
+        if memory_file.exists():
+            existing = memory_file.read_text(encoding="utf-8")
+
+        # Replace last "用户设置更新" section, or append if none exists
+        pattern = r'\n## [^\n]*— 用户设置更新\n(?:.*?)(?=\n## |\Z)'
+        if existing and _re.search(pattern, existing, re.DOTALL):
+            content = _re.sub(pattern, new_entry.rstrip(), existing, count=1, flags=_re.DOTALL)
+        else:
+            content = existing + new_entry if existing else f"# 学习记忆\n{new_entry}"
+
+        memory_file.write_text(content, encoding="utf-8")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to sync profile to memory.md: {e}")
+
+
 @router.put("/profile")
 async def update_user_profile(
     profile: UserProfileUpdate,
@@ -234,6 +257,9 @@ async def update_user_profile(
     try:
         # Update USER.md
         update_user_md(user_md_path, profile)
+
+        # Sync to memory.md for profile generation
+        _sync_to_memory(current_user.id, profile)
 
         # Update username in database if provided
         if profile.username and profile.username != current_user.username:

@@ -3,15 +3,21 @@ Chat API - SSE Streaming Conversation Endpoint
 
 Core endpoint for AI chat with tool calling and RAG support.
 """
+import asyncio
 import json
 import logging
+import re
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import AsyncGenerator, Optional, List
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
 
-from config import settings
+from config import settings, get_user_memory_dir
 from memory import system_prompt_builder, session_manager
 from memory.hybrid_session import HybridSessionManager
 from memory.redis_session import RedisSessionManager
@@ -25,6 +31,126 @@ from middleware.rate_limit import rate_limit_chat
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+HISTORY_MAX = 50       # Trigger summarization when history exceeds this
+HISTORY_KEEP = 20      # Keep this many recent entries after summarization
+
+
+async def _summarize_and_migrate(user_id: int, history: list) -> list:
+    """
+    Summarize old history entries via LLM and append to memory.md.
+    Returns the trimmed history (last HISTORY_KEEP entries).
+    """
+    try:
+        memory_dir = get_user_memory_dir(user_id)
+        memory_file = memory_dir / "memory.md"
+
+        # Take the oldest entries to summarize
+        to_summarize = history[:len(history) - HISTORY_KEEP]
+        kept = history[len(history) - HISTORY_KEEP:]
+
+        # Build summarization prompt
+        entries_text = json.dumps(to_summarize, ensure_ascii=False, indent=2)
+        prompt = (
+            "请将以下对话记录总结为一段简洁的学习记忆，用中文，200字以内。\n"
+            "重点提炼：学了什么知识点、掌握了什么概念、有什么学习偏好。\n"
+            "不要逐条列举，而是归纳总结。\n\n"
+            f"对话记录：\n{entries_text}"
+        )
+
+        model = ChatOpenAI(
+            model=settings.openai_model,
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_api_base,
+            temperature=0.3,
+            max_tokens=500,
+        )
+
+        response = await model.ainvoke([
+            SystemMessage(content="你是一个学习记录摘要助手，擅长从对话中提炼关键学习信息。"),
+            HumanMessage(content=prompt),
+        ])
+        summary = response.content.strip()
+        if not summary:
+            logger.warning("LLM returned empty summary, skipping migration")
+            return history[-HISTORY_KEEP:]
+
+        # Append to memory.md
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+        entry = f"\n## {now} — 对话学习摘要\n{summary}\n"
+
+        existing = ""
+        if memory_file.exists():
+            existing = memory_file.read_text(encoding="utf-8")
+
+        content = existing + entry if existing else f"# 学习记忆\n{entry}"
+        memory_file.write_text(content, encoding="utf-8")
+
+        logger.info(f"Migrated {len(to_summarize)} history entries to memory.md for user {user_id}")
+        return kept
+
+    except Exception as e:
+        logger.warning(f"Failed to summarize history: {e}")
+        return history[-HISTORY_KEEP:]
+
+
+async def _append_to_history(
+    user_id: int,
+    session_id: str,
+    user_message: str,
+    assistant_content: str,
+):
+    """
+    Append conversation record to memory/history.json (non-blocking).
+    When history exceeds HISTORY_MAX, summarize old entries and migrate to memory.md.
+    """
+    try:
+        memory_dir = get_user_memory_dir(user_id)
+        memory_dir.mkdir(parents=True, exist_ok=True)
+        history_file = memory_dir / "history.json"
+
+        # Read existing history
+        history = []
+        if history_file.exists():
+            try:
+                history = json.loads(history_file.read_text(encoding="utf-8"))
+                if not isinstance(history, list):
+                    history = []
+            except (json.JSONDecodeError, Exception):
+                history = []
+
+        # Extract structured info
+        topic = user_message[:30].replace("\n", " ").strip()
+        if len(user_message) > 30:
+            topic += "..."
+
+        summary = assistant_content[:200].replace("\n", " ").strip()
+        if len(assistant_content) > 200:
+            summary += "..."
+
+        record = {
+            "session_id": session_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "topic": topic,
+            "summary": summary,
+            "user_message_preview": user_message[:100],
+            "response_length": len(assistant_content),
+        }
+
+        history.append(record)
+
+        # Check if summarization is needed
+        if len(history) > HISTORY_MAX:
+            history = await _summarize_and_migrate(user_id, history)
+
+        history_file.write_text(
+            json.dumps(history, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+
+    except Exception as e:
+        logger.warning(f"Failed to append to history.json: {e}")
 
 
 async def get_hybrid_manager(
@@ -152,7 +278,7 @@ async def stream_chat_response(
         agent_manager.tools = tools
 
         # Build system prompt
-        system_prompt = system_prompt_builder.build(rag_mode=rag_mode)
+        system_prompt = system_prompt_builder.build(rag_mode=rag_mode, user_id=user_id)
 
         # Track segments for multi-tool responses
         segments = []
@@ -236,6 +362,11 @@ async def stream_chat_response(
                 # Send done event
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
+                # Append to history.json asynchronously
+                asyncio.create_task(
+                    _append_to_history(user_id, session_id, message, full_content)
+                )
+
                 # Generate title for first message
                 if is_first_message:
                     title = await generate_title(message, session_id)
@@ -311,7 +442,7 @@ async def chat(
             history = await hybrid_manager.load_session_for_agent(request.session_id)
 
             # Build system prompt
-            system_prompt = system_prompt_builder.build()
+            system_prompt = system_prompt_builder.build(user_id=current_user.id)
 
             # Collect all events
             full_content = ""
@@ -355,6 +486,11 @@ async def chat(
                     session_id=request.session_id,
                     metadata={"title": title}
                 )
+
+            # Append to history.json asynchronously
+            asyncio.create_task(
+                _append_to_history(current_user.id, request.session_id, request.message, full_content)
+            )
 
             return ChatResponse(
                 message=full_content,

@@ -1,0 +1,228 @@
+{
+  "topic": "环境搭建与数学基础",
+  "total": 7,
+  "difficulty_distribution": {"基础": 5, "中等": 2, "困难": 0},
+  "generated_at": "2025-07-14T10:30:00",
+  "generated_by": "exercise_composer",
+  "covered_topics": ["深度学习概念", "Miniconda与虚拟环境", "张量", "偏导数与梯度", "梯度下降", "自动微分"],
+  "recommended_topics": ["PyTorch张量操作", "线性回归", "反向传播算法", "损失函数", "小批量随机梯度下降"],
+  "questions": [
+    {
+      "question_id": "q1",
+      "question_text_md": "深度学习（Deep Learning）与人工智能（AI）、机器学习（ML）之间的包含关系，以下哪项描述是正确的？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "人工智能 ⊃ 机器学习 ⊃ 深度学习",
+          "explanation_md": "人工智能是最广泛的概念，涵盖所有让机器模拟人类智能的技术。机器学习是人工智能的一个子集，通过数据驱动的方式让机器自动学习规律。深度学习是机器学习的一个子集，特指使用深层神经网络进行学习的方法。三者是逐层包含的关系。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "深度学习 ⊃ 机器学习 ⊃ 人工智能",
+          "explanation_md": "这个关系完全颠倒了。深度学习只是机器学习中的一种方法，不可能包含机器学习；机器学习也只是人工智能的一个分支，不可能包含人工智能。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "三者是完全独立的技术领域，互不相关",
+          "explanation_md": "三者并非独立，而是有明确的层次关系。深度学习是机器学习的子领域，机器学习又是人工智能的子领域。它们之间有紧密的包含与继承关系。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "机器学习 ⊃ 人工智能 ⊃ 深度学习",
+          "explanation_md": "这个关系也是错误的。人工智能是最大的范畴，不可能被机器学习包含。同时深度学习属于机器学习，而非人工智能的直接子集（虽然广义上也可以这么说，但中间缺少了机器学习这一层）。"
+        }
+      ]
+    },
+    {
+      "question_id": "q2",
+      "question_text_md": "在搭建深度学习开发环境时，Miniconda 的主要作用是什么？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "编写和调试 Python 代码",
+          "explanation_md": "编写和调试代码是 IDE（如 PyCharm）或交互式环境（如 Jupyter）的功能，不是 Miniconda 的职责。Miniconda 是一个环境和包管理工具，不提供代码编辑功能。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "管理虚拟环境和 Python 软件包",
+          "explanation_md": "Miniconda 是一个轻量级的虚拟环境和软件包管理工具，包含 pip 和 conda 两个包管理器。它允许用户创建隔离的虚拟环境，为不同项目安装不同版本的 Python 和依赖库，避免包版本冲突。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "提供 GPU 加速的计算能力",
+          "explanation_md": "GPU 加速能力由 NVIDIA 显卡硬件和 CUDA 驱动提供，不是 Miniconda 的功能。Miniconda 可以帮助安装 PyTorch 等支持 GPU 的库，但它本身不提供计算加速。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "实现神经网络的自动微分功能",
+          "explanation_md": "自动微分是深度学习框架（如 PyTorch、TensorFlow）内置的功能，用于自动计算梯度。Miniconda 只是帮助安装这些框架，本身并不实现任何深度学习算法。"
+        }
+      ]
+    },
+    {
+      "question_id": "q3",
+      "question_text_md": "在深度学习中，「张量（Tensor）」本质上是什么？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "一种特殊的神经网络层",
+          "explanation_md": "张量不是网络层，而是数据的表示形式。神经网络层（如全连接层、卷积层）是对张量进行变换的计算单元，而张量是这些计算单元所操作的数据对象。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "一种优化算法",
+          "explanation_md": "优化算法（如 SGD、Adam）用于更新模型参数，与张量是完全不同的概念。张量是多维数组的数据结构，是深度学习中数据存储和运算的基本单位。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "一个多维数组，是深度学习中数据存储和运算的基本单位",
+          "explanation_md": "张量是多维数组的推广：标量是0维张量，向量是1维张量，矩阵是2维张量，更高维的数组统称为张量。深度学习中的输入数据、模型参数、中间计算结果都以张量的形式存储和运算。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "一种损失函数",
+          "explanation_md": "损失函数（如均方误差、交叉熵）用于衡量模型预测与真实值之间的差距。张量是数据的容器，损失函数的输入和输出都是张量，但张量本身不是损失函数。"
+        }
+      ]
+    },
+    {
+      "question_id": "q4",
+      "question_text_md": "对于多元函数 $f(x_1, x_2, ..., x_n)$，其「梯度」是什么？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "函数值本身",
+          "explanation_md": "函数值是标量输出，而梯度是一个向量。梯度描述的是函数在某一点处变化最快的方向和速率，不是函数值本身。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "函数对某一个变量的偏导数",
+          "explanation_md": "对某一个变量的偏导数只是梯度的一个分量。梯度是将所有变量的偏导数组合在一起形成的向量，即 $\\nabla f = \\left(\\frac{\\partial f}{\\partial x_1}, \\frac{\\partial f}{\\partial x_2}, ..., \\frac{\\partial f}{\\partial x_n}\\right)$。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "由函数对所有变量的偏导数组成的向量",
+          "explanation_md": "梯度是一个向量，其每个分量是函数对相应变量的偏导数。梯度的方向指向函数值增长最快的方向，其负方向就是梯度下降算法中参数更新的方向。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "函数的二阶导数",
+          "explanation_md": "二阶导数描述的是函数的曲率（凹凸性），与梯度是不同阶的导数。梯度由一阶偏导数组成，用于指导优化方向；二阶导数则用于更高级的优化方法（如牛顿法）。"
+        }
+      ]
+    },
+    {
+      "question_id": "q5",
+      "question_text_md": "在 PyTorch 中，使用 `conda create -n dl_env python=3.10` 命令创建虚拟环境后，激活该环境的正确命令是以下哪一个？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "conda start dl_env",
+          "explanation_md": "`conda start` 不是有效的 conda 命令。conda 没有 start 子命令来激活环境，这是常见的记忆错误。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "conda activate dl_env",
+          "explanation_md": "`conda activate <环境名>` 是 conda 激活虚拟环境的标准命令。激活后，终端提示符通常会显示当前环境名，后续安装的包将只作用于该环境，实现环境隔离。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "conda install dl_env",
+          "explanation_md": "`conda install` 是安装软件包的命令，不是激活环境的命令。例如 `conda install pytorch` 是安装 PyTorch，与激活环境无关。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "conda open dl_env",
+          "explanation_md": "`conda open` 不是有效的 conda 命令。conda 的环境管理命令主要包括 create、activate、deactivate、remove 等，没有 open 子命令。"
+        }
+      ]
+    },
+    {
+      "question_id": "q6",
+      "question_text_md": "在梯度下降算法中，学习率 $\\eta$ 设置得过大，最可能出现什么问题？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "收敛速度变慢，需要更多迭代次数",
+          "explanation_md": "收敛速度变慢是学习率过小的表现。学习率过小时，每次参数更新的步长很小，需要非常多的迭代才能接近最优解。而学习率过大的问题恰恰相反——步子迈得太大。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "模型参数被固定不变，无法更新",
+          "explanation_md": "模型参数不会因为学习率过大而停止更新。只要梯度不为零，参数就会更新。学习率过大的问题是更新幅度过大，而非不更新。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "迭代过程出现震荡甚至发散，损失函数值不降反升",
+          "explanation_md": "学习率过大意味着每次沿负梯度方向移动的步长过大，可能「跨过」最优解，导致在最优解附近来回震荡，甚至越跳越远导致发散。这就像下山时步子太大，反而从山的一侧跳到另一侧越来越高。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "梯度计算变得不准确",
+          "explanation_md": "学习率只影响参数更新的步长大小，不影响梯度本身的计算。梯度是由损失函数和模型参数决定的，与学习率的取值无关。"
+        }
+      ]
+    },
+    {
+      "question_id": "q7",
+      "question_text_md": "深度学习框架中的「自动微分」（Automatic Differentiation）是如何工作的？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "使用数值方法，通过微小扰动输入来近似计算导数",
+          "explanation_md": "通过微小扰动来近似导数是数值微分（numerical differentiation）的做法，如 $f'(x) \\approx \\frac{f(x+\\epsilon)-f(x)}{\\epsilon}$。数值微分存在精度问题和效率问题，自动微分与之不同，它计算的是精确的导数值。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "由人工推导并编写每个函数的导数公式",
+          "explanation_md": "人工推导导数公式是符号微分（symbolic differentiation）的做法。自动微分的核心优势正是不需要人工推导，而是由框架自动完成求导过程。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "构建计算图，利用链式法则沿图反向传播梯度",
+          "explanation_md": "自动微分的核心机制是：先按前向顺序构建计算图记录所有运算，再利用链式法则从输出向输入方向反向传播梯度，逐层计算每个参数的偏导数。这就是反向传播（backpropagation）算法的基础，能高效且精确地计算梯度。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "通过随机采样参数空间来估计梯度方向",
+          "explanation_md": "随机采样参数空间是无梯度优化方法（如进化算法、随机搜索）的思路。自动微分是精确计算梯度的方法，不涉及随机采样，它通过确定性的链式法则来获得准确的梯度值。"
+        }
+      ]
+    }
+  ]
+}

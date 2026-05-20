@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transformer 架构</title>
+<style>
+:root {
+    --bg-color: #f8faff;
+    --primary-color: #6366f1;
+    --secondary-color: #22d3ee;
+    --accent-color: #f59e0b;
+    --text-main: #1e293b;
+    --text-sub: #64748b;
+    --node-bg: #ffffff;
+    --line-color: #cbd5e1;
+    --danger-color: #ef4444;
+    --success-color: #10b981;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #e2e8f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+}
+#canvas-container {
+    width: 1920px; height: 1080px;
+    background: white;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transform-origin: center;
+}
+#header {
+    position: absolute; top: 30px; left: 0; right: 0;
+    text-align: center; z-index: 10;
+}
+#header h1 {
+    font-size: 48px; font-weight: 700;
+    color: var(--primary-color);
+    letter-spacing: 4px;
+}
+#stage {
+    flex: 1; position: relative;
+    display: flex; align-items: center; justify-content: center;
+}
+#main-svg { width: 100%; height: 100%; }
+#subtitle-container {
+    position: absolute; bottom: 80px; left: 0; right: 0;
+    text-align: center; z-index: 20;
+    pointer-events: none;
+}
+.subtitle-zh {
+    font-size: 32px; font-weight: 600;
+    color: var(--text-main);
+    text-shadow: 0 2px 8px rgba(255,255,255,0.9);
+    margin-bottom: 8px; min-height: 44px;
+    padding: 0 100px;
+}
+#progress-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 6px; background: #e2e8f0; z-index: 30;
+}
+#progress {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    transition: width 0.3s;
+    border-radius: 0 3px 3px 0;
+}
+[id^="scene-"] {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+[id^="scene-"].active {
+    opacity: 1; pointer-events: auto;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+@keyframes flow {
+    0% { stroke-dashoffset: 20; }
+    100% { stroke-dashoffset: 0; }
+}
+</style>
+</head>
+<body>
+<div id="canvas-container">
+    <div id="header"><h1>Transformer 架构</h1></div>
+    <div id="stage">
+        <svg id="main-svg" viewBox="0 0 1920 1080">
+            <defs>
+                <marker id="arrow" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+                    <path d="M0,0 L12,4 L0,8 Z" fill="var(--primary-color)" />
+                </marker>
+                <marker id="arrow-accent" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+                    <path d="M0,0 L12,4 L0,8 Z" fill="var(--accent-color)" />
+                </marker>
+                <marker id="arrow-cyan" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+                    <path d="M0,0 L12,4 L0,8 Z" fill="var(--secondary-color)" />
+                </marker>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="glow-accent">
+                    <feGaussianBlur stdDeviation="6" result="blur" />
+                    <feFlood flood-color="var(--accent-color)" flood-opacity="0.3" result="color"/>
+                    <feComposite in="color" in2="blur" operator="in" result="shadow"/>
+                    <feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <linearGradient id="gradient-q" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#818cf8" />
+                    <stop offset="100%" style="stop-color:#6366f1" />
+                </linearGradient>
+                <linearGradient id="gradient-k" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#34d399" />
+                    <stop offset="100%" style="stop-color:#10b981" />
+                </linearGradient>
+                <linearGradient id="gradient-v" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#fbbf24" />
+                    <stop offset="100%" style="stop-color:#f59e0b" />
+                </linearGradient>
+            </defs>
+        </svg>
+    </div>
+    <div id="subtitle-container">
+        <div class="subtitle-zh" id="subtitle-cn"></div>
+    </div>
+    <div id="progress-bar"><div id="progress"></div></div>
+</div>
+
+<script>
+const subtitles = [
+    { time: 0,       cn: "同学们好！上节课我们学习了 RNN，但 RNN 有个很大的问题——无法并行计算，训练非常慢" },
+    { time: 9500,    cn: "2017 年，Google 提出了 Transformer 架构，彻底改变了这一切" },
+    { time: 15000,   cn: "Transformer 的核心创新就是自注意力机制。什么是注意力呢？" },
+    { time: 21500,   cn: "想象一下，当你读一句话时，你的大脑会自动关注重要的词语，这就是注意力" },
+    { time: 29000,   cn: "在 Transformer 中，每个词都会生成三个向量：Query、Key 和 Value" },
+    { time: 40500,   cn: "Query 是查询，就像你在搜索引擎输入的关键词" },
+    { time: 47000,   cn: "Key 是键，就像网页的标题，用来匹配你的查询" },
+    { time: 53500,   cn: "Value 是值，就是网页的实际内容，匹配度越高，权重越大" },
+    { time: 61000,   cn: "现在我们来看注意力是怎么计算的。首先用 Query 和 Key 做点积" },
+    { time: 70500,   cn: "点积越大，说明这两个词越相关。然后通过 Softmax 归一化" },
+    { time: 79000,   cn: "Softmax 把分数变成概率，所有注意力权重加起来等于 1" },
+    { time: 87500,   cn: "最后用这些权重对 Value 加权求和，就得到了注意力的输出" },
+    { time: 96000,   cn: "但一组 QKV 可能不够，所以我们用多头注意力" },
+    { time: 103500,  cn: "多个注意力头并行计算，每个头关注不同的特征" },
+    { time: 110500,  cn: "有的头关注语法关系，有的头关注语义相似性" },
+    { time: 117500,  cn: "等等！注意力机制没有位置信息，它不知道词的顺序" },
+    { time: 124500,  cn: "所以我们需要加入位置编码，告诉每个词它在句子中的位置" },
+    { time: 131500,  cn: "有了 Transformer，GPT、BERT 等大模型才成为可能" },
+    { time: 140500,  cn: "今天的人工智能革命，很大程度上要归功于 Transformer！" }
+];
+
+const TOTAL_DURATION = 148000;
+
+const SCENE_TIMES = [
+    { scene: 0, start: 0, end: 15000 },
+    { scene: 1, start: 15000, end: 29000 },
+    { scene: 2, start: 29000, end: 61000 },
+    { scene: 3, start: 61000, end: 96000 },
+    { scene: 4, start: 96000, end: 117500 },
+    { scene: 5, start: 117500, end: 131500 },
+    { scene: 6, start: 131500, end: 148000 }
+];
+
+let startTime;
+let currentSubtitleIndex = -1;
+let currentAudio = null;
+
+function updateProgress() {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min(elapsed / TOTAL_DURATION * 100, 100);
+    document.getElementById('progress').style.width = pct + '%';
+}
+
+function playAudio(audioUrl) {
+    if (!audioUrl) return;
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    currentAudio = new Audio(audioUrl);
+    currentAudio.play().catch(e => console.log('Audio play failed:', e));
+}
+
+function updateSubtitle(elapsed) {
+    for (let i = subtitles.length - 1; i >= 0; i--) {
+        if (elapsed >= subtitles[i].time) {
+            if (currentSubtitleIndex !== i) {
+                currentSubtitleIndex = i;
+                document.getElementById('subtitle-cn').textContent = subtitles[i].cn;
+                if (subtitles[i].audio) playAudio(subtitles[i].audio);
+            }
+            break;
+        }
+    }
+}
+
+function el(tag, attrs, children) {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === 'style' && typeof v === 'object') {
+            Object.entries(v).forEach(([sk, sv]) => e.style[sk] = sv);
+        } else if (k.startsWith('on')) {
+            e.addEventListener(k.slice(2).toLowerCase(), v);
+        } else {
+            e.setAttribute(k, v);
+        }
+    });
+    if (children) {
+        if (typeof children === 'string') e.textContent = children;
+        else if (Array.isArray(children)) children.forEach(c => { if (c) e.appendChild(c); });
+        else e.appendChild(children);
+    }
+    return e;
+}
+
+function makeCircle(cx, cy, r, fill, stroke, sw) {
+    return el('circle', { cx, cy, r, fill: fill || 'white', stroke: stroke || 'var(--primary-color)', 'stroke-width': sw || 3 });
+}
+
+function makeRect(x, y, w, h, fill, stroke, sw, rx) {
+    return el('rect', { x, y, width: w, height: h, fill: fill || 'white', stroke: stroke || 'var(--primary-color)', 'stroke-width': sw || 3, rx: rx || 8 });
+}
+
+function makeText(x, y, text, size, fill, anchor, weight) {
+    return el('text', { x, y, 'font-size': size || 24, fill: fill || 'var(--text-main)', 'text-anchor': anchor || 'middle', 'font-weight': weight || 'bold', 'font-family': "'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" }, text);
+}
+
+function makeLine(x1, y1, x2, y2, color, sw, dasharray) {
+    const attrs = { x1, y1, x2, y2, stroke: color || 'var(--line-color)', 'stroke-width': sw || 2 };
+    if (dasharray) attrs['stroke-dasharray'] = dasharray;
+    return el('line', attrs);
+}
+
+function makePath(d, color, sw, fill, markerEnd) {
+    const attrs = { d, stroke: color || 'var(--line-color)', 'stroke-width': sw || 2, fill: fill || 'none' };
+    if (markerEnd) attrs['marker-end'] = markerEnd;
+    return el('path', attrs);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function waitForTime(targetTime) {
+    return new Promise(resolve => {
+        const check = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed >= targetTime) { clearInterval(check); resolve(); }
+        }, 100);
+    });
+}
+
+function waitUntilSceneEnd(sceneIndex) {
+    const scene = SCENE_TIMES[sceneIndex];
+    if (!scene) return Promise.resolve();
+    return waitForTime(scene.end);
+}
+
+function clearScene() {
+    const svg = document.getElementById('main-svg');
+    const toRemove = [];
+    for (const child of svg.children) {
+        if (child.tagName !== 'defs') toRemove.push(child);
+    }
+    toRemove.forEach(e => e.remove());
+}
+
+// ============ Scene 0: Introduction ============
+async function scene0() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 150, '为什么需要 Transformer？', 52, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.5s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(800);
+
+    const rnnBox = makeRect(200, 280, 500, 300, '#fef2f2', 'var(--danger-color)', 3, 16);
+    rnnBox.style.opacity = '0';
+    g.appendChild(rnnBox);
+    const rnnTitle = makeText(450, 330, 'RNN 的问题', 28, 'var(--danger-color)');
+    rnnTitle.style.opacity = '0';
+    g.appendChild(rnnTitle);
+
+    const problems = ['无法并行计算', '训练速度慢', '长距离依赖困难'];
+    problems.forEach((p, i) => {
+        const text = makeText(450, 390 + i * 50, '✗ ' + p, 22, 'var(--danger-color)', 'middle', 'normal');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => { text.style.transition = 'opacity 0.3s'; text.style.opacity = '1'; }, 1500 + i * 400);
+    });
+
+    setTimeout(() => { rnnBox.style.transition = 'opacity 0.5s'; rnnBox.style.opacity = '1'; }, 500);
+    setTimeout(() => { rnnTitle.style.transition = 'opacity 0.5s'; rnnTitle.style.opacity = '1'; }, 700);
+
+    await sleep(3000);
+
+    const arrow = makePath('M730,430 L830,430', 'var(--accent-color)', 4, 'none', 'url(#arrow-accent)');
+    arrow.style.opacity = '0';
+    g.appendChild(arrow);
+    setTimeout(() => { arrow.style.transition = 'opacity 0.3s'; arrow.style.opacity = '1'; }, 300);
+
+    const transBox = makeRect(860, 280, 500, 300, '#f0fdf4', 'var(--success-color)', 3, 16);
+    transBox.style.opacity = '0';
+    g.appendChild(transBox);
+    const transTitle = makeText(1110, 330, 'Transformer 的优势', 28, 'var(--success-color)');
+    transTitle.style.opacity = '0';
+    g.appendChild(transTitle);
+
+    const solutions = ['完全并行计算', '训练速度极快', '强大的注意力机制'];
+    solutions.forEach((s, i) => {
+        const text = makeText(1110, 390 + i * 50, '✓ ' + s, 22, 'var(--success-color)', 'middle', 'normal');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => { text.style.transition = 'opacity 0.3s'; text.style.opacity = '1'; }, 1000 + i * 400);
+    });
+
+    setTimeout(() => { transBox.style.transition = 'opacity 0.5s'; transBox.style.opacity = '1'; }, 600);
+    setTimeout(() => { transTitle.style.transition = 'opacity 0.5s'; transTitle.style.opacity = '1'; }, 800);
+
+    await sleep(3500);
+
+    const badge = makeRect(800, 650, 320, 60, 'var(--primary-color)', 'none', 0, 30);
+    badge.style.opacity = '0';
+    g.appendChild(badge);
+    const yearText = makeText(960, 688, '2017 · Google · Attention Is All You Need', 22, 'white');
+    yearText.style.opacity = '0';
+    g.appendChild(yearText);
+    setTimeout(() => {
+        badge.style.transition = 'opacity 0.5s'; badge.style.opacity = '1';
+        yearText.style.transition = 'opacity 0.5s'; yearText.style.opacity = '1';
+    }, 500);
+}
+
+// ============ Scene 1: Self-Attention Intuition ============
+async function scene1() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 100, '自注意力机制：让每个词关注其他词', 44, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.5s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(500);
+
+    const words = ['我', '喜欢', '吃', '苹果', '因为', '它', '很', '甜'];
+    const wordY = 250;
+    const startX = 300;
+    const gap = 170;
+
+    words.forEach((w, i) => {
+        const box = makeRect(startX + i * gap - 50, wordY - 25, 100, 50, 'white', 'var(--primary-color)', 2, 8);
+        box.style.opacity = '0';
+        g.appendChild(box);
+        const text = makeText(startX + i * gap, wordY + 8, w, 28, 'var(--text-main)');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => {
+            box.style.transition = 'opacity 0.3s'; box.style.opacity = '1';
+            text.style.transition = 'opacity 0.3s'; text.style.opacity = '1';
+        }, 500 + i * 200);
+    });
+
+    await sleep(2500);
+
+    const highlight = makeRect(startX + 5 * gap - 55, wordY - 30, 110, 60, '#fef3c7', 'var(--accent-color)', 3, 8);
+    highlight.style.opacity = '0';
+    g.appendChild(highlight);
+    setTimeout(() => { highlight.style.transition = 'opacity 0.3s'; highlight.style.opacity = '1'; }, 300);
+
+    const attentionTargets = [
+        { idx: 0, weight: 0.1, label: '我' },
+        { idx: 3, weight: 0.7, label: '苹果' },
+        { idx: 7, weight: 0.2, label: '甜' }
+    ];
+
+    attentionTargets.forEach((t, i) => {
+        const x2 = startX + t.idx * gap;
+        const x1 = startX + 5 * gap;
+        const line = makeLine(x1, wordY + 30, x2, wordY + 100 + i * 40, 'var(--accent-color)', t.weight * 8);
+        line.style.opacity = '0';
+        g.appendChild(line);
+
+        const dot = makeCircle(x2, wordY + 100 + i * 40, t.weight * 20 + 5, 'var(--accent-color)', 'none', 0);
+        dot.style.opacity = '0';
+        g.appendChild(dot);
+
+        const label = makeText(x2, wordY + 110 + i * 40 + 25, t.label + ': ' + (t.weight * 100).toFixed(0) + '%', 16, 'var(--accent-color)', 'middle', 'normal');
+        label.style.opacity = '0';
+        g.appendChild(label);
+
+        setTimeout(() => {
+            line.style.transition = 'opacity 0.3s'; line.style.opacity = '0.6';
+            dot.style.transition = 'opacity 0.3s'; dot.style.opacity = '1';
+            label.style.transition = 'opacity 0.3s'; label.style.opacity = '1';
+        }, 1000 + i * 500);
+    });
+
+    await sleep(2500);
+
+    const explain = makeText(960, 550, '"它" 最关注的是 "苹果"，注意力权重高达 70%', 30, 'var(--accent-color)');
+    explain.style.opacity = '0';
+    g.appendChild(explain);
+    setTimeout(() => { explain.style.transition = 'opacity 0.5s'; explain.style.opacity = '1'; }, 500);
+
+    await sleep(1500);
+
+    const note = makeText(960, 650, '这就是注意力——自动学习词语之间的关联', 26, 'var(--text-sub)', 'middle', 'normal');
+    note.style.opacity = '0';
+    g.appendChild(note);
+    setTimeout(() => { note.style.transition = 'opacity 0.5s'; note.style.opacity = '1'; }, 500);
+}
+
+// ============ Scene 2: Q, K, V ============
+async function scene2() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 80, 'Query、Key、Value 三元组', 44, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.5s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(500);
+
+    const columns = [
+        { name: 'Query (查询)', color: '#818cf8', desc: '我在找什么？', icon: '🔍', x: 300 },
+        { name: 'Key (键)', color: '#34d399', desc: '我有什么标签？', icon: '🏷️', x: 760 },
+        { name: 'Value (值)', color: '#fbbf24', desc: '我的实际内容', icon: '📦', x: 1220 }
+    ];
+
+    columns.forEach((col, i) => {
+        const box = makeRect(col.x - 150, 200, 300, 350, 'white', col.color, 3, 16);
+        box.style.opacity = '0';
+        g.appendChild(box);
+        const icon = makeText(col.x, 280, col.icon, 64, 'var(--text-main)');
+        icon.style.opacity = '0';
+        g.appendChild(icon);
+        const name = makeText(col.x, 370, col.name, 28, col.color);
+        name.style.opacity = '0';
+        g.appendChild(name);
+        const desc = makeText(col.x, 430, col.desc, 22, 'var(--text-sub)', 'middle', 'normal');
+        desc.style.opacity = '0';
+        g.appendChild(desc);
+
+        setTimeout(() => {
+            box.style.transition = 'opacity 0.4s'; box.style.opacity = '1';
+            icon.style.transition = 'opacity 0.4s'; icon.style.opacity = '1';
+            name.style.transition = 'opacity 0.4s'; name.style.opacity = '1';
+            desc.style.transition = 'opacity 0.4s'; desc.style.opacity = '1';
+        }, 800 + i * 1500);
+    });
+
+    await sleep(5500);
+
+    const analogyBox = makeRect(260, 600, 1000, 100, '#f8fafc', 'var(--line-color)', 2, 12);
+    analogyBox.style.opacity = '0';
+    g.appendChild(analogyBox);
+    const analogy = makeText(760, 660, '就像搜索引擎：Query 是你的搜索词，Key 是网页标题，Value 是网页内容', 24, 'var(--text-sub)', 'middle', 'normal');
+    analogy.style.opacity = '0';
+    g.appendChild(analogy);
+
+    setTimeout(() => {
+        analogyBox.style.transition = 'opacity 0.5s'; analogyBox.style.opacity = '1';
+        analogy.style.transition = 'opacity 0.5s'; analogy.style.opacity = '1';
+    }, 500);
+
+    await sleep(3500);
+
+    const formula = makeText(960, 800, 'Attention(Q,K,V) = softmax(QKᵀ/√d)V', 32, 'var(--primary-color)');
+    formula.style.opacity = '0';
+    g.appendChild(formula);
+    setTimeout(() => { formula.style.transition = 'opacity 0.5s'; formula.style.opacity = '1'; }, 500);
+}
+
+// ============ Scene 3: Attention Calculation ============
+async function scene3() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 80, '注意力计算过程', 44, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.5s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(500);
+
+    const step1Box = makeRect(100, 180, 400, 200, '#ede9fe', '#818cf8', 2, 12);
+    step1Box.style.opacity = '0';
+    g.appendChild(step1Box);
+    const step1Title = makeText(300, 230, 'Step 1: 点积计算', 24, '#818cf8');
+    step1Title.style.opacity = '0';
+    g.appendChild(step1Title);
+    const step1Desc = makeText(300, 280, 'Q · Kᵀ = 相似度分数', 20, 'var(--text-sub)', 'middle', 'normal');
+    step1Desc.style.opacity = '0';
+    g.appendChild(step1Desc);
+
+    setTimeout(() => {
+        step1Box.style.transition = 'opacity 0.4s'; step1Box.style.opacity = '1';
+        step1Title.style.transition = 'opacity 0.4s'; step1Title.style.opacity = '1';
+        step1Desc.style.transition = 'opacity 0.4s'; step1Desc.style.opacity = '1';
+    }, 300);
+
+    await sleep(3000);
+
+    const arrow1 = makePath('M520,280 L600,280', 'var(--line-color)', 3, 'none', 'url(#arrow)');
+    arrow1.style.opacity = '0';
+    g.appendChild(arrow1);
+    setTimeout(() => { arrow1.style.transition = 'opacity 0.3s'; arrow1.style.opacity = '1'; }, 200);
+
+    const step2Box = makeRect(620, 180, 300, 200, '#ecfdf5', '#34d399', 2, 12);
+    step2Box.style.opacity = '0';
+    g.appendChild(step2Box);
+    const step2Title = makeText(770, 230, 'Step 2: 缩放', 24, '#34d399');
+    step2Title.style.opacity = '0';
+    g.appendChild(step2Title);
+
+    setTimeout(() => {
+        step2Box.style.transition = 'opacity 0.4s'; step2Box.style.opacity = '1';
+        step2Title.style.transition = 'opacity 0.4s'; step2Title.style.opacity = '1';
+    }, 500);
+
+    await sleep(3000);
+
+    const arrow2 = makePath('M940,280 L1020,280', 'var(--line-color)', 3, 'none', 'url(#arrow)');
+    arrow2.style.opacity = '0';
+    g.appendChild(arrow2);
+    setTimeout(() => { arrow2.style.transition = 'opacity 0.3s'; arrow2.style.opacity = '1'; }, 200);
+
+    const step3Box = makeRect(1040, 180, 400, 200, '#fef3c7', '#f59e0b', 2, 12);
+    step3Box.style.opacity = '0';
+    g.appendChild(step3Box);
+    const step3Title = makeText(1240, 230, 'Step 3: Softmax', 24, '#f59e0b');
+    step3Title.style.opacity = '0';
+    g.appendChild(step3Title);
+
+    setTimeout(() => {
+        step3Box.style.transition = 'opacity 0.4s'; step3Box.style.opacity = '1';
+        step3Title.style.transition = 'opacity 0.4s'; step3Title.style.opacity = '1';
+    }, 500);
+
+    await sleep(3000);
+
+    const arrow3 = makePath('M1460,280 L1540,280', 'var(--line-color)', 3, 'none', 'url(#arrow)');
+    arrow3.style.opacity = '0';
+    g.appendChild(arrow3);
+    setTimeout(() => { arrow3.style.transition = 'opacity 0.3s'; arrow3.style.opacity = '1'; }, 200);
+
+    const step4Box = makeRect(100, 450, 1840, 180, '#f0f9ff', '#6366f1', 3, 12);
+    step4Box.style.opacity = '0';
+    g.appendChild(step4Box);
+    const step4Title = makeText(960, 500, 'Step 4: 加权求和', 28, 'var(--primary-color)');
+    step4Title.style.opacity = '0';
+    g.appendChild(step4Title);
+
+    setTimeout(() => {
+        step4Box.style.transition = 'opacity 0.5s'; step4Box.style.opacity = '1';
+        step4Title.style.transition = 'opacity 0.5s'; step4Title.style.opacity = '1';
+    }, 500);
+
+    await sleep(2000);
+
+    const fullFormula = makeText(960, 750, 'Attention(Q,K,V) = softmax(QKᵀ/√dₖ)V', 36, 'var(--primary-color)');
+    fullFormula.style.opacity = '0';
+    g.appendChild(fullFormula);
+    setTimeout(() => { fullFormula.style.transition = 'opacity 0.5s'; fullFormula.style.opacity = '1'; }, 500);
+}
+
+// ============ Scene 4: Multi-Head Attention ============
+async function scene4() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 80, '多头注意力：并行捕获多种特征', 44, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 1s'; title.style.opacity = '1'; }, 500);
+
+    await sleep(1500);
+
+    const singleBox = makeRect(150, 200, 400, 250, '#f8fafc', 'var(--line-color)', 2, 12);
+    singleBox.style.opacity = '0';
+    g.appendChild(singleBox);
+    const singleTitle = makeText(350, 250, '单头注意力', 24, 'var(--text-sub)');
+    singleTitle.style.opacity = '0';
+    g.appendChild(singleTitle);
+
+    const singleQ = makeRect(200, 300, 80, 40, '#818cf8', 'none', 0, 6);
+    singleQ.style.opacity = '0';
+    g.appendChild(singleQ);
+    const singleQText = makeText(240, 325, 'Q', 18, 'white');
+    singleQText.style.opacity = '0';
+    g.appendChild(singleQText);
+
+    const singleK = makeRect(310, 300, 80, 40, '#34d399', 'none', 0, 6);
+    singleK.style.opacity = '0';
+    g.appendChild(singleK);
+    const singleKText = makeText(350, 325, 'K', 18, 'white');
+    singleKText.style.opacity = '0';
+    g.appendChild(singleKText);
+
+    const singleV = makeRect(420, 300, 80, 40, '#fbbf24', 'none', 0, 6);
+    singleV.style.opacity = '0';
+    g.appendChild(singleV);
+    const singleVText = makeText(460, 325, 'V', 18, 'white');
+    singleVText.style.opacity = '0';
+    g.appendChild(singleVText);
+
+    const singleOut = makeRect(280, 380, 120, 40, 'var(--primary-color)', 'none', 0, 6);
+    singleOut.style.opacity = '0';
+    g.appendChild(singleOut);
+    const singleOutText = makeText(340, 405, 'Output', 16, 'white');
+    singleOutText.style.opacity = '0';
+    g.appendChild(singleOutText);
+
+    setTimeout(() => {
+        singleBox.style.transition = 'opacity 0.8s'; singleBox.style.opacity = '1';
+        singleTitle.style.transition = 'opacity 0.8s'; singleTitle.style.opacity = '1';
+        singleQ.style.transition = 'opacity 0.8s'; singleQ.style.opacity = '1';
+        singleQText.style.transition = 'opacity 0.8s'; singleQText.style.opacity = '1';
+        singleK.style.transition = 'opacity 0.8s'; singleK.style.opacity = '1';
+        singleKText.style.transition = 'opacity 0.8s'; singleKText.style.opacity = '1';
+        singleV.style.transition = 'opacity 0.8s'; singleV.style.opacity = '1';
+        singleVText.style.transition = 'opacity 0.8s'; singleVText.style.opacity = '1';
+        singleOut.style.transition = 'opacity 0.8s'; singleOut.style.opacity = '1';
+        singleOutText.style.transition = 'opacity 0.8s'; singleOutText.style.opacity = '1';
+    }, 1000);
+
+    await sleep(3000);
+
+    const arrow = makePath('M580,325 L680,325', 'var(--accent-color)', 4, 'none', 'url(#arrow-accent)');
+    arrow.style.opacity = '0';
+    g.appendChild(arrow);
+    setTimeout(() => { arrow.style.transition = 'opacity 0.8s'; arrow.style.opacity = '1'; }, 500);
+
+    await sleep(1500);
+
+    const multiBox = makeRect(700, 200, 1070, 250, '#f8fafc', 'var(--line-color)', 2, 12);
+    multiBox.style.opacity = '0';
+    g.appendChild(multiBox);
+    const multiTitle = makeText(1235, 250, '多头注意力 (Multi-Head)', 24, 'var(--primary-color)');
+    multiTitle.style.opacity = '0';
+    g.appendChild(multiTitle);
+
+    const heads = [
+        { name: 'Head 1', desc: '语法关系', color: '#818cf8', x: 850 },
+        { name: 'Head 2', desc: '语义相似', color: '#34d399', x: 1100 },
+        { name: 'Head 3', desc: '位置关系', color: '#fbbf24', x: 1350 },
+        { name: 'Head 4', desc: '指代消解', color: '#f87171', x: 1600 }
+    ];
+
+    heads.forEach((h, i) => {
+        const headBox = makeRect(h.x - 70, 290, 140, 80, h.color, 'none', 0, 8);
+        headBox.style.opacity = '0';
+        g.appendChild(headBox);
+        const headName = makeText(h.x, 325, h.name, 16, 'white');
+        headName.style.opacity = '0';
+        g.appendChild(headName);
+        const headDesc = makeText(h.x, 350, h.desc, 14, 'white', 'middle', 'normal');
+        headDesc.style.opacity = '0';
+        g.appendChild(headDesc);
+
+        setTimeout(() => {
+            headBox.style.transition = 'opacity 0.6s'; headBox.style.opacity = '1';
+            headName.style.transition = 'opacity 0.6s'; headName.style.opacity = '1';
+            headDesc.style.transition = 'opacity 0.6s'; headDesc.style.opacity = '1';
+        }, 2000 + i * 1500);
+    });
+
+    setTimeout(() => {
+        multiBox.style.transition = 'opacity 0.6s'; multiBox.style.opacity = '1';
+        multiTitle.style.transition = 'opacity 0.6s'; multiTitle.style.opacity = '1';
+    }, 1000);
+
+    await sleep(8000);
+
+    const concatBox = makeRect(850, 400, 600, 50, 'var(--primary-color)', 'none', 0, 8);
+    concatBox.style.opacity = '0';
+    g.appendChild(concatBox);
+    const concatText = makeText(1150, 430, 'Concat → Linear → Output', 20, 'white');
+    concatText.style.opacity = '0';
+    g.appendChild(concatText);
+    setTimeout(() => {
+        concatBox.style.transition = 'opacity 0.8s'; concatBox.style.opacity = '1';
+        concatText.style.transition = 'opacity 0.8s'; concatText.style.opacity = '1';
+    }, 1000);
+
+    await sleep(3000);
+
+    const benefitsY = 550;
+    const benefits = [
+        { icon: '🧠', text: '每个头学习不同的注意力模式', x: 400 },
+        { icon: '🔗', text: '捕获多种类型的词语关系', x: 960 },
+        { icon: '⚡', text: '并行计算，效率极高', x: 1520 }
+    ];
+
+    benefits.forEach((b, i) => {
+        const box = makeRect(b.x - 220, benefitsY, 440, 80, 'white', 'var(--primary-color)', 2, 12);
+        box.style.opacity = '0';
+        g.appendChild(box);
+        const icon = makeText(b.x - 170, benefitsY + 45, b.icon, 32, 'var(--text-main)');
+        icon.style.opacity = '0';
+        g.appendChild(icon);
+        const text = makeText(b.x + 20, benefitsY + 45, b.text, 20, 'var(--text-main)', 'middle', 'normal');
+        text.style.opacity = '0';
+        g.appendChild(text);
+
+        setTimeout(() => {
+            box.style.transition = 'opacity 0.6s'; box.style.opacity = '1';
+            icon.style.transition = 'opacity 0.6s'; icon.style.opacity = '1';
+            text.style.transition = 'opacity 0.6s'; text.style.opacity = '1';
+        }, 1000 + i * 1500);
+    });
+}
+
+// ============ Scene 5: Positional Encoding ============
+async function scene5() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 80, '位置编码：给词语加上位置信息', 44, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 1s'; title.style.opacity = '1'; }, 500);
+
+    await sleep(1500);
+
+    const problemBox = makeRect(200, 200, 700, 180, '#fef2f2', 'var(--danger-color)', 2, 12);
+    problemBox.style.opacity = '0';
+    g.appendChild(problemBox);
+    const problemTitle = makeText(550, 250, '问题：注意力没有顺序概念', 26, 'var(--danger-color)');
+    problemTitle.style.opacity = '0';
+    g.appendChild(problemTitle);
+
+    const sentence1 = ['我', '爱', '你'];
+    const sentence2 = ['你', '爱', '我'];
+
+    sentence1.forEach((w, i) => {
+        const box = makeRect(300 + i * 100, 300, 80, 40, 'white', 'var(--line-color)', 2, 6);
+        box.style.opacity = '0';
+        g.appendChild(box);
+        const text = makeText(340 + i * 100, 327, w, 22, 'var(--text-main)');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => {
+            box.style.transition = 'opacity 0.4s'; box.style.opacity = '1';
+            text.style.transition = 'opacity 0.4s'; text.style.opacity = '1';
+        }, 500 + i * 400);
+    });
+
+    const eqText = makeText(680, 327, '=', 28, 'var(--danger-color)');
+    eqText.style.opacity = '0';
+    g.appendChild(eqText);
+    setTimeout(() => { eqText.style.transition = 'opacity 0.4s'; eqText.style.opacity = '1'; }, 2000);
+
+    sentence2.forEach((w, i) => {
+        const box = makeRect(730 + i * 100, 300, 80, 40, 'white', 'var(--line-color)', 2, 6);
+        box.style.opacity = '0';
+        g.appendChild(box);
+        const text = makeText(770 + i * 100, 327, w, 22, 'var(--text-main)');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => {
+            box.style.transition = 'opacity 0.4s'; box.style.opacity = '1';
+            text.style.transition = 'opacity 0.4s'; text.style.opacity = '1';
+        }, 2500 + i * 400);
+    });
+
+    setTimeout(() => { problemBox.style.transition = 'opacity 0.8s'; problemBox.style.opacity = '1'; }, 1000);
+    setTimeout(() => { problemTitle.style.transition = 'opacity 0.8s'; problemTitle.style.opacity = '1'; }, 1500);
+
+    await sleep(3500);
+
+    const solutionBox = makeRect(200, 450, 1520, 280, '#f0fdf4', 'var(--success-color)', 3, 16);
+    solutionBox.style.opacity = '0';
+    g.appendChild(solutionBox);
+    const solutionTitle = makeText(960, 500, '解决方案：加入位置编码向量', 28, 'var(--success-color)');
+    solutionTitle.style.opacity = '0';
+    g.appendChild(solutionTitle);
+
+    const words = ['我', '爱', '你'];
+    const positions = ['位置0', '位置1', '位置2'];
+
+    words.forEach((w, i) => {
+        const wordBox = makeRect(400 + i * 350, 550, 100, 50, '#818cf8', 'none', 0, 8);
+        wordBox.style.opacity = '0';
+        g.appendChild(wordBox);
+        const wordText = makeText(450 + i * 350, 580, w, 22, 'white');
+        wordText.style.opacity = '0';
+        g.appendChild(wordText);
+
+        const plus = makeText(520 + i * 350, 580, '+', 28, 'var(--text-sub)');
+        plus.style.opacity = '0';
+        g.appendChild(plus);
+
+        const posBox = makeRect(550 + i * 350, 550, 100, 50, '#fbbf24', 'none', 0, 8);
+        posBox.style.opacity = '0';
+        g.appendChild(posBox);
+        const posText = makeText(600 + i * 350, 580, positions[i], 16, 'white');
+        posText.style.opacity = '0';
+        g.appendChild(posText);
+
+        const eq = makeText(670 + i * 350, 580, '=', 24, 'var(--text-sub)');
+        eq.style.opacity = '0';
+        g.appendChild(eq);
+
+        const resBox = makeRect(700 + i * 350, 550, 100, 50, 'var(--success-color)', 'none', 0, 8);
+        resBox.style.opacity = '0';
+        g.appendChild(resBox);
+        const resText = makeText(750 + i * 350, 580, '带位置', 14, 'white', 'middle', 'normal');
+        resText.style.opacity = '0';
+        g.appendChild(resText);
+
+        setTimeout(() => {
+            wordBox.style.transition = 'opacity 0.6s'; wordBox.style.opacity = '1';
+            wordText.style.transition = 'opacity 0.6s'; wordText.style.opacity = '1';
+            plus.style.transition = 'opacity 0.6s'; plus.style.opacity = '1';
+            posBox.style.transition = 'opacity 0.6s'; posBox.style.opacity = '1';
+            posText.style.transition = 'opacity 0.6s'; posText.style.opacity = '1';
+            eq.style.transition = 'opacity 0.6s'; eq.style.opacity = '1';
+            resBox.style.transition = 'opacity 0.6s'; resBox.style.opacity = '1';
+            resText.style.transition = 'opacity 0.6s'; resText.style.opacity = '1';
+        }, 1500 + i * 2000);
+    });
+
+    setTimeout(() => {
+        solutionBox.style.transition = 'opacity 0.6s'; solutionBox.style.opacity = '1';
+        solutionTitle.style.transition = 'opacity 0.6s'; solutionTitle.style.opacity = '1';
+    }, 500);
+
+    await sleep(6000);
+
+    const formulaBox = makeRect(460, 760, 1000, 80, '#f8fafc', 'var(--line-color)', 2, 12);
+    formulaBox.style.opacity = '0';
+    g.appendChild(formulaBox);
+    const formula = makeText(960, 810, 'PE(pos,2i) = sin(pos/10000^(2i/d))    PE(pos,2i+1) = cos(pos/10000^(2i/d))', 22, 'var(--primary-color)');
+    formula.style.opacity = '0';
+    g.appendChild(formula);
+    const formulaNote = makeText(960, 860, '使用正弦函数，让模型能学习到相对位置关系', 18, 'var(--text-sub)', 'middle', 'normal');
+    formulaNote.style.opacity = '0';
+    g.appendChild(formulaNote);
+
+    setTimeout(() => {
+        formulaBox.style.transition = 'opacity 1s'; formulaBox.style.opacity = '1';
+        formula.style.transition = 'opacity 1s'; formula.style.opacity = '1';
+        formulaNote.style.transition = 'opacity 1s'; formulaNote.style.opacity = '1';
+    }, 1000);
+}
+
+// ============ Scene 6: Applications ============
+async function scene6() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 80, 'Transformer 统治了 AI 世界', 48, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.6s'; title.style.opacity = '1'; }, 200);
+
+    const timelineY = 280;
+    const line = makeLine(200, timelineY, 1720, timelineY, 'var(--line-color)', 3);
+    g.appendChild(line);
+
+    const models = [
+        { name: 'BERT', year: '2018', desc: '双向编码器', x: 400, color: '#818cf8' },
+        { name: 'GPT-2', year: '2019', desc: '生成式预训练', x: 700, color: '#34d399' },
+        { name: 'GPT-3', year: '2020', desc: '1750亿参数', x: 1000, color: '#fbbf24' },
+        { name: 'ChatGPT', year: '2022', desc: '对话式AI', x: 1300, color: '#f87171' },
+        { name: 'GPT-4', year: '2023', desc: '多模态能力', x: 1600, color: '#6366f1' }
+    ];
+
+    models.forEach((m, i) => {
+        const dot = makeCircle(m.x, timelineY, 12, m.color, 'white', 3);
+        dot.style.opacity = '0';
+        g.appendChild(dot);
+
+        const year = makeText(m.x, timelineY - 40, m.year, 20, 'var(--text-sub)', 'middle', 'normal');
+        year.style.opacity = '0';
+        g.appendChild(year);
+
+        const box = makeRect(m.x - 80, timelineY + 30, 160, 80, m.color, 'none', 0, 10);
+        box.style.opacity = '0';
+        g.appendChild(box);
+        const name = makeText(m.x, timelineY + 65, m.name, 22, 'white');
+        name.style.opacity = '0';
+        g.appendChild(name);
+        const desc = makeText(m.x, timelineY + 95, m.desc, 14, 'white', 'middle', 'normal');
+        desc.style.opacity = '0';
+        g.appendChild(desc);
+
+        setTimeout(() => {
+            dot.style.transition = 'opacity 0.4s'; dot.style.opacity = '1';
+            year.style.transition = 'opacity 0.4s'; year.style.opacity = '1';
+            box.style.transition = 'opacity 0.5s, transform 0.5s'; box.style.opacity = '1';
+            name.style.transition = 'opacity 0.5s'; name.style.opacity = '1';
+            desc.style.transition = 'opacity 0.5s'; desc.style.opacity = '1';
+        }, 800 + i * 400);
+    });
+
+    await sleep(3000);
+
+    const apps = [
+        { icon: '💬', title: '自然语言处理', desc: '翻译、摘要、问答', x: 300, y: 550 },
+        { icon: '🖼️', title: '计算机视觉', desc: 'Vision Transformer (ViT)', x: 760, y: 550 },
+        { icon: '🎵', title: '语音识别', desc: 'Whisper 等模型', x: 1220, y: 550 },
+        { icon: '🧬', title: '科学计算', desc: 'AlphaFold 蛋白质预测', x: 1600, y: 550 }
+    ];
+
+    apps.forEach((a, i) => {
+        const box = makeRect(a.x - 150, a.y, 300, 120, 'white', 'var(--primary-color)', 2, 12);
+        box.style.opacity = '0';
+        g.appendChild(box);
+        const icon = makeText(a.x - 90, a.y + 50, a.icon, 40, 'var(--text-main)');
+        icon.style.opacity = '0';
+        g.appendChild(icon);
+        const title = makeText(a.x + 30, a.y + 40, a.title, 22, 'var(--primary-color)');
+        title.style.opacity = '0';
+        g.appendChild(title);
+        const desc = makeText(a.x + 30, a.y + 70, a.desc, 16, 'var(--text-sub)', 'middle', 'normal');
+        desc.style.opacity = '0';
+        g.appendChild(desc);
+
+        setTimeout(() => {
+            box.style.transition = 'opacity 0.5s'; box.style.opacity = '1';
+            icon.style.transition = 'opacity 0.5s'; icon.style.opacity = '1';
+            title.style.transition = 'opacity 0.5s'; title.style.opacity = '1';
+            desc.style.transition = 'opacity 0.5s'; desc.style.opacity = '1';
+        }, 3500 + i * 300);
+    });
+
+    await sleep(2000);
+
+    const summaryBox = makeRect(360, 730, 1200, 80, 'var(--primary-color)', 'none', 0, 12);
+    summaryBox.style.opacity = '0';
+    g.appendChild(summaryBox);
+    const summary = makeText(960, 778, 'Transformer 是现代 AI 的基石，理解它是学习大模型的第一步', 28, 'white');
+    summary.style.opacity = '0';
+    g.appendChild(summary);
+    setTimeout(() => {
+        summaryBox.style.transition = 'opacity 0.8s'; summaryBox.style.opacity = '1';
+        summary.style.transition = 'opacity 0.8s'; summary.style.opacity = '1';
+    }, 500);
+}
+
+// ============ Run Animation ============
+async function runAnimation() {
+    startTime = Date.now();
+    const timer = setInterval(() => {
+        updateProgress();
+        updateSubtitle(Date.now() - startTime);
+    }, 100);
+
+    clearScene();
+    await scene0();
+    await waitUntilSceneEnd(0);
+
+    clearScene();
+    await scene1();
+    await waitUntilSceneEnd(1);
+
+    clearScene();
+    await scene2();
+    await waitUntilSceneEnd(2);
+
+    clearScene();
+    await scene3();
+    await waitUntilSceneEnd(3);
+
+    clearScene();
+    await scene4();
+    await waitUntilSceneEnd(4);
+
+    clearScene();
+    await scene5();
+    await waitUntilSceneEnd(5);
+
+    clearScene();
+    await scene6();
+
+    clearInterval(timer);
+    document.getElementById('progress').style.width = '100%';
+}
+
+window.onload = runAnimation;
+</script>
+</body>
+</html>

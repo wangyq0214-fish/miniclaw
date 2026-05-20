@@ -18,19 +18,23 @@ import {
   Library,
   FolderPlus,
   Layers,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { listFiles, deleteFile, writeFile, type FileInfo } from '@/lib/api';
-import { useApp } from '@/lib/store';
+import { useApp, type GeneratingTask } from '@/lib/store';
+import { getUserItem } from '@/lib/userStorage';
 
-// ── Agent routers ──
+// ── Agent routers (must match backend role filenames in workspace/roles/) ──
 const agentRouters: Record<string, string> = {
-  '测验': '@QuizMaster',
-  '讲义': '@LectureTutor',
-  '代码案例': '@CodeNinja',
-  '思维导图': '@GraphMapper',
-  '阅读清单': '@ReadingCurator',
-  '动画脚本': '@MediaScriptWriter',
-  '抽认卡': '@FlashcardComposer',
+  '测验': 'exercise_composer',
+  '讲义': 'lecture_writer',
+  '代码案例': 'code_case_builder',
+  '思维导图': 'mindmap_designer',
+  '阅读清单': 'reading_curator',
+  '动画脚本': 'media_script_writer',
+  '抽认卡': 'flashcard_composer',
+  '评估': 'evaluation_analyst',
 };
 
 // ── Resource categories ──
@@ -85,6 +89,20 @@ function getCategoryKeyFromPath(path: string): string | null {
   const parts = path.split('/');
   const last = parts[parts.length - 1];
   return RESOURCE_CATEGORIES.find(c => c.key === last)?.key || null;
+}
+
+function getPlaceholder(categoryLabel: string): string {
+  const placeholders: Record<string, string> = {
+    '练习题': '例如：反向传播、梯度下降...',
+    '抽认卡': '例如：神经网络基础、激活函数...',
+    '讲义': '例如：卷积神经网络、循环神经网络...',
+    '思维导图': '例如：深度学习、机器学习算法...',
+    '阅读清单': '例如：强化学习、自然语言处理...',
+    '评估': '例如：深度学习基础掌握情况...',
+    '代码案例': '例如：冒泡排序、二分查找、链表反转...',
+    '动画脚本': '例如：神经网络前向传播过程...',
+  };
+  return placeholders[categoryLabel] || '请输入主题...';
 }
 
 function getDisplayName(fileName: string): string {
@@ -416,6 +434,41 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
   const fileItems = useMemo(() => files.filter(f => f.type === 'file'), [files]);
   const activeCategoryKey = currentPath ? getCategoryKeyFromPath(currentPath) : null;
 
+  // Get generating tasks for current category
+  const currentGeneratingTasks = useMemo(() => {
+    return state.generatingTasks.filter(t =>
+      t.category === activeCategoryKey && t.status === 'generating'
+    );
+  }, [state.generatingTasks, activeCategoryKey]);
+
+  // Build a set of file paths that have been completed (from learning map progress)
+  const completedPaths = useMemo(() => {
+    if (typeof window === 'undefined') return new Set<string>();
+    try {
+      const paths: Record<string, string> = JSON.parse(getUserItem('miniclaw_gen_paths') || '{}');
+      const results: Record<string, { completed: boolean }> = JSON.parse(getUserItem('miniclaw_learning_results') || '{}');
+      const set = new Set<string>();
+      // Check learning map entries: {nodeId}:{action} → filePath
+      for (const [key, filePath] of Object.entries(paths)) {
+        if (results[key]?.completed) {
+          set.add(filePath);
+        }
+      }
+      // Check direct file entries: file:{filePath}:{action} → filePath
+      for (const key of Object.keys(results)) {
+        if (key.startsWith('file:') && results[key]?.completed) {
+          // key format: "file:{filePath}:{action}" — strip prefix and ":action" suffix
+          const withoutPrefix = key.slice(5); // remove "file:"
+          const lastColon = withoutPrefix.lastIndexOf(':');
+          set.add(lastColon > 0 ? withoutPrefix.slice(0, lastColon) : withoutPrefix);
+        }
+      }
+      return set;
+    } catch {
+      return new Set<string>();
+    }
+  }, [files]); // re-check when file list changes
+
   // Merge real files + optimistic resources
   const displayItems = useMemo(() => {
     if (!activeCategoryKey) {
@@ -465,15 +518,22 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
     }
   }, []);
 
-  // New item creation for code-cases
-  const isCodeCases = activeCategoryKey === 'code-cases'
-    || currentPath === 'workspace/generated/code-cases'
-    || (currentPath?.startsWith('workspace/generated/code-cases/') ?? false);
+  // Check if current path is a resource category
+  const isResourceCategory = !!activeCategoryKey
+    || currentPath === 'workspace/generated'
+    || (currentPath?.startsWith('workspace/generated/') ?? false);
   const isInsideProject = !!currentPath
     && currentPath.startsWith('workspace/generated/code-cases/')
     && currentPath !== 'workspace/generated/code-cases';
+
+  // Get current category info for generate dialog
+  const currentCategory = activeCategoryKey
+    ? RESOURCE_CATEGORIES.find(c => c.key === activeCategoryKey)
+    : null;
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const newMenuRef = useRef<HTMLDivElement>(null);
+  const [generatePrompt, setGeneratePrompt] = useState('');
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
 
   // Sync coderProjectPath with navigation
   const setProjectPathRef = useRef(actions.setCoderProjectPath);
@@ -519,6 +579,72 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
       alert('创建失败: ' + (err instanceof Error ? err.message : '未知错误'));
     }
   }, [actions, basePath]);
+
+  // Generate resource via agent
+  const handleGenerateResource = useCallback(async () => {
+    if (!generatePrompt.trim()) return;
+    setShowGenerateDialog(false);
+
+    const prompt = generatePrompt.trim();
+    setGeneratePrompt('');
+
+    const category = currentCategory;
+    if (!category) return;
+
+    // Determine agent and message based on category
+    const agent = agentRouters[category.generateLabel] || '@CodeNinja';
+    const categoryPath = `workspace/generated/${category.key}`;
+    const messages: Record<string, string> = {
+      '测验': `请生成练习题，主题：${prompt}。输出 JSON 文件到 ${categoryPath}/ 目录。`,
+      '抽认卡': `请生成抽认卡，主题：${prompt}。输出 JSON 文件到 ${categoryPath}/ 目录。`,
+      '讲义': `请生成讲义，主题：${prompt}。输出 Markdown 文件到 ${categoryPath}/ 目录。`,
+      '思维导图': `请生成思维导图，主题：${prompt}。输出 JSON 文件到 ${categoryPath}/ 目录。`,
+      '阅读清单': `请生成阅读清单，主题：${prompt}。输出 Markdown 文件到 ${categoryPath}/ 目录。`,
+      '评估': `请生成学习评估，主题：${prompt}。输出 JSON 文件到 ${categoryPath}/ 目录。`,
+      '代码案例': `请生成编程挑战题，主题：${prompt}。输出 JSON 文件到 ${categoryPath}/ 目录。`,
+      '动画脚本': `请生成动画脚本，主题：${prompt}。输出 Markdown 文件到 ${categoryPath}/ 目录。`,
+    };
+    const message = messages[category.generateLabel] || `请生成${category.label}，主题：${prompt}。输出到 ${categoryPath}/ 目录。`;
+
+    // Add to global generating tasks
+    const taskId = `task-${Date.now()}`;
+    actions.addGeneratingTask({
+      id: taskId,
+      category: category.key,
+      categoryLabel: category.label,
+      prompt,
+      status: 'generating',
+      startedAt: Date.now(),
+    });
+
+    try {
+      console.log('[Generate] Starting generation:', { agent, message });
+      const { streamSubagent } = await import('@/lib/api');
+
+      let eventCount = 0;
+      for await (const event of streamSubagent({ subagent: agent, message })) {
+        eventCount++;
+        console.log('[Generate] Event:', event.type, event);
+        if (event.type === 'done') break;
+      }
+      console.log('[Generate] Completed with', eventCount, 'events');
+
+      // Mark as completed and refresh
+      actions.updateGeneratingTask(taskId, { status: 'completed' });
+      actions.incrementFilesVersion();
+
+      // Remove task after 10 seconds so user can see completion
+      setTimeout(() => {
+        actions.removeGeneratingTask(taskId);
+      }, 10000);
+    } catch (err) {
+      console.error('[Generate] Error:', err);
+      actions.updateGeneratingTask(taskId, {
+        status: 'error',
+        error: err instanceof Error ? err.message : '未知错误',
+      });
+    }
+  }, [generatePrompt, actions, currentCategory]);
 
   // Open generate modal
   const handleOpenGenerate = useCallback((generateLabel: string) => {
@@ -606,7 +732,9 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
           <h1 className="text-2xl font-bold text-foreground">{title}</h1>
           <p className="text-sm text-muted-foreground mt-1">{description}</p>
         </div>
-        {state.isGeneratingQuiz && <GeneratingBanner />}
+        {(state.isGeneratingQuiz || state.generatingTasks.length > 0) && (
+          <GeneratingBanner tasks={state.generatingTasks.filter(t => t.status !== 'completed' || Date.now() - t.startedAt < 10000)} />
+        )}
         <div className="flex-1 overflow-y-auto px-5 pb-6">
           <div className="grid grid-cols-2 gap-3">
             {ROOTS.map(root => (
@@ -640,7 +768,9 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
             </div>
           </div>
         </div>
-        {state.isGeneratingQuiz && <GeneratingBanner />}
+        {(state.isGeneratingQuiz || state.generatingTasks.length > 0) && (
+          <GeneratingBanner tasks={state.generatingTasks.filter(t => t.status !== 'completed' || Date.now() - t.startedAt < 10000)} />
+        )}
         <div className="flex-1 overflow-y-auto px-5 pb-6">
           <div className="flex flex-col gap-2.5">
             {RESOURCE_CATEGORIES.map(cat => (
@@ -672,7 +802,7 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
         </div>
         <div className="flex-1 overflow-y-auto px-5 pb-6">
           <div className="flex flex-col gap-2">
-            {isCodeCases && (
+            {isResourceCategory && (
               <div className="relative" ref={newMenuRef}>
                 <button
                   onClick={() => setNewMenuOpen(!newMenuOpen)}
@@ -807,42 +937,32 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
             </div>
           </div>
         </div>
-        {state.isGeneratingQuiz && <GeneratingBanner />}
+        {(state.isGeneratingQuiz || state.generatingTasks.length > 0) && (
+          <GeneratingBanner tasks={state.generatingTasks.filter(t => t.status !== 'completed' || Date.now() - t.startedAt < 10000)} />
+        )}
         <div className="flex-1 overflow-y-auto px-5 pb-6">
-          {isCodeCases && (
-            <div className="relative mb-3" ref={newMenuRef}>
-              <button
-                onClick={() => setNewMenuOpen(!newMenuOpen)}
-                className="w-full flex items-center gap-3 py-3 px-3 rounded-xl border-2 border-dashed border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <FolderPlus className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-primary">新建</span>
-                  <span className="text-xs text-primary/60 block">创建文件或文件夹</span>
-                </div>
-              </button>
-              {newMenuOpen && (
-                <div className="absolute left-0 top-full mt-1 z-50 w-44 bg-popover border border-border rounded-xl shadow-lg overflow-hidden">
-                  <button
-                    onClick={handleNewFolder}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-foreground hover:bg-accent transition-colors text-left"
-                  >
-                    <FolderPlus className="w-4 h-4 text-muted-foreground" />
-                    新建文件夹
-                  </button>
-                  <button
-                    onClick={handleNewFile}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-foreground hover:bg-accent transition-colors text-left"
-                  >
-                    <FileCode className="w-4 h-4 text-muted-foreground" />
-                    新建文件
-                  </button>
-                </div>
-              )}
-            </div>
+          {isResourceCategory && (
+            <button
+              onClick={() => setShowGenerateDialog(true)}
+              className="w-full flex items-center gap-3 py-3 px-3 rounded-xl border-2 border-dashed border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all text-left mb-3"
+            >
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <span className="text-sm font-medium text-primary">生成</span>
+                <span className="text-xs text-primary/60 block">AI 生成{currentCategory?.label || '资源'}</span>
+              </div>
+            </button>
           )}
+          {/* Show generating tasks */}
+          {currentGeneratingTasks.map(task => (
+            <GeneratingListItem
+              key={task.id}
+              title={`正在生成: ${task.prompt}`}
+              metadata={`${task.categoryLabel} · AI 正在生成中...`}
+            />
+          ))}
           {displayItems.length > 0 ? (
             <div className="flex flex-col gap-0.5">
               {displayItems.map(item => {
@@ -850,6 +970,7 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
                   return <GeneratingListItem key={item.id} title={item.title} metadata={item.metadata} />;
                 }
                 const isActive = activePath === item.id;
+                const isCompleted = completedPaths.has(item.id);
                 return (
                   <div
                     key={item.id}
@@ -861,14 +982,23 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
                       isActive ? 'bg-primary/10' : 'hover:bg-secondary'
                     }`}
                   >
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Sparkles className="w-4 h-4 text-primary" />
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-primary/10'
+                    }`}>
+                      {isCompleted
+                        ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        : <Sparkles className="w-4 h-4 text-primary" />
+                      }
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                      <p className={`text-sm font-medium truncate ${
+                        isCompleted ? 'text-emerald-700 dark:text-emerald-400' : isActive ? 'text-primary' : 'text-foreground'
+                      }`}>
                         {item.title}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.metadata}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {isCompleted ? '已完成' : item.metadata}
+                      </p>
                     </div>
                     <button
                       onClick={e => handleDelete(e, item.id, item.title + '.json')}
@@ -899,15 +1029,89 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
           onGenerate={handleGenerate}
         />
       )}
+
+      {/* Generate resource dialog */}
+      {showGenerateDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowGenerateDialog(false)} />
+          <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-6 py-5 border-b border-border">
+              <h2 className="text-lg font-semibold text-foreground">
+                生成{currentCategory?.label || '资源'}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">输入主题，AI 将自动生成</p>
+            </div>
+            <div className="px-6 py-5">
+              <input
+                type="text"
+                value={generatePrompt}
+                onChange={e => setGeneratePrompt(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleGenerateResource(); }}
+                placeholder={getPlaceholder(currentCategory?.label || '')}
+                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                autoFocus
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-border bg-secondary/50 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowGenerateDialog(false)}
+                className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleGenerateResource}
+                disabled={!generatePrompt.trim()}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-all"
+              >
+                生成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function GeneratingBanner() {
+function GeneratingBanner({ tasks }: { tasks?: GeneratingTask[] }) {
+  if (!tasks || tasks.length === 0) return null;
+
   return (
-    <div className="mx-5 mb-3 flex items-center gap-3 py-3 px-4 rounded-xl bg-primary/5 border border-primary/10">
-      <Loader2 className="w-4 h-4 text-primary animate-spin" />
-      <span className="text-sm text-primary">正在生成测验...</span>
+    <div className="mx-5 mb-3 space-y-2">
+      {tasks.map(task => (
+        <div
+          key={task.id}
+          className={`flex items-center gap-3 py-3 px-4 rounded-xl border ${
+            task.status === 'generating'
+              ? 'bg-primary/5 border-primary/10'
+              : task.status === 'completed'
+                ? 'bg-emerald-500/5 border-emerald-500/20'
+                : 'bg-red-500/5 border-red-500/20'
+          }`}
+        >
+          {task.status === 'generating' ? (
+            <Loader2 className="w-4 h-4 text-primary animate-spin" />
+          ) : task.status === 'completed' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          ) : (
+            <XCircle className="w-4 h-4 text-red-500" />
+          )}
+          <span className={`text-sm ${
+            task.status === 'generating'
+              ? 'text-primary'
+              : task.status === 'completed'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-red-600 dark:text-red-400'
+          }`}>
+            {task.status === 'generating'
+              ? `正在生成${task.categoryLabel}: ${task.prompt}`
+              : task.status === 'completed'
+                ? `${task.categoryLabel}已生成: ${task.prompt}`
+                : `生成失败: ${task.prompt}`}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

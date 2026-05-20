@@ -354,7 +354,7 @@ export function KnowledgeGraph() {
 
     renderingRef.current = true;
 
-    const nodes = data.nodes.map((n) => ({
+    const nodes = (data.nodes ?? []).map((n) => ({
       id: n.id,
       data: {
         name: n.name,
@@ -373,7 +373,7 @@ export function KnowledgeGraph() {
       } as Record<string, unknown>,
     }));
 
-    const edges = data.edges.map((e, i) => ({
+    const edges = (data.edges ?? []).map((e, i) => ({
       id: `edge-${e.source}-${e.target}-${i}`,
       source: e.source,
       target: e.target,
@@ -474,15 +474,15 @@ export function KnowledgeGraph() {
     const toRemove = new Set<string>();
     setGraphData((prev) => {
       if (!prev) return prev;
-      const existingIds = new Set(prev.nodes.map((n) => n.id));
+      const existingIds = new Set((prev.nodes ?? []).map((n) => n.id));
       for (const d of descendants) {
         if (existingIds.has(d)) toRemove.add(d);
       }
       if (toRemove.size === 0) return prev;
 
       return {
-        nodes: prev.nodes.filter((n) => !toRemove.has(n.id)),
-        edges: prev.edges.filter(
+        nodes: (prev.nodes ?? []).filter((n) => !toRemove.has(n.id)),
+        edges: (prev.edges ?? []).filter(
           (e) => !toRemove.has(e.source) && !toRemove.has(e.target)
         ),
       };
@@ -531,7 +531,7 @@ export function KnowledgeGraph() {
       // Bail if this request was superseded
       if (controller.signal.aborted) return;
 
-      if (children.nodes.length === 0) {
+      if (!children.nodes || children.nodes.length === 0) {
         addExpanded(node.id);
         return;
       }
@@ -546,19 +546,19 @@ export function KnowledgeGraph() {
       setGraphData((prev) => {
         if (!prev) return children;
 
-        const existingIds = new Set(prev.nodes.map((n) => n.id));
-        const newNodes = children.nodes.filter((n) => !existingIds.has(n.id));
+        const existingIds = new Set((prev.nodes ?? []).map((n) => n.id));
+        const newNodes = (children.nodes ?? []).filter((n) => !existingIds.has(n.id));
 
         const existingEdgeKeys = new Set(
-          prev.edges.map((e) => `${e.source}->${e.target}`)
+          (prev.edges ?? []).map((e) => `${e.source}->${e.target}`)
         );
-        const newEdges = children.edges.filter(
+        const newEdges = (children.edges ?? []).filter(
           (e) => !existingEdgeKeys.has(`${e.source}->${e.target}`)
         );
 
         return {
-          nodes: [...prev.nodes, ...newNodes],
-          edges: [...prev.edges, ...newEdges],
+          nodes: [...(prev.nodes ?? []), ...newNodes],
+          edges: [...(prev.edges ?? []), ...newEdges],
         };
       });
 

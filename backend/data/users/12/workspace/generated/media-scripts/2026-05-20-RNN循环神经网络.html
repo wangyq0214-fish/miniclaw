@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RNN 循环神经网络</title>
+<style>
+:root {
+    --bg-color: #f8faff;
+    --primary-color: #6366f1;
+    --secondary-color: #22d3ee;
+    --accent-color: #f59e0b;
+    --text-main: #1e293b;
+    --text-sub: #64748b;
+    --node-bg: #ffffff;
+    --line-color: #cbd5e1;
+    --danger-color: #ef4444;
+    --success-color: #10b981;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #e2e8f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+}
+#canvas-container {
+    width: 1920px; height: 1080px;
+    background: white;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transform-origin: center;
+}
+#header {
+    position: absolute; top: 30px; left: 0; right: 0;
+    text-align: center; z-index: 10;
+}
+#header h1 {
+    font-size: 48px; font-weight: 700;
+    color: var(--primary-color);
+    letter-spacing: 4px;
+}
+#stage {
+    flex: 1; position: relative;
+    display: flex; align-items: center; justify-content: center;
+}
+#main-svg { width: 100%; height: 100%; }
+#subtitle-container {
+    position: absolute; bottom: 80px; left: 0; right: 0;
+    text-align: center; z-index: 20;
+    pointer-events: none;
+}
+.subtitle-zh {
+    font-size: 32px; font-weight: 600;
+    color: var(--text-main);
+    text-shadow: 0 2px 8px rgba(255,255,255,0.9);
+    margin-bottom: 8px; min-height: 44px;
+    padding: 0 100px;
+}
+#progress-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 6px; background: #e2e8f0; z-index: 30;
+}
+#progress {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    transition: width 0.3s;
+    border-radius: 0 3px 3px 0;
+}
+[id^="scene-"] {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+}
+[id^="scene-"].active {
+    opacity: 1; pointer-events: auto;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+@keyframes flow {
+    0% { stroke-dashoffset: 20; }
+    100% { stroke-dashoffset: 0; }
+}
+</style>
+</head>
+<body>
+<div id="canvas-container">
+    <div id="header"><h1>RNN 循环神经网络</h1></div>
+    <div id="stage">
+        <svg id="main-svg" viewBox="0 0 1920 1080">
+            <defs>
+                <marker id="arrow" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+                    <path d="M0,0 L12,4 L0,8 Z" fill="var(--primary-color)" />
+                </marker>
+                <marker id="arrow-accent" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+                    <path d="M0,0 L12,4 L0,8 Z" fill="var(--accent-color)" />
+                </marker>
+                <marker id="arrow-cyan" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+                    <path d="M0,0 L12,4 L0,8 Z" fill="var(--secondary-color)" />
+                </marker>
+                <marker id="arrow-danger" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+                    <path d="M0,0 L12,4 L0,8 Z" fill="var(--danger-color)" />
+                </marker>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="glow-accent">
+                    <feGaussianBlur stdDeviation="6" result="blur" />
+                    <feFlood flood-color="var(--accent-color)" flood-opacity="0.3" result="color"/>
+                    <feComposite in="color" in2="blur" operator="in" result="shadow"/>
+                    <feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <linearGradient id="gradient-hidden" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#818cf8" />
+                    <stop offset="100%" style="stop-color:#6366f1" />
+                </linearGradient>
+                <linearGradient id="gradient-input" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#34d399" />
+                    <stop offset="100%" style="stop-color:#10b981" />
+                </linearGradient>
+                <linearGradient id="gradient-output" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#fbbf24" />
+                    <stop offset="100%" style="stop-color:#f59e0b" />
+                </linearGradient>
+            </defs>
+        </svg>
+    </div>
+    <div id="subtitle-container">
+        <div class="subtitle-zh" id="subtitle-cn"></div>
+    </div>
+    <div id="progress-bar"><div id="progress"></div></div>
+</div>
+
+<script>
+const subtitles = [
+            { time: 0,    cn: "同学们好！今天我们来学习循环神经网络，简称 RNN" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/0_967faffb98ed.mp3" },
+            { time: 6055,    cn: "传统的神经网络只能处理固定长度的输入，但现实中的数据往往是序列" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/1_ca2b47ac6d7b.mp3" },
+            { time: 13444,    cn: "比如一段文字、一段语音、或者股票价格走势，这些都是有时间顺序的" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/2_0b402a9d2c6c.mp3" },
+            { time: 20833,    cn: "RNN 的核心思想很简单：它有一个隐藏状态，像人的记忆一样" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/3_bdf875259ab2.mp3" },
+            { time: 27777,    cn: "在每个时间步，RNN 会读入新的输入，同时更新自己的记忆" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/4_75e62f9a954d.mp3" },
+            { time: 34500,    cn: "这个记忆会在时间步之间传递，让网络能够记住之前的信息" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/5_56117ac91133.mp3" },
+            { time: 40777,    cn: "让我们看看 RNN 是怎么计算的。在每个时间步 t" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/6_e095f8ada15a.mp3" },
+            { time: 46833,    cn: "隐藏状态等于激活函数，作用于权重乘以输入加上上一时刻的隐藏状态" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/7_7672e6f4f103.mp3" },
+            { time: 54222,    cn: "注意！所有的时间步共享同一套权重，这就是参数共享" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/8_72cdbf46f5e3.mp3" },
+            { time: 60055,    cn: "输出则是基于当前隐藏状态计算得出的" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/9_50daea5ed3d0.mp3" },
+            { time: 64333,    cn: "但 RNN 有一个严重的问题——梯度消失和梯度爆炸" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/10_c174346d6380.mp3" },
+            { time: 70388,    cn: "在反向传播时，梯度需要沿着时间步逐层传递" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/11_4d59dd7929c3.mp3" },
+            { time: 75333,    cn: "当序列很长时，网络很难学到早期输入对最终结果的影响" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/12_bfa5c4983867.mp3" },
+            { time: 81388,    cn: "为了解决这个问题，科学家发明了 LSTM 长短期记忆网络" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/13_8da04b510370.mp3" },
+            { time: 88111,    cn: "LSTM 有三个门：遗忘门、输入门和输出门" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/14_60ba38b3fc0c.mp3" },
+            { time: 93277,    cn: "遗忘门决定丢弃哪些旧信息，输入门决定存储哪些新信息" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/15_520b1be9c58e.mp3" },
+            { time: 99333,    cn: "输出门决定输出哪些信息，这样梯度可以更稳定地流动" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/16_8d3359a6571d.mp3" },
+            { time: 105166,    cn: "RNN 和 LSTM 被广泛应用于语言建模、机器翻译、语音识别等领域" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/17_a834dfe3ed45.mp3" },
+            { time: 113222,    cn: "虽然现在 Transformer 更流行，但理解 RNN 仍然是深度学习的重要基础" , audio: "/api/tts/audio/12/2026-05-20-RNN循环神经网络/18_b9cb12c08976.mp3" }
+        ];
+
+const TOTAL_DURATION = 122333;
+
+const SCENE_TIMES = [
+    { scene: 0, start: 0, end: 25000 },
+    { scene: 1, start: 25000, end: 52000 },
+    { scene: 2, start: 52000, end: 87000 },
+    { scene: 3, start: 87000, end: 114000 },
+    { scene: 4, start: 114000, end: 150000 },
+    { scene: 5, start: 150000, end: 170000 }
+];
+
+let startTime;
+let currentSubtitleIndex = -1;
+let currentAudio = null;
+
+function updateProgress() {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min(elapsed / TOTAL_DURATION * 100, 100);
+    document.getElementById('progress').style.width = pct + '%';
+}
+
+function playAudio(audioUrl) {
+    if (!audioUrl) return;
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    currentAudio = new Audio(audioUrl);
+    currentAudio.play().catch(e => console.log('Audio play failed:', e));
+}
+
+function updateSubtitle(elapsed) {
+    for (let i = subtitles.length - 1; i >= 0; i--) {
+        if (elapsed >= subtitles[i].time) {
+            if (currentSubtitleIndex !== i) {
+                currentSubtitleIndex = i;
+                document.getElementById('subtitle-cn').textContent = subtitles[i].cn;
+                if (subtitles[i].audio) playAudio(subtitles[i].audio);
+            }
+            break;
+        }
+    }
+}
+
+function el(tag, attrs, children) {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+        if (k === 'style' && typeof v === 'object') {
+            Object.entries(v).forEach(([sk, sv]) => e.style[sk] = sv);
+        } else if (k.startsWith('on')) {
+            e.addEventListener(k.slice(2).toLowerCase(), v);
+        } else {
+            e.setAttribute(k, v);
+        }
+    });
+    if (children) {
+        if (typeof children === 'string') e.textContent = children;
+        else if (Array.isArray(children)) children.forEach(c => { if (c) e.appendChild(c); });
+        else e.appendChild(children);
+    }
+    return e;
+}
+
+function makeCircle(cx, cy, r, fill, stroke, sw) {
+    return el('circle', { cx, cy, r, fill: fill || 'white', stroke: stroke || 'var(--primary-color)', 'stroke-width': sw || 3 });
+}
+
+function makeRect(x, y, w, h, fill, stroke, sw, rx) {
+    return el('rect', { x, y, width: w, height: h, fill: fill || 'white', stroke: stroke || 'var(--primary-color)', 'stroke-width': sw || 3, rx: rx || 8 });
+}
+
+function makeText(x, y, text, size, fill, anchor, weight) {
+    return el('text', { x, y, 'font-size': size || 24, fill: fill || 'var(--text-main)', 'text-anchor': anchor || 'middle', 'font-weight': weight || 'bold', 'font-family': "'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" }, text);
+}
+
+function makeLine(x1, y1, x2, y2, color, sw, dasharray) {
+    const attrs = { x1, y1, x2, y2, stroke: color || 'var(--line-color)', 'stroke-width': sw || 2 };
+    if (dasharray) attrs['stroke-dasharray'] = dasharray;
+    return el('line', attrs);
+}
+
+function makePath(d, color, sw, fill, markerEnd) {
+    const attrs = { d, stroke: color || 'var(--line-color)', 'stroke-width': sw || 2, fill: fill || 'none' };
+    if (markerEnd) attrs['marker-end'] = markerEnd;
+    return el('path', attrs);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function waitForTime(targetTime) {
+    return new Promise(resolve => {
+        const check = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed >= targetTime) { clearInterval(check); resolve(); }
+        }, 100);
+    });
+}
+
+function waitUntilSceneEnd(sceneIndex) {
+    const scene = SCENE_TIMES[sceneIndex];
+    if (!scene) return Promise.resolve();
+    return waitForTime(scene.end);
+}
+
+function clearScene() {
+    const svg = document.getElementById('main-svg');
+    const toRemove = [];
+    for (const child of svg.children) {
+        if (child.tagName !== 'defs') toRemove.push(child);
+    }
+    toRemove.forEach(e => e.remove());
+}
+
+// ============ Scene 0: Introduction - Why RNN? ============
+async function scene0() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    // Title
+    const title = makeText(960, 120, '为什么需要 RNN？', 52, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.5s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(800);
+
+    // Traditional NN limitation
+    const nnBox = makeRect(150, 250, 500, 320, '#fef2f2', 'var(--danger-color)', 3, 16);
+    nnBox.style.opacity = '0';
+    g.appendChild(nnBox);
+    const nnTitle = makeText(400, 300, '传统神经网络', 28, 'var(--danger-color)');
+    nnTitle.style.opacity = '0';
+    g.appendChild(nnTitle);
+
+    // Fixed input illustration
+    const fixedInputs = ['输入1', '输入2', '输入3'];
+    fixedInputs.forEach((inp, i) => {
+        const box = makeRect(230 + i * 120, 360, 100, 45, 'white', 'var(--line-color)', 2, 8);
+        box.style.opacity = '0';
+        g.appendChild(box);
+        const text = makeText(280 + i * 120, 388, inp, 18, 'var(--text-sub)', 'middle', 'normal');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => {
+            box.style.transition = 'opacity 0.3s'; box.style.opacity = '1';
+            text.style.transition = 'opacity 0.3s'; text.style.opacity = '1';
+        }, 1200 + i * 300);
+    });
+
+    const fixedLabel = makeText(400, 450, '✗ 固定长度输入', 22, 'var(--danger-color)');
+    fixedLabel.style.opacity = '0';
+    g.appendChild(fixedLabel);
+    const noTimeLabel = makeText(400, 490, '✗ 没有时间概念', 22, 'var(--danger-color)');
+    noTimeLabel.style.opacity = '0';
+    g.appendChild(noTimeLabel);
+
+    setTimeout(() => { nnBox.style.transition = 'opacity 0.5s'; nnBox.style.opacity = '1'; }, 500);
+    setTimeout(() => { nnTitle.style.transition = 'opacity 0.5s'; nnTitle.style.opacity = '1'; }, 700);
+    setTimeout(() => { fixedLabel.style.transition = 'opacity 0.4s'; fixedLabel.style.opacity = '1'; }, 2500);
+    setTimeout(() => { noTimeLabel.style.transition = 'opacity 0.4s'; noTimeLabel.style.opacity = '1'; }, 3000);
+
+    await sleep(3500);
+
+    // Arrow
+    const arrow = makePath('M680,400 L780,400', 'var(--accent-color)', 4, 'none', 'url(#arrow-accent)');
+    arrow.style.opacity = '0';
+    g.appendChild(arrow);
+    setTimeout(() => { arrow.style.transition = 'opacity 0.3s'; arrow.style.opacity = '1'; }, 300);
+
+    // Sequence data examples
+    const seqBox = makeRect(820, 250, 500, 320, '#f0fdf4', 'var(--success-color)', 3, 16);
+    seqBox.style.opacity = '0';
+    g.appendChild(seqBox);
+    const seqTitle = makeText(1070, 300, '现实中的序列数据', 28, 'var(--success-color)');
+    seqTitle.style.opacity = '0';
+    g.appendChild(seqTitle);
+
+    const sequences = [
+        { icon: '📝', text: '文字序列', desc: '"我喜欢深度学习"' },
+        { icon: '🎤', text: '语音信号', desc: '连续的声波' },
+        { icon: '📈', text: '股票价格', desc: '每日涨跌走势' }
+    ];
+
+    sequences.forEach((s, i) => {
+        const y = 360 + i * 65;
+        const icon = makeText(880, y + 20, s.icon, 28, 'var(--text-main)');
+        icon.style.opacity = '0';
+        g.appendChild(icon);
+        const name = makeText(950, y + 5, s.text, 20, 'var(--success-color)', 'start', 'bold');
+        name.style.opacity = '0';
+        g.appendChild(name);
+        const desc = makeText(950, y + 28, s.desc, 16, 'var(--text-sub)', 'start', 'normal');
+        desc.style.opacity = '0';
+        g.appendChild(desc);
+        setTimeout(() => {
+            icon.style.transition = 'opacity 0.4s'; icon.style.opacity = '1';
+            name.style.transition = 'opacity 0.4s'; name.style.opacity = '1';
+            desc.style.transition = 'opacity 0.4s'; desc.style.opacity = '1';
+        }, 2000 + i * 500);
+    });
+
+    setTimeout(() => { seqBox.style.transition = 'opacity 0.5s'; seqBox.style.opacity = '1'; }, 1000);
+    setTimeout(() => { seqTitle.style.transition = 'opacity 0.5s'; seqTitle.style.opacity = '1'; }, 1200);
+
+    await sleep(4000);
+
+    // Bottom message
+    const bottomBox = makeRect(460, 640, 1000, 70, 'var(--primary-color)', 'none', 0, 35);
+    bottomBox.style.opacity = '0';
+    g.appendChild(bottomBox);
+    const bottomText = makeText(960, 682, 'RNN 就是为了处理这种有时间顺序的序列数据而设计的', 26, 'white');
+    bottomText.style.opacity = '0';
+    g.appendChild(bottomText);
+    setTimeout(() => {
+        bottomBox.style.transition = 'opacity 0.5s'; bottomBox.style.opacity = '1';
+        bottomText.style.transition = 'opacity 0.5s'; bottomText.style.opacity = '1';
+    }, 500);
+}
+
+// ============ Scene 1: RNN Core Idea ============
+async function scene1() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 80, 'RNN 的核心：隐藏状态 = 记忆', 44, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.5s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(600);
+
+    // Memory metaphor
+    const brainIcon = makeText(960, 220, '🧠', 80, 'var(--text-main)');
+    brainIcon.style.opacity = '0';
+    g.appendChild(brainIcon);
+    const memoryLabel = makeText(960, 300, '隐藏状态 h = 网络的记忆', 28, 'var(--accent-color)');
+    memoryLabel.style.opacity = '0';
+    g.appendChild(memoryLabel);
+    setTimeout(() => {
+        brainIcon.style.transition = 'opacity 0.6s'; brainIcon.style.opacity = '1';
+        memoryLabel.style.transition = 'opacity 0.6s'; memoryLabel.style.opacity = '1';
+    }, 400);
+
+    await sleep(2000);
+
+    // RNN unrolled through time
+    const timeSteps = ['t=1', 't=2', 't=3', 't=4'];
+    const inputs = ['我', '喜欢', '吃', '苹果'];
+    const startX = 280;
+    const gap = 380;
+
+    timeSteps.forEach((t, i) => {
+        const x = startX + i * gap;
+
+        // Time label
+        const timeLabel = makeText(x, 380, t, 20, 'var(--text-sub)', 'middle', 'normal');
+        timeLabel.style.opacity = '0';
+        g.appendChild(timeLabel);
+
+        // Input
+        const inputBox = makeRect(x - 45, 420, 90, 50, '#d1fae5', 'var(--success-color)', 2, 8);
+        inputBox.style.opacity = '0';
+        g.appendChild(inputBox);
+        const inputText = makeText(x, 450, inputs[i], 22, 'var(--success-color)');
+        inputText.style.opacity = '0';
+        g.appendChild(inputText);
+
+        // RNN Cell
+        const cellBox = makeRect(x - 55, 510, 110, 80, 'url(#gradient-hidden)', 'var(--primary-color)', 3, 12);
+        cellBox.style.opacity = '0';
+        g.appendChild(cellBox);
+        const cellText = makeText(x, 555, 'RNN', 24, 'white');
+        cellText.style.opacity = '0';
+        g.appendChild(cellText);
+
+        // Hidden state
+        const hBox = makeRect(x - 50, 630, 100, 45, '#ede9fe', '#818cf8', 2, 8);
+        hBox.style.opacity = '0';
+        g.appendChild(hBox);
+        const hText = makeText(x, 658, 'h' + (i + 1), 20, '#818cf8');
+        hText.style.opacity = '0';
+        g.appendChild(hText);
+
+        // Arrow from input to cell
+        const inputArrow = makeLine(x, 470, x, 510, 'var(--success-color)', 2);
+        inputArrow.style.opacity = '0';
+        g.appendChild(inputArrow);
+
+        // Arrow from cell to hidden
+        const hArrow = makeLine(x, 590, x, 630, '#818cf8', 2);
+        hArrow.style.opacity = '0';
+        g.appendChild(hArrow);
+
+        setTimeout(() => {
+            timeLabel.style.transition = 'opacity 0.4s'; timeLabel.style.opacity = '1';
+            inputBox.style.transition = 'opacity 0.4s'; inputBox.style.opacity = '1';
+            inputText.style.transition = 'opacity 0.4s'; inputText.style.opacity = '1';
+            cellBox.style.transition = 'opacity 0.4s'; cellBox.style.opacity = '1';
+            cellText.style.transition = 'opacity 0.4s'; cellText.style.opacity = '1';
+            hBox.style.transition = 'opacity 0.4s'; hBox.style.opacity = '1';
+            hText.style.transition = 'opacity 0.4s'; hText.style.opacity = '1';
+            inputArrow.style.transition = 'opacity 0.4s'; inputArrow.style.opacity = '1';
+            hArrow.style.transition = 'opacity 0.4s'; hArrow.style.opacity = '1';
+        }, 2500 + i * 800);
+
+        // Horizontal arrow between cells
+        if (i < 3) {
+            const hLink = makePath(`M${x + 55},${550} L${x + gap - 55},${550}`, 'var(--accent-color)', 3, 'none', 'url(#arrow-accent)');
+            hLink.style.opacity = '0';
+            g.appendChild(hLink);
+            const memLabel = makeText(x + gap / 2, 535, '记忆传递', 14, 'var(--accent-color)', 'middle', 'normal');
+            memLabel.style.opacity = '0';
+            g.appendChild(memLabel);
+            setTimeout(() => {
+                hLink.style.transition = 'opacity 0.4s'; hLink.style.opacity = '1';
+                memLabel.style.transition = 'opacity 0.4s'; memLabel.style.opacity = '1';
+            }, 3000 + i * 800);
+        }
+    });
+
+    await sleep(8500);
+
+    // Summary note
+    const note = makeText(960, 760, '每个时间步都读入新输入，同时保留之前的记忆', 26, 'var(--text-sub)', 'middle', 'normal');
+    note.style.opacity = '0';
+    g.appendChild(note);
+    setTimeout(() => { note.style.transition = 'opacity 0.5s'; note.style.opacity = '1'; }, 500);
+}
+
+// ============ Scene 2: RNN Computation ============
+async function scene2() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 80, 'RNN 的计算过程', 44, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.5s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(600);
+
+    // Single RNN cell detail
+    const cellX = 960;
+    const cellY = 350;
+
+    // Main cell
+    const cellBox = makeRect(cellX - 120, cellY - 80, 240, 160, 'url(#gradient-hidden)', 'var(--primary-color)', 4, 20);
+    cellBox.style.opacity = '0';
+    g.appendChild(cellBox);
+    const cellTitle = makeText(cellX, cellY - 20, 'RNN Cell', 32, 'white');
+    cellTitle.style.opacity = '0';
+    g.appendChild(cellTitle);
+    const cellFunc = makeText(cellX, cellY + 25, 'tanh', 24, 'rgba(255,255,255,0.8)', 'middle', 'normal');
+    cellFunc.style.opacity = '0';
+    g.appendChild(cellFunc);
+
+    setTimeout(() => {
+        cellBox.style.transition = 'opacity 0.5s'; cellBox.style.opacity = '1';
+        cellTitle.style.transition = 'opacity 0.5s'; cellTitle.style.opacity = '1';
+        cellFunc.style.transition = 'opacity 0.5s'; cellFunc.style.opacity = '1';
+    }, 300);
+
+    await sleep(1500);
+
+    // Input x(t)
+    const inputBox = makeRect(200, cellY - 30, 140, 60, '#d1fae5', 'var(--success-color)', 3, 10);
+    inputBox.style.opacity = '0';
+    g.appendChild(inputBox);
+    const inputLabel = makeText(270, cellY + 5, '输入 x(t)', 22, 'var(--success-color)');
+    inputLabel.style.opacity = '0';
+    g.appendChild(inputLabel);
+
+    const inputArrow = makePath('M340,cellY L840,cellY'.replace('cellY', cellY), 'var(--success-color)', 3, 'none', 'url(#arrow)');
+    inputArrow.style.opacity = '0';
+    g.appendChild(inputArrow);
+
+    setTimeout(() => {
+        inputBox.style.transition = 'opacity 0.4s'; inputBox.style.opacity = '1';
+        inputLabel.style.transition = 'opacity 0.4s'; inputLabel.style.opacity = '1';
+        inputArrow.style.transition = 'opacity 0.4s'; inputArrow.style.opacity = '1';
+    }, 500);
+
+    await sleep(1500);
+
+    // Previous hidden state h(t-1)
+    const hPrevBox = makeRect(cellX - 80, 550, 160, 60, '#ede9fe', '#818cf8', 3, 10);
+    hPrevBox.style.opacity = '0';
+    g.appendChild(hPrevBox);
+    const hPrevLabel = makeText(cellX, 585, 'h(t-1)', 22, '#818cf8');
+    hPrevLabel.style.opacity = '0';
+    g.appendChild(hPrevLabel);
+
+    const hPrevArrow = makePath(`M${cellX},${610} L${cellX},${cellY + 80}`, '#818cf8', 3, 'none', 'url(#arrow)');
+    hPrevArrow.style.opacity = '0';
+    g.appendChild(hPrevArrow);
+
+    setTimeout(() => {
+        hPrevBox.style.transition = 'opacity 0.4s'; hPrevBox.style.opacity = '1';
+        hPrevLabel.style.transition = 'opacity 0.4s'; hPrevLabel.style.opacity = '1';
+        hPrevArrow.style.transition = 'opacity 0.4s'; hPrevArrow.style.opacity = '1';
+    }, 500);
+
+    await sleep(2000);
+
+    // Formula
+    const formulaBox = makeRect(300, 180, 700, 70, '#f8fafc', 'var(--line-color)', 2, 12);
+    formulaBox.style.opacity = '0';
+    g.appendChild(formulaBox);
+    const formula = makeText(650, 222, 'h(t) = tanh( W_x · x(t) + W_h · h(t-1) + b )', 28, 'var(--primary-color)');
+    formula.style.opacity = '0';
+    g.appendChild(formula);
+
+    setTimeout(() => {
+        formulaBox.style.transition = 'opacity 0.5s'; formulaBox.style.opacity = '1';
+        formula.style.transition = 'opacity 0.5s'; formula.style.opacity = '1';
+    }, 500);
+
+    await sleep(3000);
+
+    // Output
+    const outputBox = makeRect(1280, cellY - 30, 140, 60, '#fef3c7', 'var(--accent-color)', 3, 10);
+    outputBox.style.opacity = '0';
+    g.appendChild(outputBox);
+    const outputLabel = makeText(1350, cellY + 5, '输出 y(t)', 22, 'var(--accent-color)');
+    outputLabel.style.opacity = '0';
+    g.appendChild(outputLabel);
+
+    const outputArrow = makePath(`M${cellX + 120},${cellY} L1280,${cellY}`, 'var(--accent-color)', 3, 'none', 'url(#arrow-accent)');
+    outputArrow.style.opacity = '0';
+    g.appendChild(outputArrow);
+
+    setTimeout(() => {
+        outputBox.style.transition = 'opacity 0.4s'; outputBox.style.opacity = '1';
+        outputLabel.style.transition = 'opacity 0.4s'; outputLabel.style.opacity = '1';
+        outputArrow.style.transition = 'opacity 0.4s'; outputArrow.style.opacity = '1';
+    }, 500);
+
+    await sleep(2000);
+
+    // Weight sharing highlight
+    const shareBox = makeRect(350, 680, 600, 70, '#fef3c7', 'var(--accent-color)', 3, 12);
+    shareBox.style.opacity = '0';
+    g.appendChild(shareBox);
+    const shareIcon = makeText(400, 722, '⚡', 28, 'var(--text-main)');
+    shareIcon.style.opacity = '0';
+    g.appendChild(shareIcon);
+    const shareText = makeText(750, 722, '关键：所有时间步共享 W_x、W_h、b 这套参数', 24, 'var(--accent-color)');
+    shareText.style.opacity = '0';
+    g.appendChild(shareText);
+
+    setTimeout(() => {
+        shareBox.style.transition = 'opacity 0.5s'; shareBox.style.opacity = '1';
+        shareIcon.style.transition = 'opacity 0.5s'; shareIcon.style.opacity = '1';
+        shareText.style.transition = 'opacity 0.5s'; shareText.style.opacity = '1';
+    }, 500);
+}
+
+// ============ Scene 3: Gradient Problem ============
+async function scene3() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 80, 'RNN 的致命问题：梯度消失', 44, 'var(--danger-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.5s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(800);
+
+    // Chain of time steps
+    const steps = 8;
+    const startX = 180;
+    const gap = 200;
+    const y = 300;
+
+    for (let i = 0; i < steps; i++) {
+        const x = startX + i * gap;
+
+        // Cell
+        const cell = makeRect(x - 40, y - 30, 80, 60, '#ede9fe', '#818cf8', 2, 8);
+        cell.style.opacity = '0';
+        g.appendChild(cell);
+        const label = makeText(x, y + 5, 't=' + (i + 1), 16, '#818cf8');
+        label.style.opacity = '0';
+        g.appendChild(label);
+
+        // Arrow to next
+        if (i < steps - 1) {
+            const arrow = makeLine(x + 40, y, x + gap - 40, y, 'var(--line-color)', 2);
+            arrow.style.opacity = '0';
+            g.appendChild(arrow);
+            setTimeout(() => { arrow.style.transition = 'opacity 0.3s'; arrow.style.opacity = '1'; }, 1000 + i * 200);
+        }
+
+        // Gradient size (shrinking)
+        const gradSize = Math.max(3, 25 - i * 3);
+        const gradColor = i < 3 ? 'var(--success-color)' : (i < 5 ? 'var(--accent-color)' : 'var(--danger-color)');
+        const grad = makeCircle(x, y + 80, gradSize, gradColor, 'none', 0);
+        grad.style.opacity = '0';
+        g.appendChild(grad);
+
+        const gradLabel = makeText(x, y + 120, i === 0 ? '1.0' : (Math.pow(0.5, i)).toFixed(3), 14, gradColor, 'middle', 'normal');
+        gradLabel.style.opacity = '0';
+        g.appendChild(gradLabel);
+
+        setTimeout(() => {
+            cell.style.transition = 'opacity 0.3s'; cell.style.opacity = '1';
+            label.style.transition = 'opacity 0.3s'; label.style.opacity = '1';
+            grad.style.transition = 'opacity 0.5s'; grad.style.opacity = '1';
+            gradLabel.style.transition = 'opacity 0.5s'; gradLabel.style.opacity = '1';
+        }, 1200 + i * 300);
+    }
+
+    await sleep(5000);
+
+    // Gradient vanishing illustration
+    const vanishBox = makeRect(200, 480, 700, 180, '#fef2f2', 'var(--danger-color)', 3, 16);
+    vanishBox.style.opacity = '0';
+    g.appendChild(vanishBox);
+    const vanishTitle = makeText(550, 530, '梯度消失', 28, 'var(--danger-color)');
+    vanishTitle.style.opacity = '0';
+    g.appendChild(vanishTitle);
+
+    const vanishDesc = [
+        '梯度每传一步就乘以一个小于1的数',
+        '传到最后，梯度趋近于 0',
+        '网络无法学习长期依赖关系'
+    ];
+    vanishDesc.forEach((d, i) => {
+        const text = makeText(550, 580 + i * 35, '• ' + d, 18, 'var(--text-sub)', 'middle', 'normal');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => { text.style.transition = 'opacity 0.3s'; text.style.opacity = '1'; }, 2500 + i * 400);
+    });
+
+    setTimeout(() => { vanishBox.style.transition = 'opacity 0.5s'; vanishBox.style.opacity = '1'; }, 1500);
+    setTimeout(() => { vanishTitle.style.transition = 'opacity 0.5s'; vanishTitle.style.opacity = '1'; }, 1800);
+
+    await sleep(3500);
+
+    // Gradient exploding illustration
+    const explodeBox = makeRect(1020, 480, 700, 180, '#fef2f2', 'var(--danger-color)', 3, 16);
+    explodeBox.style.opacity = '0';
+    g.appendChild(explodeBox);
+    const explodeTitle = makeText(1370, 530, '梯度爆炸', 28, 'var(--danger-color)');
+    explodeTitle.style.opacity = '0';
+    g.appendChild(explodeTitle);
+
+    const explodeDesc = [
+        '如果梯度每步乘以大于1的数',
+        '传到最后，梯度变得非常大',
+        '训练过程会变得极不稳定'
+    ];
+    explodeDesc.forEach((d, i) => {
+        const text = makeText(1370, 580 + i * 35, '• ' + d, 18, 'var(--text-sub)', 'middle', 'normal');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => { text.style.transition = 'opacity 0.3s'; text.style.opacity = '1'; }, 1500 + i * 400);
+    });
+
+    setTimeout(() => { explodeBox.style.transition = 'opacity 0.5s'; explodeBox.style.opacity = '1'; }, 800);
+    setTimeout(() => { explodeTitle.style.transition = 'opacity 0.5s'; explodeTitle.style.opacity = '1'; }, 1000);
+
+    await sleep(4000);
+
+    // Example
+    const exBox = makeRect(360, 720, 1200, 80, '#f8fafc', 'var(--line-color)', 2, 12);
+    exBox.style.opacity = '0';
+    g.appendChild(exBox);
+    const exText = makeText(960, 767, '例子：句子开头的 "小明" 很难影响到 20 个词之后的预测结果', 24, 'var(--text-sub)', 'middle', 'normal');
+    exText.style.opacity = '0';
+    g.appendChild(exText);
+
+    setTimeout(() => {
+        exBox.style.transition = 'opacity 0.5s'; exBox.style.opacity = '1';
+        exText.style.transition = 'opacity 0.5s'; exText.style.opacity = '1';
+    }, 500);
+}
+
+// ============ Scene 4: LSTM Solution ============
+async function scene4() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 70, 'LSTM：用门控机制解决梯度问题', 44, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.5s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(600);
+
+    // LSTM cell
+    const cellX = 960;
+    const cellY = 380;
+    const cellW = 500;
+    const cellH = 350;
+
+    const cellBox = makeRect(cellX - cellW/2, cellY - cellH/2, cellW, cellH, '#f8fafc', 'var(--primary-color)', 4, 20);
+    cellBox.style.opacity = '0';
+    g.appendChild(cellBox);
+    const cellLabel = makeText(cellX, cellY - cellH/2 + 40, 'LSTM Cell', 32, 'var(--primary-color)');
+    cellLabel.style.opacity = '0';
+    g.appendChild(cellLabel);
+
+    setTimeout(() => {
+        cellBox.style.transition = 'opacity 0.6s'; cellBox.style.opacity = '1';
+        cellLabel.style.transition = 'opacity 0.6s'; cellLabel.style.opacity = '1';
+    }, 300);
+
+    await sleep(1200);
+
+    // Cell state (horizontal line through cell)
+    const stateY = cellY + 30;
+    const stateLine = makeLine(cellX - cellW/2 + 30, stateY, cellX + cellW/2 - 30, stateY, 'var(--success-color)', 5);
+    stateLine.style.opacity = '0';
+    g.appendChild(stateLine);
+    const stateLabel = makeText(cellX + cellW/2 + 30, stateY, '细胞状态', 18, 'var(--success-color)', 'start', 'normal');
+    stateLabel.style.opacity = '0';
+    g.appendChild(stateLabel);
+
+    setTimeout(() => {
+        stateLine.style.transition = 'opacity 0.5s'; stateLine.style.opacity = '1';
+        stateLabel.style.transition = 'opacity 0.5s'; stateLabel.style.opacity = '1';
+    }, 500);
+
+    await sleep(1500);
+
+    // Forget gate
+    const fgX = cellX - 150;
+    const fgY = cellY - 80;
+    const fgBox = makeRect(fgX - 55, fgY - 25, 110, 50, '#fecaca', 'var(--danger-color)', 2, 10);
+    fgBox.style.opacity = '0';
+    g.appendChild(fgBox);
+    const fgText = makeText(fgX, fgY + 5, '遗忘门', 20, 'var(--danger-color)');
+    fgText.style.opacity = '0';
+    g.appendChild(fgText);
+    const fgIcon = makeText(fgX - 80, fgY + 5, '🗑️', 24, 'var(--text-main)');
+    fgIcon.style.opacity = '0';
+    g.appendChild(fgIcon);
+    const fgDesc = makeText(fgX, fgY - 45, '丢弃旧信息', 14, 'var(--danger-color)', 'middle', 'normal');
+    fgDesc.style.opacity = '0';
+    g.appendChild(fgDesc);
+
+    setTimeout(() => {
+        fgBox.style.transition = 'opacity 0.5s'; fgBox.style.opacity = '1';
+        fgText.style.transition = 'opacity 0.5s'; fgText.style.opacity = '1';
+        fgIcon.style.transition = 'opacity 0.5s'; fgIcon.style.opacity = '1';
+        fgDesc.style.transition = 'opacity 0.5s'; fgDesc.style.opacity = '1';
+    }, 800);
+
+    await sleep(2000);
+
+    // Input gate
+    const igX = cellX;
+    const igY = cellY - 80;
+    const igBox = makeRect(igX - 55, igY - 25, 110, 50, '#d1fae5', 'var(--success-color)', 2, 10);
+    igBox.style.opacity = '0';
+    g.appendChild(igBox);
+    const igText = makeText(igX, igY + 5, '输入门', 20, 'var(--success-color)');
+    igText.style.opacity = '0';
+    g.appendChild(igText);
+    const igIcon = makeText(igX + 75, igY + 5, '📥', 24, 'var(--text-main)');
+    igIcon.style.opacity = '0';
+    g.appendChild(igIcon);
+    const igDesc = makeText(igX, igY - 45, '存储新信息', 14, 'var(--success-color)', 'middle', 'normal');
+    igDesc.style.opacity = '0';
+    g.appendChild(igDesc);
+
+    setTimeout(() => {
+        igBox.style.transition = 'opacity 0.5s'; igBox.style.opacity = '1';
+        igText.style.transition = 'opacity 0.5s'; igText.style.opacity = '1';
+        igIcon.style.transition = 'opacity 0.5s'; igIcon.style.opacity = '1';
+        igDesc.style.transition = 'opacity 0.5s'; igDesc.style.opacity = '1';
+    }, 800);
+
+    await sleep(2000);
+
+    // Output gate
+    const ogX = cellX + 150;
+    const ogY = cellY - 80;
+    const ogBox = makeRect(ogX - 55, ogY - 25, 110, 50, '#fef3c7', 'var(--accent-color)', 2, 10);
+    ogBox.style.opacity = '0';
+    g.appendChild(ogBox);
+    const ogText = makeText(ogX, ogY + 5, '输出门', 20, 'var(--accent-color)');
+    ogText.style.opacity = '0';
+    g.appendChild(ogText);
+    const ogIcon = makeText(ogX - 80, ogY + 5, '📤', 24, 'var(--text-main)');
+    ogIcon.style.opacity = '0';
+    g.appendChild(ogIcon);
+    const ogDesc = makeText(ogX, ogY - 45, '输出信息', 14, 'var(--accent-color)', 'middle', 'normal');
+    ogDesc.style.opacity = '0';
+    g.appendChild(ogDesc);
+
+    setTimeout(() => {
+        ogBox.style.transition = 'opacity 0.5s'; ogBox.style.opacity = '1';
+        ogText.style.transition = 'opacity 0.5s'; ogText.style.opacity = '1';
+        ogIcon.style.transition = 'opacity 0.5s'; ogIcon.style.opacity = '1';
+        ogDesc.style.transition = 'opacity 0.5s'; ogDesc.style.opacity = '1';
+    }, 800);
+
+    await sleep(3000);
+
+    // Advantage box
+    const advBox = makeRect(200, 620, 1520, 120, '#f0fdf4', 'var(--success-color)', 3, 16);
+    advBox.style.opacity = '0';
+    g.appendChild(advBox);
+
+    const advantages = [
+        { icon: '✅', text: '细胞状态是信息高速公路，梯度可以顺畅流动', x: 500 },
+        { icon: '✅', text: '门控机制让网络学会保留重要信息', x: 1100 },
+        { icon: '✅', text: '能够学习上百步的长期依赖关系', x: 1600 }
+    ];
+
+    advantages.forEach((a, i) => {
+        const icon = makeText(a.x - 180, 680, a.icon, 24, 'var(--text-main)');
+        icon.style.opacity = '0';
+        g.appendChild(icon);
+        const text = makeText(a.x + 20, 680, a.text, 18, 'var(--success-color)', 'middle', 'normal');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => {
+            icon.style.transition = 'opacity 0.4s'; icon.style.opacity = '1';
+            text.style.transition = 'opacity 0.4s'; text.style.opacity = '1';
+        }, 2500 + i * 500);
+    });
+
+    setTimeout(() => { advBox.style.transition = 'opacity 0.5s'; advBox.style.opacity = '1'; }, 2000);
+}
+
+// ============ Scene 5: Applications and Summary ============
+async function scene5() {
+    const svg = document.getElementById('main-svg');
+    const g = el('g', {});
+    svg.appendChild(g);
+
+    const title = makeText(960, 80, 'RNN 的应用与总结', 48, 'var(--primary-color)');
+    title.style.opacity = '0';
+    g.appendChild(title);
+    setTimeout(() => { title.style.transition = 'opacity 0.6s'; title.style.opacity = '1'; }, 200);
+
+    await sleep(800);
+
+    // Applications
+    const apps = [
+        { icon: '📝', title: '语言建模', desc: '预测下一个词', x: 250, y: 230 },
+        { icon: '🌐', title: '机器翻译', desc: '序列到序列转换', x: 650, y: 230 },
+        { icon: '🎤', title: '语音识别', desc: '音频转文字', x: 1050, y: 230 },
+        { icon: '😊', title: '情感分析', desc: '判断文本情感', x: 1450, y: 230 }
+    ];
+
+    apps.forEach((a, i) => {
+        const box = makeRect(a.x - 150, a.y, 300, 140, 'white', 'var(--primary-color)', 2, 16);
+        box.style.opacity = '0';
+        g.appendChild(box);
+        const icon = makeText(a.x, a.y + 45, a.icon, 48, 'var(--text-main)');
+        icon.style.opacity = '0';
+        g.appendChild(icon);
+        const name = makeText(a.x, a.y + 90, a.title, 24, 'var(--primary-color)');
+        name.style.opacity = '0';
+        g.appendChild(name);
+        const desc = makeText(a.x, a.y + 120, a.desc, 16, 'var(--text-sub)', 'middle', 'normal');
+        desc.style.opacity = '0';
+        g.appendChild(desc);
+
+        setTimeout(() => {
+            box.style.transition = 'opacity 0.5s'; box.style.opacity = '1';
+            icon.style.transition = 'opacity 0.5s'; icon.style.opacity = '1';
+            name.style.transition = 'opacity 0.5s'; name.style.opacity = '1';
+            desc.style.transition = 'opacity 0.5s'; desc.style.opacity = '1';
+        }, 800 + i * 400);
+    });
+
+    await sleep(3000);
+
+    // Evolution timeline
+    const timelineY = 480;
+    const evoLine = makeLine(300, timelineY, 1620, timelineY, 'var(--line-color)', 3);
+    g.appendChild(evoLine);
+
+    const models = [
+        { name: 'RNN', year: '1986', x: 400, color: '#818cf8' },
+        { name: 'LSTM', year: '1997', x: 700, color: '#34d399' },
+        { name: 'GRU', year: '2014', x: 1000, color: '#fbbf24' },
+        { name: 'Transformer', year: '2017', x: 1300, color: '#f87171' },
+        { name: 'GPT/BERT', year: '2018+', x: 1600, color: '#6366f1' }
+    ];
+
+    models.forEach((m, i) => {
+        const dot = makeCircle(m.x, timelineY, 12, m.color, 'white', 3);
+        dot.style.opacity = '0';
+        g.appendChild(dot);
+        const year = makeText(m.x, timelineY - 30, m.year, 16, 'var(--text-sub)', 'middle', 'normal');
+        year.style.opacity = '0';
+        g.appendChild(year);
+        const name = makeText(m.x, timelineY + 35, m.name, 20, m.color);
+        name.style.opacity = '0';
+        g.appendChild(name);
+
+        setTimeout(() => {
+            dot.style.transition = 'opacity 0.4s'; dot.style.opacity = '1';
+            year.style.transition = 'opacity 0.4s'; year.style.opacity = '1';
+            name.style.transition = 'opacity 0.4s'; name.style.opacity = '1';
+        }, 3500 + i * 300);
+    });
+
+    await sleep(3000);
+
+    // Summary box
+    const summaryBox = makeRect(260, 600, 1400, 200, '#ede9fe', 'var(--primary-color)', 3, 16);
+    summaryBox.style.opacity = '0';
+    g.appendChild(summaryBox);
+    const summaryTitle = makeText(960, 650, '📌 核心要点回顾', 28, 'var(--primary-color)');
+    summaryTitle.style.opacity = '0';
+    g.appendChild(summaryTitle);
+
+    const points = [
+        'RNN 通过隐藏状态实现记忆，适合处理序列数据',
+        '所有时间步共享参数，大大减少模型参数量',
+        '梯度消失问题限制了 RNN 学习长期依赖的能力',
+        'LSTM 用门控机制解决了这个问题，成为主流方案'
+    ];
+
+    points.forEach((p, i) => {
+        const text = makeText(960, 700 + i * 28, (i + 1) + '. ' + p, 18, 'var(--text-sub)', 'middle', 'normal');
+        text.style.opacity = '0';
+        g.appendChild(text);
+        setTimeout(() => { text.style.transition = 'opacity 0.4s'; text.style.opacity = '1'; }, 1500 + i * 400);
+    });
+
+    setTimeout(() => {
+        summaryBox.style.transition = 'opacity 0.6s'; summaryBox.style.opacity = '1';
+        summaryTitle.style.transition = 'opacity 0.6s'; summaryTitle.style.opacity = '1';
+    }, 1000);
+}
+
+// ============ Run Animation ============
+async function runAnimation() {
+    startTime = Date.now();
+    const timer = setInterval(() => {
+        updateProgress();
+        updateSubtitle(Date.now() - startTime);
+    }, 100);
+
+    clearScene();
+    await scene0();
+    await waitUntilSceneEnd(0);
+
+    clearScene();
+    await scene1();
+    await waitUntilSceneEnd(1);
+
+    clearScene();
+    await scene2();
+    await waitUntilSceneEnd(2);
+
+    clearScene();
+    await scene3();
+    await waitUntilSceneEnd(3);
+
+    clearScene();
+    await scene4();
+    await waitUntilSceneEnd(4);
+
+    clearScene();
+    await scene5();
+
+    clearInterval(timer);
+    document.getElementById('progress').style.width = '100%';
+}
+
+window.onload = runAnimation;
+</script>
+</body>
+</html>

@@ -1,16 +1,14 @@
 """
 Resource-generation subagents.
 
-Five role-specialized subagents that collaborate under the main agent (orchestrator)
+Six role-specialized subagents that collaborate under the main agent (orchestrator)
 to produce multi-modal learning materials for a student. Each subagent's
 `system_prompt` is loaded from `/roles/<name>.md` via backend — so role identity is
-fully file-driven. Execution protocol for each role lives in a matching
-`skills/<generate_*>/SKILL.md` that the subagent reads on entry.
+fully file-driven.
 
 Design:
 - Main agent = orchestrator (uses built-in `task` tool to dispatch these)
-- 5 subagents cover: lecture, mindmap, exercises, reading list, code cases
-- HTML animation generation is handled directly by the main agent (reads SKILL.md, uses write_file)
+- 6 subagents cover: lecture, mindmap, exercises, reading list, code cases, HTML animation
 - model / tools are inherited from the main agent (deepagents graph.py fills defaults)
 - English `name` keeps `task(subagent_type="...")` argument stable across models
 """
@@ -71,6 +69,22 @@ RESOURCE_ROLES: list[tuple[str, str]] = [
         "requirements.txt, and a learning-order README. "
         "Saves to workspace/generated/code-cases/<中文主题名>/ (no leading slash). "
         "Use when the student asks for 代码 / 实现 / 示例 / demo / 动手.",
+    ),
+    (
+        "media_script_writer",
+        "Generate a self-contained HTML animation (CSS+JS inline, 16:9 canvas) "
+        "with scene-by-scene visual elements and timed narration subtitles. "
+        "Does NOT search knowledge base - uses only the task description. "
+        "Saves to workspace/generated/media-scripts/<中文主题名>.html (no leading slash, system auto-injects date prefix). "
+        "Use when the student asks for 动画 / 视频 / 动画脚本 / 可视化讲解.",
+    ),
+    (
+        "learning_map_planner",
+        "Convert a learning plan Markdown into a structured learning map JSON "
+        "for the LearningMap visualization. Parses days/phases/topics from the "
+        "plan and generates a hierarchical node tree with sequential unlock logic. "
+        "Saves to workspace/learning_map.json. "
+        "Use when the student asks for 学习地图 / 学习路线 / 学习计划可视化 / 生成地图.",
     ),
 ]
 

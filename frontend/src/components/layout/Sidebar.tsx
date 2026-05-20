@@ -452,7 +452,7 @@ export function Sidebar({
           state.selectedGraphNode ? (
             <GraphDetailPanel
               node={state.selectedGraphNode}
-              expanded={!!state.graphData?.edges.some((e) => e.source === state.selectedGraphNode!.id)}
+              expanded={!!state.graphData?.edges?.some((e) => e.source === state.selectedGraphNode!.id)}
               expanding={false}
               graphData={state.graphData}
               onExpand={state.isTraceback || !state.toggleExpandNodeCallback ? undefined : () => {

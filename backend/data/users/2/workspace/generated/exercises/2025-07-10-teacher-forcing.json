@@ -1,11 +1,6 @@
 {
-  "topic": "Teacher Forcing",
-  "total": 6,
-  "difficulty_distribution": {"基础": 3, "中等": 2, "困难": 1},
-  "generated_at": "2025-07-10T10:30:00",
-  "generated_by": "exercise_composer",
-  "covered_topics": ["Teacher Forcing", "解码器训练策略", "暴露偏差", "序列到序列模型", "Scheduled Sampling", "自回归解码"],
-  "recommended_topics": ["注意力机制", "Beam Search", "Transformer解码器", "序列到序列模型评估(BLEU)", "自注意力机制"],
+
+
   "questions": [
     {
       "question_id": "q1",

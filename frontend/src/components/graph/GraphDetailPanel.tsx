@@ -46,7 +46,7 @@ export function GraphDetailPanel({ node, expanded, expanding, graphData, onExpan
 
   // Compute derived properties from graphData
   const derived = useMemo(() => {
-    if (!graphData) return { relatedCount: 0, childrenCount: 0, edgeTypes: [], incomingCount: 0, outgoingCount: 0, hierarchyPath: [], edgeDescriptions: [] as { name: string; type: string; desc: string }[] };
+    if (!graphData || !graphData.edges || !graphData.nodes) return { relatedCount: 0, childrenCount: 0, edgeTypes: [], incomingCount: 0, outgoingCount: 0, hierarchyPath: [], edgeDescriptions: [] as { name: string; type: string; desc: string }[] };
 
     const outgoing = graphData.edges.filter((e) => e.source === node.id);
     const incoming = graphData.edges.filter((e) => e.target === node.id);

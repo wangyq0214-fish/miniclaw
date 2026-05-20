@@ -25,6 +25,10 @@ export default function LoginPage() {
         // 登录
         const data = await authApi.login(formData.username, formData.password);
         tokenManager.setToken(data.access_token);
+        // Store user ID for localStorage key scoping
+        if (data.user_id != null) {
+          localStorage.setItem('miniclaw_user_id', String(data.user_id));
+        }
         toast.success('登录成功');
         router.push('/');
       } else {

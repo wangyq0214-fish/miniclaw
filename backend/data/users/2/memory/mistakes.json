@@ -1,0 +1,59 @@
+
+[
+  {
+    "timestamp": "2026-05-20T07:44:37.043191+00:00",
+    "question_text": "在序列到序列模型的训练中，Teacher Forcing 策略的核心做法是什么？",
+    "topic": "",
+    "user_answer": "随机丢弃解码器的部分输入词元以增强泛化能力",
+    "correct_answer": "将目标序列的真实词元（ground truth）作为解码器每一步的输入",
+    "error_type": "基础"
+  },
+  {
+    "timestamp": "2026-05-20T07:44:39.051944+00:00",
+    "question_id": "q1",
+    "topic": "",
+    "difficulty": "基础"
+  },
+  {
+    "timestamp": "2026-05-20T07:44:39.976806+00:00",
+    "question_text": "Teacher Forcing 的主要优势是什么？",
+    "topic": "",
+    "user_answer": "完全消除了模型在推理阶段的预测误差",
+    "correct_answer": "使训练过程更加稳定，收敛速度更快",
+    "error_type": "基础"
+  },
+  {
+    "timestamp": "2026-05-20T07:44:43.442490+00:00",
+    "question_text": "Teacher Forcing 会导致训练和推理之间出现不一致，这种现象被称为什么？",
+    "topic": "",
+    "user_answer": "梯度消失（Vanishing Gradient）",
+    "correct_answer": "暴露偏差（Exposure Bias）",
+    "error_type": "中等"
+  },
+  {
+    "timestamp": "2026-05-20T07:44:48.762545+00:00",
+    "question_id": "q2",
+    "topic": "",
+    "difficulty": "基础"
+  },
+  {
+    "timestamp": "2026-05-20T07:44:48.762545+00:00",
+    "question_id": "q3",
+    "topic": "",
+    "difficulty": "中等"
+  },
+  {
+    "timestamp": "2026-05-20T07:44:50.818244+00:00",
+    "question_text": "为了缓解 Teacher Forcing 带来的暴露偏差，研究者提出了 Scheduled Sampling 策略。以下对该策略的描述中，哪一项是正确的？",
+    "topic": "",
+    "user_answer": "在推理阶段引入随机性，偶尔用真实词元替换模型预测以提高准确性",
+    "correct_answer": "在训练初期主要使用真实词元，随着训练推进逐步增加使用模型自身预测作为输入的概率",
+    "error_type": "困难"
+  },
+  {
+    "timestamp": "2026-05-20T07:44:59.065310+00:00",
+    "question_id": "q5",
+    "topic": "",
+    "difficulty": "困难"
+  }
+]

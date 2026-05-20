@@ -6,6 +6,9 @@ import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { streamChat } from '@/lib/api';
 import { addMistake } from '@/lib/mistakeBook';
 import { logQuizAnswer, logQuizComplete } from '@/lib/learningEvents';
+import { useApp } from '@/lib/store';
+import { saveLearningProgress, appendMistake } from '@/lib/api';
+import { getUserItem, setUserItem } from '@/lib/userStorage';
 
 interface Option {
   id: string;
@@ -39,16 +42,47 @@ interface ChatMessage {
 interface ExerciseViewerProps {
   content: string;
   onClose?: () => void;
-  /** Called when "生成测验" is clicked with the topic-based prompt. NotesView handles streaming + note saving. */
-  onGenerateFromTopics?: (prompt: string) => void;
+  /** When set, emits a learning map completion event on quiz finish */
+  nodeId?: string;
+  /** File path — used as fallback identifier when nodeId is not available */
+  filePath?: string;
 }
 
-export function ExerciseViewer({ content, onClose, onGenerateFromTopics }: ExerciseViewerProps) {
+export function ExerciseViewer({ content, onClose, nodeId, filePath }: ExerciseViewerProps) {
+  const { actions } = useApp();
+  // Use nodeId if available, otherwise derive from filePath
+  const effectiveNodeId = nodeId || (filePath ? `file:${filePath}` : undefined);
   const [data, setData] = useState<ExerciseData | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [lockedQuestions, setLockedQuestions] = useState<Record<string, boolean>>({});
   const [parseError, setParseError] = useState<string | null>(null);
+  const [hidePreviousResult, setHidePreviousResult] = useState(false);
+
+  // Synchronously compute previous completion result from localStorage
+  const previousResult = useMemo(() => {
+    if (hidePreviousResult || !effectiveNodeId || typeof window === 'undefined') return null;
+    try {
+      const results = JSON.parse(getUserItem('miniclaw_learning_results') || '{}');
+      // Check effectiveNodeId first, then fall back to original learning map nodeId
+      const r = results[`${effectiveNodeId}:quiz`];
+      if (r?.completed) return r;
+      if (filePath) {
+        const paths: Record<string, string> = JSON.parse(getUserItem('miniclaw_gen_paths') || '{}');
+        for (const [key, fp] of Object.entries(paths)) {
+          if (fp === filePath) {
+            const origNodeId = key.split(':')[0];
+            const r2 = results[`${origNodeId}:quiz`];
+            if (r2?.completed) return r2;
+            break;
+          }
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [effectiveNodeId, content, hidePreviousResult, filePath]);
 
   const questions = data?.questions ?? [];
   const currentQuestion = questions[currentIndex];
@@ -63,10 +97,33 @@ export function ExerciseViewer({ content, onClose, onGenerateFromTopics }: Exerc
   }, []);
 
   const handleGenerateNewQuiz = useCallback(async () => {
-    if (selectedTopics.length === 0 || !onGenerateFromTopics) return;
-    const dispatchPrompt = `请根据以下考点生成新的练习题：${selectedTopics.join('、')}`;
-    onGenerateFromTopics(dispatchPrompt);
-  }, [selectedTopics, onGenerateFromTopics]);
+    if (selectedTopics.length === 0) return;
+    const topicPrompt = selectedTopics.join('、');
+    const message = `请生成练习题，主题：${topicPrompt}。输出 JSON 文件到 workspace/generated/exercises/ 目录。`;
+    const taskId = `task-${Date.now()}`;
+    actions.addGeneratingTask({
+      id: taskId,
+      category: 'exercises',
+      categoryLabel: '测验',
+      prompt: topicPrompt,
+      status: 'generating',
+      startedAt: Date.now(),
+    });
+    try {
+      const { streamSubagent } = await import('@/lib/api');
+      for await (const event of streamSubagent({ subagent: 'exercise_composer', message })) {
+        if (event.type === 'done') break;
+      }
+      actions.updateGeneratingTask(taskId, { status: 'completed' });
+      actions.incrementFilesVersion();
+      setTimeout(() => actions.removeGeneratingTask(taskId), 10000);
+    } catch (err) {
+      actions.updateGeneratingTask(taskId, {
+        status: 'error',
+        error: err instanceof Error ? err.message : '未知错误',
+      });
+    }
+  }, [selectedTopics, actions]);
 
   // ── Tutor state (per-question, 测验会话级记忆) ──
   const [tutorSessions, setTutorSessions] = useState<Record<string, { isOpen: boolean; messages: ChatMessage[] }>>({});
@@ -115,7 +172,7 @@ export function ExerciseViewer({ content, onClose, onGenerateFromTopics }: Exerc
 
     // Build context: question + options + user's selected answer
     const selectedId = userAnswers[qid];
-    const optionsText = currentQuestion.options
+    const optionsText = (currentQuestion.options ?? [])
       .map(o => `${o.id}. ${o.text_md}${o.id === selectedId ? ' (用户选择)' : ''}${o.is_correct ? ' (正确答案)' : ''}`)
       .join('\n');
     const contextPrompt = `你是一位耐心的辅导老师。以下是用户正在做的测验题，请基于题目上下文进行答疑。如果用户没有提出具体问题，请先给出简洁的引导性解析。
@@ -183,16 +240,18 @@ ${optionsText}
   useEffect(() => {
     // Try to fix unescaped Chinese quotes (ASCII " used as Chinese 「」)
     function fixJsonQuotes(raw: string): string {
-      // Inside JSON string values, replace "X" patterns where X contains CJK chars
-      // with 「X」 to avoid breaking JSON parsing
       return raw.replace(
         /(?<=[一-鿿，。])"([^"]{1,20})"(?=[一-鿿，。])/g,
         '「$1」'
       );
     }
+    // Fix unescaped LaTeX backslashes: \sigma \frac \text etc → \\sigma \\frac \\text
+    function fixLatexBackslashes(raw: string): string {
+      return raw.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+    }
 
     let raw = content;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const parsed: ExerciseData = JSON.parse(raw);
         if (!parsed.questions || !Array.isArray(parsed.questions)) {
@@ -203,11 +262,16 @@ ${optionsText}
         setUserAnswers({});
         setLockedQuestions({});
         setCurrentIndex(0);
+        setHidePreviousResult(false);
         setParseError(null);
         return;
       } catch (e) {
         if (attempt === 0) {
           raw = fixJsonQuotes(raw);
+          continue;
+        }
+        if (attempt === 1) {
+          raw = fixLatexBackslashes(raw);
           continue;
         }
         setParseError(`JSON 解析失败: ${e instanceof Error ? e.message : String(e)}`);
@@ -222,7 +286,7 @@ ${optionsText}
 
     const question = questions.find(q => q.question_id === questionId);
     if (question) {
-      const correctOption = question.options.find(o => o.is_correct);
+      const correctOption = question.options?.find(o => o.is_correct);
       const isCorrect = correctOption ? optionId === correctOption.id : false;
 
       // Log learning event
@@ -244,6 +308,16 @@ ${optionsText}
           topic: data?.topic ?? '',
           added_at: new Date().toISOString(),
         });
+
+        // Sync to backend mistakes.md
+        const selectedOption = question.options?.find(o => o.id === optionId);
+        appendMistake({
+          question_text: question.question_text_md.slice(0, 200),
+          topic: data?.topic ?? '',
+          user_answer: selectedOption?.text_md ?? optionId,
+          correct_answer: correctOption?.text_md ?? '',
+          error_type: question.difficulty,
+        });
       }
     }
   };
@@ -252,7 +326,7 @@ ${optionsText}
     let correct = 0;
     questions.forEach(q => {
       const selected = userAnswers[q.question_id];
-      const correctOption = q.options.find(o => o.is_correct);
+      const correctOption = q.options?.find(o => o.is_correct);
       if (selected && correctOption && selected === correctOption.id) correct++;
     });
     const wrong = questions.length - correct;
@@ -272,14 +346,52 @@ ${optionsText}
         total: questions.length,
         topic: data.topic,
       });
+      // Persist to learning map (localStorage + backend)
+      if (effectiveNodeId) {
+        const pct = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
+        // Find original learning map nodeId if this file was generated from there
+        let originalNodeId: string | undefined;
+        try {
+          const paths: Record<string, string> = JSON.parse(getUserItem('miniclaw_gen_paths') || '{}');
+          for (const [key, fp] of Object.entries(paths)) {
+            if (fp === filePath) { originalNodeId = key.split(':')[0]; break; }
+          }
+        } catch {}
+        // Save under both effectiveNodeId and original nodeId (if different)
+        const nodeIds = [effectiveNodeId];
+        if (originalNodeId && originalNodeId !== effectiveNodeId) nodeIds.push(originalNodeId);
+        try {
+          const actions = JSON.parse(getUserItem('miniclaw_learning_actions') || '{}');
+          const results = JSON.parse(getUserItem('miniclaw_learning_results') || '{}');
+          for (const nid of nodeIds) {
+            actions[nid] = { ...(actions[nid] || {}), quiz: 'completed' };
+            results[`${nid}:quiz`] = {
+              completed: true, score: pct, total: questions.length,
+              correct: correctCount, completedAt: new Date().toISOString(), filePath: '',
+            };
+          }
+          setUserItem('miniclaw_learning_actions', JSON.stringify(actions));
+          setUserItem('miniclaw_learning_results', JSON.stringify(results));
+        } catch {}
+        // Persist to backend (use original nodeId so learning map can read it)
+        saveLearningProgress({
+          node_id: originalNodeId || effectiveNodeId,
+          action: 'quiz',
+          phase: 'completed',
+          score: pct,
+          total: questions.length,
+          correct: correctCount,
+        }).catch(() => {});
+      }
     }
-  }, [showCompletion, data, correctCount, questions.length]);
+  }, [showCompletion, data, correctCount, questions.length, effectiveNodeId]);
 
   const handleRestart = () => {
     setUserAnswers({});
     setLockedQuestions({});
     setTutorSessions({});
     setCurrentIndex(0);
+    setHidePreviousResult(true);
   };
 
   if (parseError) {
@@ -298,7 +410,60 @@ ${optionsText}
     );
   }
 
-  // ── Completion Screen ──
+  // ── Previously Completed Screen ──
+  if (previousResult && Object.keys(userAnswers).length === 0) {
+    const prevPct = previousResult.total > 0
+      ? Math.round((previousResult.correct / previousResult.total) * 100) : 0;
+    const radius = 40;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (prevPct / 100) * circumference;
+
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-6">
+        <div className="w-full max-w-md bg-white dark:bg-card rounded-2xl border border-gray-100 dark:border-border p-6 space-y-5 text-center">
+          <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
+            <Check className="w-5 h-5" />
+            <span className="text-lg font-bold">测验已完成</span>
+          </div>
+
+          <div className="relative flex items-center justify-center">
+            <svg width="120" height="120" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="12" />
+              <circle
+                cx="50" cy="50" r={radius} fill="none"
+                stroke={prevPct >= 60 ? '#16a34a' : '#dc2626'}
+                strokeWidth="12" strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+                transform="rotate(-90 50 50)"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-bold text-gray-900 dark:text-zinc-200">
+                {previousResult.correct}/{previousResult.total}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-zinc-400">{prevPct}%</span>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-500 dark:text-zinc-400">
+            得分 {prevPct}% · {previousResult.correct} 题正确
+          </p>
+
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => setHidePreviousResult(true)}
+              className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-full hover:bg-blue-700 transition-colors"
+            >
+              重新测验
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Completion Screen (just finished) ──
   if (showCompletion) {
     const radius = 40;
     const circumference = 2 * Math.PI * radius;
@@ -403,7 +568,7 @@ ${optionsText}
               </div>
               <button
                 onClick={handleGenerateNewQuiz}
-                disabled={selectedTopics.length === 0 || !onGenerateFromTopics}
+                disabled={selectedTopics.length === 0}
                 className="mt-4 w-full py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 生成测验
@@ -457,7 +622,7 @@ ${optionsText}
 
           {/* Options — each with its own explanation */}
           <div className="space-y-3">
-            {currentQuestion.options.map((option) => {
+            {(currentQuestion.options ?? []).map((option) => {
               const isSelected = selectedOptionId === option.id;
               const showCorrect = isLocked && option.is_correct;
               const showWrong = isLocked && isSelected && !option.is_correct;

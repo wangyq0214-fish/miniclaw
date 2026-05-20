@@ -13,6 +13,21 @@ import { HtmlAnimationViewer } from '@/components/media/HtmlAnimationViewer';
 import { KnowledgeGraph } from '@/components/graph/KnowledgeGraph';
 import { readFile, writeFile } from '@/lib/api';
 import { useApp } from '@/lib/store';
+import { getUserItem } from '@/lib/userStorage';
+
+/** Reverse-lookup: find the learning map nodeId that owns a given file path */
+function findNodeIdForFile(filePath: string): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const paths: Record<string, string> = JSON.parse(getUserItem('miniclaw_gen_paths') || '{}');
+    for (const key of Object.keys(paths)) {
+      if (paths[key] === filePath) {
+        return key.split(':')[0];
+      }
+    }
+  } catch {}
+  return undefined;
+}
 import type { TabId } from '@/lib/store';
 
 interface InspectorProps {
@@ -243,7 +258,7 @@ export function Inspector({ activeTab }: InspectorProps) {
               </div>
             </div>
           ) : isExerciseFile(currentFile) && !editMode ? (
-            <ExerciseViewer content={content} />
+            <ExerciseViewer content={content} nodeId={findNodeIdForFile(currentFile)} filePath={currentFile} />
           ) : isHtmlAnimationFile(currentFile) && !editMode ? (
             <HtmlAnimationViewer content={content} />
           ) : !editMode && (currentFile.endsWith('.md') || currentFile.endsWith('.json')) ? (

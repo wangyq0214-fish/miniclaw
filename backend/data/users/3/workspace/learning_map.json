@@ -1,0 +1,109 @@
+{
+  "title": "深度学习第二章「数学基础与张量运算」学习计划",
+  "subtitle": "2026-05-20 ~ 2026-06-03 · 7-10 天 · confidence 0.6",
+  "nodes": [
+    {
+      "id": "day1",
+      "title": "Day 1: Torch 张量基础",
+      "description": "理解张量概念，掌握创建方式与按元素运算、广播机制",
+      "status": "active",
+      "phase": "张量操作",
+      "checkpoint": "能不查文档完成张量创建、索引、降维、转换",
+      "children": [
+        { "id": "day1-1", "title": "2.1.1 Torch 张量：torch.tensor、torch.zeros、torch.randn 等创建方式", "status": "active" },
+        { "id": "day1-2", "title": "2.1.2 张量运算：按元素运算与广播机制", "status": "locked" },
+        { "id": "day1-3", "title": "动手练习：在 Jupyter 中复现所有示例代码，改变维度观察结果", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day2",
+      "title": "Day 2: 张量索引与降维",
+      "description": "掌握切片索引、布尔索引、花式索引，以及 sum/mean/max 降维操作",
+      "status": "locked",
+      "phase": "张量操作",
+      "checkpoint": "能不查文档完成张量创建、索引、降维、转换",
+      "children": [
+        { "id": "day2-1", "title": "2.1.3 索引和切片：冒号切片、布尔索引、花式索引", "status": "locked" },
+        { "id": "day2-2", "title": "2.1.4 张量降维：sum、mean、max 及 keepdim 参数、沿指定轴降维", "status": "locked" },
+        { "id": "day2-3", "title": "2.1.5 与其他 Python 对象的转换：numpy()、tolist()、item()", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day3",
+      "title": "Day 3: Pandas 数据预处理",
+      "description": "掌握 CSV 数据读取与缺失值处理的完整流程",
+      "status": "locked",
+      "phase": "数据预处理",
+      "checkpoint": "能独立完成 CSV 数据读取和缺失值处理",
+      "children": [
+        { "id": "day3-1", "title": "2.2.1 读取数据集：pd.read_csv 与 DataFrame 基本操作", "status": "locked" },
+        { "id": "day3-2", "title": "2.2.2 处理缺失数值：isnull()、fillna()、dropna()", "status": "locked" },
+        { "id": "day3-3", "title": "综合练习：用真实数据集完成读取→查看缺失→填充/删除完整流程", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day4",
+      "title": "Day 4: 线性代数基础（一）",
+      "description": "标量/向量/矩阵定义、向量点积、矩阵-向量积",
+      "status": "locked",
+      "phase": "线性代数",
+      "checkpoint": "能手算 3×3 矩阵乘法，理解范数的几何意义",
+      "children": [
+        { "id": "day4-1", "title": "2.3.1 标量、向量和矩阵：数学定义与 PyTorch 表示", "status": "locked" },
+        { "id": "day4-2", "title": "2.3.2 向量点积：几何意义与 torch.dot 实现", "status": "locked" },
+        { "id": "day4-3", "title": "2.3.3 矩阵-向量积：torch.mv 与线性方程组的关系", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day5",
+      "title": "Day 5: 线性代数基础（二）",
+      "description": "矩阵-矩阵乘法、范数（L1/L2/Frobenius）",
+      "status": "locked",
+      "phase": "线性代数",
+      "checkpoint": "能手算 3×3 矩阵乘法，理解范数的几何意义",
+      "children": [
+        { "id": "day5-1", "title": "2.3.4 矩阵-矩阵乘法：torch.mm、torch.matmul、@ 运算符", "status": "locked" },
+        { "id": "day5-2", "title": "2.3.5 范数：L1 范数、L2 范数、Frobenius 范数的定义与计算", "status": "locked" },
+        { "id": "day5-3", "title": "线性代数综合练习：向量/矩阵运算综合小练习", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day6",
+      "title": "Day 6: 导数与梯度",
+      "description": "导数定义、偏导数与梯度向量、链式法则",
+      "status": "locked",
+      "phase": "微积分基础",
+      "checkpoint": "能对简单复合函数手写梯度表达式",
+      "children": [
+        { "id": "day6-1", "title": "2.4.1 导数和微积分：导数定义、常见函数求导规则", "status": "locked" },
+        { "id": "day6-2", "title": "2.4.2 偏导数和梯度：多元函数偏导数、梯度向量", "status": "locked" },
+        { "id": "day6-3", "title": "2.4.3 链式法则：复合函数求导，手动推导 2-3 个例子", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day7",
+      "title": "Day 7: 反向传播与自动求导",
+      "description": "计算图、requires_grad、backward()、用 autograd 验证链式法则",
+      "status": "locked",
+      "phase": "自动求导",
+      "checkpoint": "能用 autograd 实现并验证一个简单函数的梯度计算",
+      "children": [
+        { "id": "day7-1", "title": "2.5 反向传播自动求导：计算图、requires_grad、backward()、.grad", "status": "locked" },
+        { "id": "day7-2", "title": "综合实操：用 autograd 手动验证链式法则结果", "status": "locked" },
+        { "id": "day7-3", "title": "章节回顾：整理笔记，回顾所有知识点，标记薄弱环节", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day8",
+      "title": "Day 8-10（可选）: 巩固与查漏补缺",
+      "description": "重做薄弱练习、完成综合练习题、预习第三章线性神经网络",
+      "status": "locked",
+      "phase": "巩固提升",
+      "children": [
+        { "id": "day8-1", "title": "重做 Day 1-7 中标记的薄弱练习", "status": "locked" },
+        { "id": "day8-2", "title": "完成章节综合练习题", "status": "locked" },
+        { "id": "day8-3", "title": "预习衔接：张量操作与第三章线性神经网络的关联", "status": "locked" }
+      ]
+    }
+  ]
+}

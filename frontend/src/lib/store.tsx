@@ -30,7 +30,18 @@ import {
 } from './api';
 import { logChatMessage } from './learningEvents';
 
-// LocalStorage keys
+// Generating task type
+export interface GeneratingTask {
+  id: string;
+  category: string;
+  categoryLabel: string;
+  prompt: string;
+  status: 'generating' | 'completed' | 'error';
+  error?: string;
+  startedAt: number;
+}
+
+// LocalStorage keys (base names — suffixed with user ID at runtime)
 const STORAGE_KEYS = {
   activeSessionId: 'miniclaw_active_session',
   activeTab: 'miniclaw_active_tab',
@@ -39,11 +50,17 @@ const STORAGE_KEYS = {
   ragModeEnabled: 'miniclaw_rag_mode',
 };
 
-// LocalStorage helpers
+// User-scoped localStorage helpers
+function userSuffix(): string {
+  if (typeof window === 'undefined') return '';
+  const uid = localStorage.getItem('miniclaw_user_id');
+  return uid ? `_${uid}` : '';
+}
+
 function loadFromStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
   try {
-    const stored = localStorage.getItem(key);
+    const stored = localStorage.getItem(key + userSuffix());
     return stored ? JSON.parse(stored) : defaultValue;
   } catch {
     return defaultValue;
@@ -53,10 +70,15 @@ function loadFromStorage<T>(key: string, defaultValue: T): T {
 function saveToStorage<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    localStorage.setItem(key + userSuffix(), JSON.stringify(value));
   } catch {
     // Ignore storage errors
   }
+}
+
+function removeFromStorage(key: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(key + userSuffix());
 }
 
 // Types
@@ -166,6 +188,9 @@ export interface AppState {
   // Quiz generation state
   isGeneratingQuiz: boolean;
 
+  // Resource generation tasks (persistent across navigation)
+  generatingTasks: GeneratingTask[];
+
   // Coder mode — code loaded from subagent into Inspector
   coderCode: string;
   coderFilename: string;
@@ -199,6 +224,7 @@ const initialState: AppState = {
   toggleExpandNodeCallback: null,
   filesVersion: 0,
   isGeneratingQuiz: false,
+  generatingTasks: [],
   coderCode: '',
   coderFilename: '',
   coderProjectPath: '',
@@ -233,6 +259,9 @@ type Action =
   | { type: 'SET_TOGGLE_EXPAND_NODE_CALLBACK'; payload: ((node: GraphNode) => void) | null }
   | { type: 'INCREMENT_FILES_VERSION' }
   | { type: 'SET_IS_GENERATING_QUIZ'; payload: boolean }
+  | { type: 'ADD_GENERATING_TASK'; payload: GeneratingTask }
+  | { type: 'UPDATE_GENERATING_TASK'; payload: { id: string; updates: Partial<GeneratingTask> } }
+  | { type: 'REMOVE_GENERATING_TASK'; payload: string }
   | { type: 'SET_CODER_CODE'; payload: { code: string; filename: string } }
   | { type: 'SET_CODER_PROJECT_PATH'; payload: string }
   | { type: 'SET_NOTES_CHAT_MESSAGES'; payload: NotesChatMessage[] }
@@ -333,6 +362,23 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'SET_IS_GENERATING_QUIZ':
       return { ...state, isGeneratingQuiz: action.payload };
 
+    case 'ADD_GENERATING_TASK':
+      return { ...state, generatingTasks: [...state.generatingTasks, action.payload] };
+
+    case 'UPDATE_GENERATING_TASK':
+      return {
+        ...state,
+        generatingTasks: state.generatingTasks.map(t =>
+          t.id === action.payload.id ? { ...t, ...action.payload.updates } : t
+        ),
+      };
+
+    case 'REMOVE_GENERATING_TASK':
+      return {
+        ...state,
+        generatingTasks: state.generatingTasks.filter(t => t.id !== action.payload),
+      };
+
     case 'SET_CODER_CODE':
       return { ...state, coderCode: action.payload.code, coderFilename: action.payload.filename };
 
@@ -387,6 +433,9 @@ interface AppContextType {
     setIsTraceback: (value: boolean) => void;
     setToggleExpandNodeCallback: (cb: ((node: GraphNode) => void) | null) => void;
     setIsGeneratingQuiz: (value: boolean) => void;
+    addGeneratingTask: (task: GeneratingTask) => void;
+    updateGeneratingTask: (id: string, updates: Partial<GeneratingTask>) => void;
+    removeGeneratingTask: (id: string) => void;
     incrementFilesVersion: () => void;
     loadCodeToInspector: (code: string, filename: string) => void;
     setCoderProjectPath: (path: string) => void;
@@ -458,11 +507,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           dispatch({ type: 'SET_ACTIVE_SESSION', payload: savedSessionId });
         } else {
           // Saved session doesn't exist, clear it
-          localStorage.removeItem(STORAGE_KEYS.activeSessionId);
+          removeFromStorage(STORAGE_KEYS.activeSessionId);
         }
       } else if (savedSessionId) {
         // No sessions exist but there's a saved ID, clear it
-        localStorage.removeItem(STORAGE_KEYS.activeSessionId);
+        removeFromStorage(STORAGE_KEYS.activeSessionId);
       }
     } catch (error) {
       console.error('Failed to load sessions:', error);
@@ -487,7 +536,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!sessionExists && state.sessions.length > 0) {
         console.warn(`Session ${sessionId} not found in sessions list, clearing...`);
         dispatch({ type: 'SET_ACTIVE_SESSION', payload: '' });
-        localStorage.removeItem(STORAGE_KEYS.activeSessionId);
+        removeFromStorage(STORAGE_KEYS.activeSessionId);
         return;
       }
 
@@ -514,7 +563,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('Failed to load messages:', error);
         if (error instanceof Error && error.message.includes('Not Found')) {
           dispatch({ type: 'SET_ACTIVE_SESSION', payload: '' });
-          localStorage.removeItem(STORAGE_KEYS.activeSessionId);
+          removeFromStorage(STORAGE_KEYS.activeSessionId);
           toast.error('会话不存在，请创建新会话');
         }
         dispatch({ type: 'SET_MESSAGES', payload: [] });
@@ -882,6 +931,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     incrementFilesVersion: () => {
       dispatch({ type: 'INCREMENT_FILES_VERSION' });
+    },
+
+    addGeneratingTask: (task: GeneratingTask) => {
+      dispatch({ type: 'ADD_GENERATING_TASK', payload: task });
+    },
+
+    updateGeneratingTask: (id: string, updates: Partial<GeneratingTask>) => {
+      dispatch({ type: 'UPDATE_GENERATING_TASK', payload: { id, updates } });
+    },
+
+    removeGeneratingTask: (id: string) => {
+      dispatch({ type: 'REMOVE_GENERATING_TASK', payload: id });
     },
 
     loadCodeToInspector: (code: string, filename: string) => {

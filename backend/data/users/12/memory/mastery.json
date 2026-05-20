@@ -1,0 +1,57 @@
+{
+  "generated_at": "2026-05-20T09:36:50.695850+00:00",
+  "nodes": [
+    {
+      "id": "线性回归",
+      "mastery": 0.4,
+      "category": "基础"
+    },
+    {
+      "id": "CNN",
+      "mastery": 0.3,
+      "category": "进阶"
+    },
+    {
+      "id": "梯度下降",
+      "mastery": 0.3,
+      "category": "进阶"
+    },
+    {
+      "id": "最小二乘法",
+      "mastery": 0.3,
+      "category": "基础"
+    },
+    {
+      "id": "模型评估",
+      "mastery": 0.3,
+      "category": "应用"
+    },
+    {
+      "id": "过拟合",
+      "mastery": 0.3,
+      "category": "进阶"
+    }
+  ],
+  "edges": [
+    {
+      "source": "梯度下降",
+      "target": "线性回归",
+      "relation": "相关"
+    },
+    {
+      "source": "最小二乘法",
+      "target": "线性回归",
+      "relation": "相关"
+    },
+    {
+      "source": "线性回归",
+      "target": "模型评估",
+      "relation": "相关"
+    },
+    {
+      "source": "线性回归",
+      "target": "过拟合",
+      "relation": "相关"
+    }
+  ]
+}

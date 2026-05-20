@@ -698,15 +698,6 @@ export function NotesView() {
     actions.startNotesGeneration({ prompt, subagent, label, contextPrefix });
   }, [state.isNotesStreaming, state.notesGeneratingLabel, buildSourceContext]);
 
-  // ── ExerciseViewer "生成测验" callback (topic-based, with source context) ──
-
-  const handleGenerateFromTopics = useCallback(async (prompt: string) => {
-    if (state.isNotesStreaming || state.notesGeneratingLabel) return;
-    const contextPrefix = await buildSourceContext();
-    setViewingNote(null); // Return to notes list view
-    actions.startNotesGeneration({ prompt, subagent: 'exercise_composer', label: '测验', contextPrefix });
-  }, [state.isNotesStreaming, state.notesGeneratingLabel, buildSourceContext]);
-
   // ── Render ──
 
   return (
@@ -869,11 +860,11 @@ export function NotesView() {
                   try {
                     const parsed = JSON.parse(content);
                     if (parsed.questions && Array.isArray(parsed.questions)) {
-                      return <ExerciseViewer content={content} onClose={() => setViewingNote(null)} onGenerateFromTopics={handleGenerateFromTopics} />;
+                      return <ExerciseViewer content={content} onClose={() => setViewingNote(null)} />;
                     }
                     // Flashcard JSON → FlashcardViewer
                     if (parsed.cards && Array.isArray(parsed.cards)) {
-                      return <FlashcardViewer content={content} onClose={() => setViewingNote(null)} onGenerateFromTopics={handleGenerateFromTopics} />;
+                      return <FlashcardViewer content={content} onClose={() => setViewingNote(null)} />;
                     }
                     // Mindmap JSON → MindmapCard
                     const tree = parsed.tree || parsed;

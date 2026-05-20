@@ -9,6 +9,7 @@ Provides:
 import json
 import logging
 from datetime import datetime, timedelta, date, timezone
+from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -19,7 +20,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from database import get_db
-from config import settings
+from config import settings, get_user_memory_dir
 from models.complete_models import LearningEvent, EvaluationReport, User
 from auth.security import get_current_user
 
@@ -119,7 +120,57 @@ async def log_events_batch(
             session_id=item.session_id,
         )
         db.add(event)
+
+        # Sync incorrect quiz answers to mistakes.json
+        if item.event_type == "quiz_answer" and not item.event_data.get("is_correct"):
+            _append_mistake_to_file(current_user.id, item.event_data)
+
     return {"ok": True, "count": len(request.events)}
+
+
+def _append_mistake_to_file(user_id: int, event_data: Dict[str, Any]):
+    """Append a wrong quiz answer to memory/mistakes.json."""
+    try:
+        memory_dir = get_user_memory_dir(user_id)
+        memory_dir.mkdir(parents=True, exist_ok=True)
+        mistakes_file = memory_dir / "mistakes.json"
+
+        # Read existing
+        mistakes = []
+        if mistakes_file.exists():
+            try:
+                mistakes = json.loads(mistakes_file.read_text(encoding="utf-8"))
+                if not isinstance(mistakes, list):
+                    mistakes = []
+            except (json.JSONDecodeError, Exception):
+                mistakes = []
+
+        # Build record from frontend event data
+        record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "question_id": event_data.get("question_id", ""),
+            "topic": event_data.get("topic", "unknown"),
+            "difficulty": event_data.get("difficulty", "unknown"),
+        }
+
+        mistakes.append(record)
+
+        # Sliding window: keep last 50 entries
+        if len(mistakes) > 50:
+            mistakes = mistakes[-50:]
+
+        mistakes_file.write_text(
+            json.dumps(mistakes, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+
+        # Invalidate profile cache
+        cache_file = memory_dir.parent / "workspace" / "profile_cache.json"
+        if cache_file.exists():
+            cache_file.unlink()
+
+    except Exception as e:
+        logger.warning(f"Failed to append mistake to file: {e}")
 
 
 # ── Dashboard Endpoint ──

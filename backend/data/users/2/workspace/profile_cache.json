@@ -1,0 +1,220 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-05-20T08:54:46.489495+00:00",
+  "dimensions": {
+    "knowledge_foundation": {
+      "score": 65.0,
+      "concepts": [
+        {
+          "name": "Teacher Forcing",
+          "mastery": 0.3
+        },
+        {
+          "name": "序列到序列模型",
+          "mastery": 0.3
+        },
+        {
+          "name": "暴露偏差（Exposure Bias）",
+          "mastery": 0.2
+        },
+        {
+          "name": "Scheduled Sampling",
+          "mastery": 0.2
+        },
+        {
+          "name": "梯度消失（Vanishing Gradient）",
+          "mastery": 0.2
+        },
+        {
+          "name": "深度学习基础",
+          "mastery": 0.4
+        },
+        {
+          "name": "反向传播",
+          "mastery": 0.4
+        },
+        {
+          "name": "解码器",
+          "mastery": 0.3
+        }
+      ],
+      "summary": "对深度学习基础、反向传播等核心概念有初步接触，但在高级主题如Teacher Forcing及其相关概念上存在明显混淆，掌握度较低。",
+      "style": null,
+      "traits": null,
+      "patterns": null,
+      "pace": null,
+      "mood": null,
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "cognitive_style": {
+      "score": 50.0,
+      "concepts": null,
+      "summary": null,
+      "style": "数据不足，待观察",
+      "traits": [],
+      "patterns": null,
+      "pace": null,
+      "mood": null,
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "error_patterns": {
+      "score": 55.0,
+      "concepts": null,
+      "summary": "错误高度集中在Teacher Forcing及其衍生概念上，主要表现为对核心定义、优势及解决方案的理解偏差和混淆，例如将暴露偏差与梯度消失混淆。",
+      "style": null,
+      "traits": null,
+      "patterns": [
+        {
+          "topic": "Teacher Forcing",
+          "type": "概念混淆",
+          "count": 3
+        },
+        {
+          "topic": "Teacher Forcing",
+          "type": "理解偏差",
+          "count": 2
+        },
+        {
+          "topic": "Scheduled Sampling",
+          "type": "理解偏差",
+          "count": 1
+        }
+      ],
+      "pace": null,
+      "mood": null,
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "learning_rhythm": {
+      "score": 60.0,
+      "concepts": null,
+      "summary": null,
+      "style": null,
+      "traits": [
+        "短期内进行了多次测验",
+        "学习投入度较高"
+      ],
+      "patterns": null,
+      "pace": "密集练习型",
+      "mood": null,
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "affective_state": {
+      "score": 70.0,
+      "concepts": null,
+      "summary": null,
+      "style": null,
+      "traits": [
+        "学习态度积极",
+        "愿意通过测验检验知识"
+      ],
+      "patterns": null,
+      "pace": null,
+      "mood": "积极尝试",
+      "short_term": null,
+      "long_term": null,
+      "progress": null
+    },
+    "goal_progress": {
+      "score": 50.0,
+      "concepts": null,
+      "summary": null,
+      "style": null,
+      "traits": null,
+      "patterns": null,
+      "pace": null,
+      "mood": null,
+      "short_term": "掌握Teacher Forcing等序列模型关键技术",
+      "long_term": "系统学习深度学习",
+      "progress": "正在接触核心主题，但初次测验效果不理想，需要巩固。"
+    }
+  },
+  "knowledge_graph": {
+    "nodes": [
+      {
+        "id": "Teacher Forcing",
+        "mastery": 0.3,
+        "category": "进阶"
+      },
+      {
+        "id": "序列到序列模型",
+        "mastery": 0.3,
+        "category": "进阶"
+      },
+      {
+        "id": "暴露偏差（Exposure Bias）",
+        "mastery": 0.2,
+        "category": "进阶"
+      },
+      {
+        "id": "Scheduled Sampling",
+        "mastery": 0.2,
+        "category": "进阶"
+      },
+      {
+        "id": "梯度消失（Vanishing Gradient）",
+        "mastery": 0.2,
+        "category": "基础"
+      },
+      {
+        "id": "解码器",
+        "mastery": 0.3,
+        "category": "基础"
+      },
+      {
+        "id": "深度学习基础",
+        "mastery": 0.4,
+        "category": "基础"
+      },
+      {
+        "id": "反向传播",
+        "mastery": 0.4,
+        "category": "基础"
+      }
+    ],
+    "edges": [
+      {
+        "source": "序列到序列模型",
+        "target": "Teacher Forcing",
+        "relation": "包含"
+      },
+      {
+        "source": "Teacher Forcing",
+        "target": "暴露偏差（Exposure Bias）",
+        "relation": "导致"
+      },
+      {
+        "source": "Teacher Forcing",
+        "target": "Scheduled Sampling",
+        "relation": "对比"
+      },
+      {
+        "source": "梯度消失（Vanishing Gradient）",
+        "target": "暴露偏差（Exposure Bias）",
+        "relation": "对比"
+      },
+      {
+        "source": "解码器",
+        "target": "Teacher Forcing",
+        "relation": "应用"
+      }
+    ]
+  },
+  "overall_score": 58.0,
+  "insight_text": "根据你的学习记录，你在**知识基础**方面有初步接触，但**易错点**方面需要重点关注。目前你在Teacher Forcing相关概念上存在较多混淆，建议重新梳理这部分知识的逻辑。",
+  "action_item": "针对Teacher Forcing、暴露偏差、Scheduled Sampling这三个易混淆概念，建议重新阅读讲义或教程，并尝试绘制它们的关系图，进行对比理解。",
+  "highlight_tags": [
+    "需加强概念辨析",
+    "学习态度积极",
+    "存在知识混淆点",
+    "密集练习阶段"
+  ],
+  "needs_onboarding": false
+}

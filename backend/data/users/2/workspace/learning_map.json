@@ -1,0 +1,128 @@
+
+
+{
+  "title": "深度学习课程学习计划",
+  "subtitle": "2025-01-19 ~ 2025-01-26 · 评估修订版 · mastery 0.05",
+  "nodes": [
+    {
+      "id": "day1",
+      "title": "Day 1: 环境搭建与数学基础",
+      "description": "深度学习概述 + PyTorch 张量操作 + 线性代数复习",
+      "status": "active",
+      "phase": "基础夯实",
+      "checkpoint": "完成 2 份练习题 → 更新 mastery 至 0.2+",
+      "resources": [
+        { "type": "mindmap", "label": "思维导图: deep-learning-ch1", "path": "generated/mindmaps/2026-04-19-deep-learning-ch1.json" },
+        { "type": "exercise", "label": "练习题: deep-learning-ch1", "path": "generated/exercises/2026-01-19-deep-learning-ch1.md" },
+        { "type": "exercise", "label": "数学基础练习", "path": "generated/exercises/2026-01-19-math-basics.md" }
+      ],
+      "children": [
+        { "id": "day1-1", "title": "深度学习概念与发展历史", "status": "active" },
+        { "id": "day1-2", "title": "配置开发环境 (Python + Jupyter + PyCharm)", "status": "locked" },
+        { "id": "day1-3", "title": "Torch 张量 (定义、运算、索引切片、降维)", "status": "locked" },
+        { "id": "day1-4", "title": "标量、向量、矩阵运算 (点积、矩阵乘法、范数)", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day2",
+      "title": "Day 2: 微积分与自动求导",
+      "description": "导数、梯度、链式法则 + 反向传播原理",
+      "status": "locked",
+      "phase": "基础夯实",
+      "checkpoint": "能手推简单链式法则 + 完成 autograd 代码实验",
+      "children": [
+        { "id": "day2-1", "title": "导数与梯度 (偏导数、梯度计算)", "status": "locked" },
+        { "id": "day2-2", "title": "链式法则 (手动推导示例)", "status": "locked" },
+        { "id": "day2-3", "title": "反向传播自动求导 (PyTorch autograd)", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day3",
+      "title": "Day 3: 线性回归从零实现",
+      "description": "从线性回归到神经网络雏形",
+      "status": "locked",
+      "phase": "模型实现",
+      "resources": [
+        { "type": "code-case", "label": "线性回归代码库 (手写版 + PyTorch 版)" }
+      ],
+      "children": [
+        { "id": "day3-1", "title": "线性回归 (解析解 vs 梯度下降)", "status": "locked" },
+        { "id": "day3-2", "title": "从零实现线性回归 (数据→模型→训练)", "status": "locked" },
+        { "id": "day3-3", "title": "PyTorch 简洁实现对比", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day4",
+      "title": "Day 4: 多层感知机 (MLP)",
+      "description": "激活函数 + 反向传播算法 + 过拟合处理",
+      "status": "locked",
+      "phase": "模型实现",
+      "checkpoint": "完成 MLP 练习题 + 过拟合实验报告",
+      "resources": [
+        { "type": "exercise", "label": "练习题: mlp-activation", "path": "generated/exercises/2026-01-19-mlp-activation.md" }
+      ],
+      "children": [
+        { "id": "day4-1", "title": "线性神经网络的局限性", "status": "locked" },
+        { "id": "day4-2", "title": "激活函数 (ReLU / sigmoid / tanh 对比)", "status": "locked" },
+        { "id": "day4-3", "title": "反向传播算法 (前向→反向→参数更新)", "status": "locked" },
+        { "id": "day4-4", "title": "模型选择与正则化 (权重衰减 / Dropout / 早停)", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day5",
+      "title": "Day 5: 卷积神经网络 (CNN) 基础",
+      "description": "卷积层、池化层、LeNet",
+      "status": "locked",
+      "phase": "视觉进阶",
+      "checkpoint": "CNN 图像分类代码 + 卷积可视化图",
+      "resources": [
+        { "type": "mindmap", "label": "思维导图: cnn-interactive", "path": "generated/mindmaps/2026-05-02-cnn-interactive.json" }
+      ],
+      "children": [
+        { "id": "day5-1", "title": "从全连接到卷积的动机", "status": "locked" },
+        { "id": "day5-2", "title": "图像卷积 (卷积核、特征映射、感受野)", "status": "locked" },
+        { "id": "day5-3", "title": "卷积层基本元素 (填充、步幅、多通道)", "status": "locked" },
+        { "id": "day5-4", "title": "LeNet 网络结构与服饰图像分类实战", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day6",
+      "title": "Day 6: 经典 CNN 架构与现代优化",
+      "description": "NiN / GoogLeNet / ResNet + 迁移学习",
+      "status": "locked",
+      "phase": "视觉进阶",
+      "resources": [
+        { "type": "code-case", "label": "ResNet 代码复现 + 迁移学习对比实验" }
+      ],
+      "children": [
+        { "id": "day6-1", "title": "深度卷积神经网络 (表示学习)", "status": "locked" },
+        { "id": "day6-2", "title": "NiN 块与模型", "status": "locked" },
+        { "id": "day6-3", "title": "GoogLeNet 与 Inception 块", "status": "locked" },
+        { "id": "day6-4", "title": "ResNet 残差块 (解决梯度消失)", "status": "locked" },
+        { "id": "day6-5", "title": "迁移学习与动物图像分类", "status": "locked" }
+      ]
+    },
+    {
+      "id": "day7",
+      "title": "Day 7: RNN 与注意力机制",
+      "description": "序列数据处理 + Transformer 基础",
+      "status": "locked",
+      "phase": "序列建模",
+      "checkpoint": "完成 RNN + Transformer 练习题",
+      "resources": [
+        { "type": "mindmap", "label": "思维导图: rnn", "path": "generated/mindmaps/2026-01-19-rnn.json" },
+        { "type": "lecture", "label": "讲解文档: rnn", "path": "generated/lectures/2026-01-19-rnn.md" },
+        { "type": "exercise", "label": "练习题: transformer", "path": "generated/exercises/2025-01-19-transformer-exercises.md" }
+      ],
+      "children": [
+        { "id": "day7-1", "title": "循环神经网络 (PM2.5 预测案例)", "status": "locked" },
+        { "id": "day7-2", "title": "文本预处理 (词元化、词表构建)", "status": "locked" },
+        { "id": "day7-3", "title": "语言模型与困惑度", "status": "locked" },
+        { "id": "day7-4", "title": "GRU 门控机制", "status": "locked" },
+        { "id": "day7-5", "title": "LSTM 记忆元", "status": "locked" },
+        { "id": "day7-6", "title": "缩放点积注意力 (Query / Key / Value)", "status": "locked" },
+        { "id": "day7-7", "title": "Transformer 模型结构", "status": "locked" }
+      ]
+    }
+  ]
+}

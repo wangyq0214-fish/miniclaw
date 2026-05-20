@@ -3,6 +3,7 @@
 import {
   BookOpen,
   ClipboardList,
+  Code2,
   FileText,
   GraduationCap,
   Library,
@@ -15,8 +16,11 @@ import {
 import { DocCard } from './DocCard';
 import { StudentProfileCard } from './StudentProfileCard';
 import { MindmapCard } from './MindmapCard';
-import { CodeCaseCard } from './CodeCaseCard';
+import { CodingChallenge } from './CodingChallenge';
 import { FlashcardViewer } from '@/components/exercise/FlashcardViewer';
+import { ExerciseViewer } from '@/components/exercise/ExerciseViewer';
+import { LearningMapView } from '@/components/learning-map/LearningMapView';
+import { getUserItem } from '@/lib/userStorage';
 
 interface ContentCardProps {
   path: string;
@@ -41,6 +45,20 @@ function getKind(path: string) {
   return 'other';
 }
 
+/** Reverse-lookup: find the learning map nodeId that owns a given file path */
+function findNodeIdForFile(filePath: string): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const paths: Record<string, string> = JSON.parse(getUserItem('miniclaw_gen_paths') || '{}');
+    for (const key of Object.keys(paths)) {
+      if (paths[key] === filePath) {
+        return key.split(':')[0]; // key format: "{nodeId}:{action}"
+      }
+    }
+  } catch {}
+  return undefined;
+}
+
 export function ContentCard({ path, content, onOpenInEditor }: ContentCardProps) {
   const kind = getKind(path);
 
@@ -49,11 +67,9 @@ export function ContentCard({ path, content, onOpenInEditor }: ContentCardProps)
       return <StudentProfileCard path={path} content={content} onOpenInEditor={onOpenInEditor} />;
     case 'plan':
       return (
-        <DocCard
-          icon={<Target className="w-4 h-4" />}
-          label="学习计划"
+        <LearningMapView
+          markdownContent={content}
           path={path}
-          content={content}
           onOpenInEditor={onOpenInEditor}
         />
       );
@@ -95,6 +111,19 @@ export function ContentCard({ path, content, onOpenInEditor }: ContentCardProps)
         />
       );
     case 'exercise':
+      try {
+        const exerciseData = JSON.parse(content);
+        if (exerciseData.questions && Array.isArray(exerciseData.questions)) {
+          const nodeId = findNodeIdForFile(path);
+          return (
+            <div className="h-full min-h-[400px]">
+              <ExerciseViewer content={content} nodeId={nodeId} filePath={path} />
+            </div>
+          );
+        }
+      } catch {
+        // Not valid JSON, show as markdown doc
+      }
       return (
         <DocCard
           icon={<ListChecks className="w-4 h-4" />}
@@ -104,17 +133,44 @@ export function ContentCard({ path, content, onOpenInEditor }: ContentCardProps)
           onOpenInEditor={onOpenInEditor}
         />
       );
-    case 'flashcard':
+    case 'flashcard': {
+      const nodeId = findNodeIdForFile(path);
+      try {
+        const flashcardData = JSON.parse(content);
+        if (flashcardData.cards && Array.isArray(flashcardData.cards)) {
+          return (
+            <div className="h-full min-h-[400px]">
+              <FlashcardViewer content={content} nodeId={nodeId} filePath={path} />
+            </div>
+          );
+        }
+      } catch {
+        // Not valid JSON, show as markdown doc
+      }
       return (
-        <div className="h-full min-h-[400px]">
-          <FlashcardViewer content={content} />
-        </div>
+        <DocCard
+          icon={<Layers className="w-4 h-4" />}
+          label="抽认卡"
+          path={path}
+          content={content}
+          onOpenInEditor={onOpenInEditor}
+        />
       );
+    }
     case 'code-case':
+      // Parse JSON challenge data from code-cases directory
+      try {
+        const challengeData = JSON.parse(content);
+        if (challengeData.testCases && Array.isArray(challengeData.testCases)) {
+          return <CodingChallenge data={challengeData} />;
+        }
+      } catch {
+        // Not valid JSON, show as markdown doc
+      }
       return (
-        <CodeCaseCard
-          icon={<ClipboardList className="w-4 h-4" />}
-          label="代码案例"
+        <DocCard
+          icon={<Code2 className="w-4 h-4" />}
+          label="编程挑战"
           path={path}
           content={content}
           onOpenInEditor={onOpenInEditor}
