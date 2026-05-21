@@ -416,6 +416,7 @@ export async function generateTitle(sessionId: string): Promise<{
 }> {
   const response = await fetch(`${getApiBase()}/api/sessions/${sessionId}/generate-title`, {
     method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) {
     throw new Error(`API error: ${response.statusText}`);
@@ -582,7 +583,9 @@ export async function listSkills(): Promise<SkillInfo[]> {
 
 // Token API
 export async function getTokenStats(sessionId: string): Promise<TokenStats> {
-  const response = await fetch(`${getApiBase()}/api/tokens/session/${sessionId}`);
+  const response = await fetch(`${getApiBase()}/api/tokens/session/${sessionId}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) {
     throw new Error(`API error: ${response.statusText}`);
   }
@@ -594,7 +597,7 @@ export async function countFileTokens(paths: string[]): Promise<{
 }> {
   const response = await fetch(`${getApiBase()}/api/tokens/files`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ paths }),
   });
   if (!response.ok) {
@@ -1173,11 +1176,11 @@ export interface StudentProfile {
 }
 
 export const DIMENSION_LABELS: Record<string, string> = {
-  knowledge_foundation: '知识基础',
-  cognitive_style: '认知风格',
-  error_patterns: '易错分析',
-  learning_rhythm: '学习节奏',
-  affective_state: '情感态度',
+  knowledge_foundation: '知识积淀',
+  cognitive_style: '探索深度',
+  error_patterns: '纠错反思',
+  learning_rhythm: '逻辑推演',
+  affective_state: '综合应用',
   goal_progress: '目标达成',
 };
 
@@ -1249,4 +1252,74 @@ export async function appendMistake(mistake: {
     // Non-critical, just log warning
     console.warn('Failed to append mistake:', response.statusText);
   }
+}
+
+// ── Courses API ──
+
+export interface ChapterInfo {
+  chapter_id: number;
+  title: string;
+  file: string;
+  content?: string;
+}
+
+export interface CourseInfo {
+  course_id: string;
+  course_name: string;
+  course_name_en?: string;
+  description?: string;
+  chapters: ChapterInfo[];
+  total_chapters: number;
+}
+
+export async function listCourses(): Promise<CourseInfo[]> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(`${getApiBase()}/api/courses`, { headers });
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.courses;
+}
+
+export async function getCourse(courseId: string): Promise<CourseInfo> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(
+    `${getApiBase()}/api/courses/${encodeURIComponent(courseId)}`,
+    { headers }
+  );
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getChapterContent(
+  courseId: string,
+  chapterId: number
+): Promise<ChapterInfo> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(
+    `${getApiBase()}/api/courses/${encodeURIComponent(courseId)}/chapters/${chapterId}`,
+    { headers }
+  );
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+  return response.json();
 }

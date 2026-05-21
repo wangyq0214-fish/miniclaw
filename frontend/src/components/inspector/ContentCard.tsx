@@ -35,6 +35,7 @@ function getKind(path: string) {
   if (p.startsWith('memory/evaluation/')) return 'evaluation';
   if (p.startsWith('memory/profile_history')) return 'profile-history';
   if (p.includes('/mindmap') || p.includes('/mindmaps/')) return 'mindmap';
+  if (p.includes('knowledge/source/') || p.includes('深度学习')) return 'course-chapter';
   if (p.includes('/lectures/')) return 'lecture';
   if (p.includes('/exercises/')) return 'exercise';
   if (p.includes('/flashcards/')) return 'flashcard';
@@ -99,6 +100,17 @@ export function ContentCard({ path, content, onOpenInEditor }: ContentCardProps)
         <div className="h-full min-h-[400px]">
           <MindmapCard path={path} content={content} onOpenInEditor={onOpenInEditor} />
         </div>
+      );
+    case 'course-chapter':
+      return (
+        <DocCard
+          icon={<BookOpen className="w-4 h-4" />}
+          label="课程章节"
+          path={path}
+          content={content}
+          onOpenInEditor={onOpenInEditor}
+          enablePagination={true}
+        />
       );
     case 'lecture':
       return (

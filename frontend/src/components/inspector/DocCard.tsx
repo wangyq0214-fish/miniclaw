@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { CardShell } from './CardShell';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
+import { CourseViewer } from '@/components/course/CourseViewer';
 
 interface DocCardProps {
   icon: ReactNode;
@@ -11,9 +12,14 @@ interface DocCardProps {
   content: string;
   onOpenInEditor?: () => void;
   accent?: 'primary' | 'muted';
+  enablePagination?: boolean;
 }
 
-export function DocCard({ icon, label, path, content, onOpenInEditor, accent }: DocCardProps) {
+export function DocCard({ icon, label, path, content, onOpenInEditor, accent, enablePagination = false }: DocCardProps) {
+  // Check if this is a course chapter file (from knowledge/source/深度学习/)
+  const isCourseChapter = path.includes('knowledge/source') || path.includes('深度学习');
+  const shouldPaginate = enablePagination || isCourseChapter;
+
   return (
     <CardShell
       icon={icon}
@@ -23,7 +29,11 @@ export function DocCard({ icon, label, path, content, onOpenInEditor, accent }: 
       onOpenInEditor={onOpenInEditor}
       accent={accent}
     >
-      <MarkdownRenderer content={content} />
+      {shouldPaginate ? (
+        <CourseViewer markdown={content} />
+      ) : (
+        <MarkdownRenderer content={content} />
+      )}
     </CardShell>
   );
 }
