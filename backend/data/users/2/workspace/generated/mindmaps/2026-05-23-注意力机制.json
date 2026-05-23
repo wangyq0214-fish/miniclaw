@@ -1,0 +1,159 @@
+{
+  "title": "注意力机制",
+  "topic_slug": "attention-mechanism",
+  "node_count": 15,
+  "max_depth": 3,
+  "generated_at": "2025-08-03T12:00:00Z",
+  "generated_by": "mindmap_designer",
+  "tree": {
+    "title": "注意力机制 ❓",
+    "summary": "让模型聚焦关键信息的核心计算框架",
+    "details": [
+      "源自灵长类视觉系统启发",
+      "Transformer 架构的核心思想",
+      "已主导 NLP 和视觉任务"
+    ],
+    "children": [
+      {
+        "title": "背景与起源 ❓",
+        "summary": "注意力机制的生物学与科学渊源",
+        "details": [
+          "灵长类视觉选择性注意",
+          "19世纪起认知神经科学研究",
+          "聚焦关键信息利于生存"
+        ],
+        "children": [
+          {
+            "title": "深度学习演进 ❓",
+            "summary": "从 MLP/CNN/RNN 到注意力驱动的架构变迁",
+            "details": [
+              "早期靠算力和大数据推动",
+              "注意力逐步成为主流",
+              "预训练+微调成为默认范式"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "经典注意力框架 ❓",
+        "summary": "解释如何在视觉场景中展开注意力",
+        "details": [
+          "基于注意力提示的建模",
+          "启发了后续核回归方法"
+        ],
+        "children": [
+          {
+            "title": "注意力提示 ❓",
+            "summary": "引导注意力聚焦方向的线索信号",
+            "details": [
+              "决定关注哪些区域",
+              "受视觉认知研究启发"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "N-W核回归 ❓",
+            "summary": "1964年提出的利用注意力提示的核回归模型",
+            "details": [
+              "Nadaraya-Watson 提出",
+              "用核函数加权求和",
+              "注意力的早期数学形式"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "注意力函数 ❓",
+        "summary": "计算查询与键值对之间相关性的函数",
+        "details": [
+          "衡量输入元素间关联度",
+          "输出注意力权重分布"
+        ],
+        "children": [
+          {
+            "title": "Bahdanau注意力 ❓",
+            "summary": "深度学习中具有突破性价值的注意力模型",
+            "details": [
+              "增强编码器-解码器RNN",
+              "应用于序列到序列任务",
+              "解决长序列信息瓶颈"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "Transformer架构 ❓",
+        "summary": "完全基于注意力机制的模型架构",
+        "details": [
+          "摒弃循环和卷积结构",
+          "NLP 和视觉任务的默认模型",
+          "大型预训练+微调范式"
+        ],
+        "children": [
+          {
+            "title": "多头注意力 ❓",
+            "summary": "并行多个注意力头捕获不同子空间信息",
+            "details": [
+              "多个注意力头并行计算",
+              "捕获不同维度的依赖",
+              "拼接输出增强表达力"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "自注意力 ❓",
+            "summary": "序列内部元素之间相互计算注意力",
+            "details": [
+              "查询键值均来自同一序列",
+              "建模全局依赖关系",
+              "支持并行计算"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "应用领域 ❓",
+        "summary": "注意力机制在 NLP 和视觉中的广泛应用",
+        "details": [
+          "NLP：机器翻译等序列任务",
+          "视觉：图像识别与检测",
+          "默认使用预训练Transformer"
+        ],
+        "children": [
+          {
+            "title": "NLP 任务 ❓",
+            "summary": "几乎所有 NLP 任务的主流模型基于 Transformer",
+            "details": [
+              "机器翻译等序列任务",
+              "预训练模型+微调范式",
+              "逐步取代 RNN 架构"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "视觉任务 ❓",
+            "summary": "视觉 Transformer 成为多种视觉任务的默认模型",
+            "details": [
+              "图像识别与目标检测",
+              "语义分割与超分辨率",
+              "挑战 CNN 的主导地位"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      }
+    ]
+  }
+}

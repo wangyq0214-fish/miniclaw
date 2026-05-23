@@ -14,6 +14,16 @@ import 'katex/dist/katex.min.css';
 interface CourseViewerProps {
   markdown: string;
   className?: string;
+  courseId?: string;
+  chapterId?: string;
+  // External pagination control (from ChapterResourceTabs)
+  currentPage?: number;
+  totalPages?: number;
+  currentContent?: string;
+  onNextPage?: () => void;
+  onPrevPage?: () => void;
+  isFirstPage?: boolean;
+  isLastPage?: boolean;
 }
 
 // Get backend API base URL for static assets
@@ -23,42 +33,55 @@ function getStaticBaseUrl() {
   return `${window.location.protocol}//${window.location.hostname}:8002`;
 }
 
-export function CourseViewer({ markdown, className = '' }: CourseViewerProps) {
+export function CourseViewer({
+  markdown,
+  className = '',
+  courseId,
+  chapterId,
+  currentPage: extCurrentPage,
+  totalPages: extTotalPages,
+  currentContent: extCurrentContent,
+  onNextPage,
+  onPrevPage,
+  isFirstPage: extIsFirstPage,
+  isLastPage: extIsLastPage,
+}: CourseViewerProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Transform relative image paths to absolute URLs
   const transformedMarkdown = useMemo(() => {
     const baseUrl = getStaticBaseUrl();
-    // Replace relative image paths like ![alt](image.png) with absolute URLs
     return markdown.replace(
       /!\[([^\]]*)\]\((?!http)([^)]+)\)/g,
       `![$1](${baseUrl}/static/knowledge/assets/$2)`
     );
   }, [markdown]);
 
-  const {
-    currentPage,
-    totalPages,
-    currentContent,
-    nextPage,
-    prevPage,
-    isFirstPage,
-    isLastPage,
-  } = useMarkdownPagination(transformedMarkdown);
+  // Internal pagination (used when no external pagination is provided)
+  const internalPagination = useMarkdownPagination(transformedMarkdown);
+
+  // Use external pagination if provided, otherwise use internal
+  const currentPage = extCurrentPage ?? internalPagination.currentPage;
+  const totalPages = extTotalPages ?? internalPagination.totalPages;
+  const currentContent = extCurrentContent ?? internalPagination.currentContent;
+  const isFirstPage = extIsFirstPage ?? internalPagination.isFirstPage;
+  const isLastPage = extIsLastPage ?? internalPagination.isLastPage;
+  const prevPageFn = onPrevPage ?? internalPagination.prevPage;
+  const nextPageFn = onNextPage ?? internalPagination.nextPage;
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' && !isFirstPage) {
-        prevPage();
+        prevPageFn();
       } else if (e.key === 'ArrowRight' && !isLastPage) {
-        nextPage();
+        nextPageFn();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFirstPage, isLastPage, nextPage, prevPage]);
+  }, [isFirstPage, isLastPage, nextPageFn, prevPageFn]);
 
   return (
     <div className={`relative h-full flex flex-col ${className}`}>
@@ -114,8 +137,8 @@ export function CourseViewer({ markdown, className = '' }: CourseViewerProps) {
         <PaginationControls
           currentPage={currentPage}
           totalPages={totalPages}
-          onPrevPage={prevPage}
-          onNextPage={nextPage}
+          onPrevPage={prevPageFn}
+          onNextPage={nextPageFn}
           isFirstPage={isFirstPage}
           isLastPage={isLastPage}
           scrollContainerRef={scrollContainerRef}

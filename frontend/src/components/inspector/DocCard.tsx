@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { CardShell } from './CardShell';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { CourseViewer } from '@/components/course/CourseViewer';
+import { ChapterResourceTabs } from './ChapterResourceTabs';
 
 interface DocCardProps {
   icon: ReactNode;
@@ -20,6 +21,21 @@ export function DocCard({ icon, label, path, content, onOpenInEditor, accent, en
   const isCourseChapter = path.includes('knowledge/source') || path.includes('深度学习');
   const shouldPaginate = enablePagination || isCourseChapter;
 
+  // Extract courseId and chapterId from path
+  let courseId: string | undefined;
+  let chapterId: string | undefined;
+
+  if (isCourseChapter) {
+    const pathParts = path.split('/');
+    const courseIndex = pathParts.findIndex(p => p === 'source');
+    courseId = (courseIndex !== -1 && pathParts[courseIndex + 1]) || pathParts[pathParts.length - 2] || 'default';
+
+    const filename = pathParts[pathParts.length - 1];
+    const chapterMatch = filename.match(/chapter(\d+)/);
+    const numMatch = filename.match(/(\d+)/);
+    chapterId = chapterMatch ? chapterMatch[1] : numMatch ? numMatch[1] : '1';
+  }
+
   return (
     <CardShell
       icon={icon}
@@ -29,8 +45,19 @@ export function DocCard({ icon, label, path, content, onOpenInEditor, accent, en
       onOpenInEditor={onOpenInEditor}
       accent={accent}
     >
-      {shouldPaginate ? (
-        <CourseViewer markdown={content} />
+      {isCourseChapter ? (
+        <ChapterResourceTabs
+          markdown={content}
+          courseId={courseId}
+          chapterId={chapterId}
+          path={path}
+        />
+      ) : shouldPaginate ? (
+        <CourseViewer
+          markdown={content}
+          courseId={courseId}
+          chapterId={chapterId}
+        />
       ) : (
         <MarkdownRenderer content={content} />
       )}

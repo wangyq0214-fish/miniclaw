@@ -26,6 +26,10 @@ class User(Base):
     grade = Column(String(20), nullable=True, comment="年级")
     student_id = Column(String(50), unique=True, nullable=True, comment="学号")
 
+    # 头像（Base64 存储）
+    avatar_data = Column(Text, nullable=True, comment="头像 Base64 数据")
+    avatar_type = Column(String(20), nullable=True, comment="头像 MIME 类型")
+
     # 状态
     is_active = Column(Boolean, default=True, nullable=False)
     is_superuser = Column(Boolean, default=False, nullable=False)

@@ -1,0 +1,151 @@
+{
+  "title": "深度学习概述",
+  "topic_slug": "deep-learning-overview",
+  "node_count": 16,
+  "max_depth": 3,
+  "generated_at": "2025-07-18T12:00:00Z",
+  "generated_by": "mindmap_designer",
+  "tree": {
+    "title": "深度学习概述",
+    "summary": "基于深层神经网络的机器学习分支，是当前AI核心技术",
+    "details": [
+      "典型模型为很深的神经网络",
+      "深度指网络层数，学习指训练权值",
+      "拥有比经典ML更强大的功能"
+    ],
+    "children": [
+      {
+        "title": "基本概念",
+        "summary": "深度学习的定义及其在AI体系中的定位",
+        "details": [
+          "AI范围最广，ML是实现AI的技术",
+          "深度学习是ML的一个分支",
+          "目前最主流的AI解决技术"
+        ],
+        "children": [
+          {
+            "title": "深度神经网络",
+            "summary": "由多层神经元组成的信息处理模型",
+            "details": [
+              "神经元通过连接传递信息",
+              "层数越多网络越深",
+              "可达百亿甚至千亿参数"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "与AI/ML关系",
+            "summary": "深度学习是机器学习的子集，推动AI发展",
+            "details": [
+              "AI ⊃ ML ⊃ 深度学习",
+              "深度学习功能强于经典ML",
+              "极大推动了人工智能进步"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "典型应用",
+            "summary": "深度学习在各领域的实际落地场景",
+            "details": [
+              "智能助手如Siri、小度",
+              "人脸验证与识别",
+              "机器翻译打破语言障碍"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "发展历程",
+        "summary": "从人工神经元到现代深度学习的演进脉络",
+        "details": [
+          "1943年人工神经元模型提出",
+          "经历两次低谷两次复兴",
+          "2012年后迎来爆发式发展"
+        ],
+        "children": [
+          {
+            "title": "早期探索",
+            "summary": "神经网络的诞生与第一次热潮",
+            "details": [
+              "1943年McCulloch提出神经元模型",
+              "1958年感知机引发第一次热潮",
+              "1969年线性不可分问题致低谷"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "复兴与再低谷",
+            "summary": "BP算法带来复兴，但随后再遇瓶颈",
+            "details": [
+              "1986年辛顿提出BP算法",
+              "1989年LeNet开创CNN框架",
+              "梯度消失和SVM竞争致再低谷"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "现代突破",
+            "summary": "GPU与大数据推动深度学习全面爆发",
+            "details": [
+              "GPU大规模使用解决算力瓶颈",
+              "ImageNet提供超大规模数据集",
+              "2012年AlexNet碾压式夺冠"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "核心技术演进",
+        "summary": "深度学习关键架构与算法的发展脉络",
+        "details": [
+          "CNN处理图像，RNN处理序列",
+          "注意力机制实现动态聚焦",
+          "Transformer开启并行计算时代"
+        ],
+        "children": [
+          {
+            "title": "卷积神经网络",
+            "summary": "专为图像处理设计的深度网络架构",
+            "details": [
+              "LeNet确定卷积+池化+全连接框架",
+              "AlexNet、VGGNet逐步加深",
+              "MobileNet、DenseNet优化复杂度"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "序列模型",
+            "summary": "处理时序数据的循环神经网络家族",
+            "details": [
+              "RNN处理序列但有梯度问题",
+              "LSTM引入门控机制缓解梯度",
+              "GRU简化LSTM减少参数量"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "注意力与Transformer",
+            "summary": "摒弃循环结构的革命性架构",
+            "details": [
+              "注意力机制动态关注输入不同部分",
+              "Transformer用自注意力替代循环",
+              "BERT通过预训练刷新NLP性能"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      }
+    ]
+  }
+}

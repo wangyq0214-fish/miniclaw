@@ -1,9 +1,9 @@
 {
   "schema_version": "2.0",
-  "generated_at": "2026-05-20T09:36:50.695850+00:00",
+  "generated_at": "2026-05-22T09:58:36.798793+00:00",
   "dimensions": {
     "knowledge_foundation": {
-      "score": 58.0,
+      "score": 60.0,
       "concepts": [
         {
           "name": "线性回归",
@@ -30,7 +30,7 @@
           "mastery": 0.3
         }
       ],
-      "summary": "初步接触了线性回归、CNN等基础概念，但所有概念的掌握度均偏低，处于知识框架的早期构建阶段",
+      "summary": "已接触机器学习的基础概念如线性回归和CNN，但掌握度普遍较低，属于初始了解阶段。知识图谱显示了初步的知识框架，但缺乏深入学习和练习。",
       "style": null,
       "traits": null,
       "patterns": null,
@@ -54,9 +54,9 @@
       "progress": null
     },
     "error_patterns": {
-      "score": 65.0,
+      "score": 80.0,
       "concepts": null,
-      "summary": "测验数据有限，暂未发现稳定错误模式，平均测验分数(64.3)表明存在一定的理解或应用不足",
+      "summary": "暂无错题记录，未发现明显的错误模式。可能是学习初期，尚未进行系统性的测验来检验。",
       "style": null,
       "traits": null,
       "patterns": [],
@@ -67,36 +67,36 @@
       "progress": null
     },
     "learning_rhythm": {
-      "score": 55.0,
+      "score": 40.0,
       "concepts": null,
       "summary": null,
       "style": null,
       "traits": [
-        "学习周期尚短",
-        "单日学习话题多样"
+        "学习记录稀少",
+        "需要持续稳定的学习"
       ],
       "patterns": null,
-      "pace": "刚开始学习",
+      "pace": "间歇学习型",
       "mood": null,
       "short_term": null,
       "long_term": null,
       "progress": null
     },
     "affective_state": {
-      "score": 50.0,
+      "score": 60.0,
       "concepts": null,
       "summary": null,
       "style": null,
       "traits": [],
       "patterns": null,
       "pace": null,
-      "mood": "态度中性，待观察",
+      "mood": "中性平静",
       "short_term": null,
       "long_term": null,
       "progress": null
     },
     "goal_progress": {
-      "score": 45.0,
+      "score": 50.0,
       "concepts": null,
       "summary": null,
       "style": null,
@@ -104,9 +104,9 @@
       "patterns": null,
       "pace": null,
       "mood": null,
-      "short_term": "目标待明确",
-      "long_term": "目标待明确",
-      "progress": "处于学习初期，覆盖了基础主题，但目标与进展不明确"
+      "short_term": "初步了解机器学习基础概念",
+      "long_term": "系统学习机器学习",
+      "progress": "处于起步阶段，已建立初步的知识图谱，但进展缓慢"
     }
   },
   "knowledge_graph": {
@@ -165,13 +165,13 @@
       }
     ]
   },
-  "overall_score": 55.0,
-  "insight_text": "根据目前非常初期的学习记录，你的**知识基础**框架刚刚开始搭建，对线性回归和CNN有初步接触。其他维度如认知风格、学习目标等因数据有限，有待进一步观察。",
-  "action_item": "建议先巩固已接触的概念（如线性回归的数学表达），并明确下一步的学习目标（例如：系统学习机器学习基础）。",
+  "overall_score": 58.0,
+  "insight_text": "从你的学习记录看，数据还比较有限。你的**知识基础**维度已显示了线性回归、CNN等初步概念，但深度不足。目前各项数据，如测验、错题和学习天数均为零，可能意味着学习刚刚开始。建议多与我互动，完成一些小测验来丰富学习数据。",
+  "action_item": "从知识图谱中的一个基础概念（如‘线性回归’）开始，进行一轮5-10题的专项小测验，并主动询问相关问题，以积累学习数据。",
   "highlight_tags": [
-    "初步建立知识框架",
-    "测验表现尚可",
-    "学习数据待积累"
+    "数据有限",
+    "初涉机器学习",
+    "有学习兴趣"
   ],
   "needs_onboarding": false
 }

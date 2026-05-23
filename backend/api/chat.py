@@ -185,29 +185,46 @@ async def generate_title(message: str, session_id: str) -> str:
     Returns:
         Title string (<=10 chars)
     """
+    logger.info(f"[Title Generation] Starting title generation for session {session_id}")
     try:
         from langchain_openai import ChatOpenAI
-        from langchain_core.messages import HumanMessage, SystemMessage
+        from langchain_core.messages import HumanMessage
 
         llm = ChatOpenAI(
             model=settings.openai_model,
             api_key=settings.openai_api_key,
             base_url=settings.openai_api_base,
             temperature=0.3,
-            max_tokens=20
+            max_tokens=5000
         )
 
+        logger.info(f"[Title Generation] Calling LLM with message: {message[:100]}")
+        # Use clear title generation prompt
         response = await llm.ainvoke([
-            SystemMessage(content="为以下对话生成一个简短的中文标题（不超过10个字），只返回标题文本，不要加引号："),
-            HumanMessage(content=message)
+            HumanMessage(content=f"为以下内容生成一个10字以内的标题（只输出标题，不要解释）：{message}")
         ])
 
-        title = response.content.strip()[:10]
-        return title
+        title = response.content.strip()
+        logger.info(f"[Title Generation] LLM raw response: '{title}' (length: {len(title)})")
+
+        # Remove markdown formatting
+        title = re.sub(r'\*\*(.+?)\*\*', r'\1', title)  # Remove **bold**
+        # Remove common prefixes
+        title = re.sub(r'^(好的[，,、]?|标题是[：:])?\s*["""\'\']*', '', title)
+        # Take only first line
+        title = title.split('\n')[0].strip()
+        # Remove trailing quotes and punctuation
+        title = re.sub(r'["""\'\'。，、！？：；,.!?:;]*$', '', title)
+        # Limit to 10 chars
+        title = title[:10]
+
+        logger.info(f"[Title Generation] Cleaned title: {title}")
+
+        return title if title else "新对话"
 
     except Exception as e:
-        logger.error(f"Error generating title: {str(e)}")
-        return session_id[:10]
+        logger.error(f"[Title Generation] Error generating title: {str(e)}")
+        return "新对话"
 
 
 async def stream_chat_response(
@@ -244,6 +261,7 @@ async def stream_chat_response(
         # Get messages for checking if first message
         existing_messages = await hybrid_manager.get_messages(session_id)
         is_first_message = len(existing_messages) == 0
+        logger.info(f"[Title Generation] Session {session_id}: existing_messages count = {len(existing_messages)}, is_first_message = {is_first_message}")
 
         # Get history for agent from HybridSessionManager
         history = await hybrid_manager.load_session_for_agent(session_id)
@@ -369,7 +387,9 @@ async def stream_chat_response(
 
                 # Generate title for first message
                 if is_first_message:
+                    logger.info(f"[Title Generation] Generating title for session {session_id}, first message: {message[:50]}...")
                     title = await generate_title(message, session_id)
+                    logger.info(f"[Title Generation] Generated title: {title}")
                     # Update title in HybridSessionManager
                     await hybrid_manager.update_session_metadata(
                         session_id=session_id,
@@ -380,6 +400,7 @@ async def stream_chat_response(
                         "session_id": session_id,
                         "title": title
                     }
+                    logger.info(f"[Title Generation] Sending title event: {title_event}")
                     yield f"data: {json.dumps(title_event, ensure_ascii=False)}\n\n"
 
             elif event_type == "error":

@@ -1,0 +1,120 @@
+{
+  "title": "深度学习",
+  "topic_slug": "deep-learning",
+  "node_count": 20,
+  "max_depth": 3,
+  "generated_at": "2026-04-18T12:00:00Z",
+  "generated_by": "mindmap_designer",
+  "tree": {
+    "title": "深度学习",
+    "summary": "人工智能核心技术，通过多层神经网络学习数据特征",
+    "details": ["驱动人脸识别等应用的背后技术", "属于机器学习的子领域", "需要专用开发环境支持"],
+    "children": [
+      {
+        "title": "基本概念 ❓",
+        "summary": "深度学习的定义及其与相关领域的关系",
+        "details": ["多层神经网络自动学习特征", "是机器学习的子集", "机器学习是人工智能的子集"],
+        "children": [
+          {
+            "title": "人工智能 ❓",
+            "summary": "让机器模拟人类智能的广泛技术领域",
+            "details": ["涵盖推理、感知、决策", "深度学习是其核心技术", "应用包括自动驾驶等"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "机器学习 ❓",
+            "summary": "从数据中自动学习规律的方法论",
+            "details": ["无需显式编程规则", "深度学习属于其子集", "包含监督和无监督学习"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "神经网络 ❓",
+            "summary": "模仿生物神经元连接的计算模型",
+            "details": ["由输入隐藏输出层组成", "深度即指多隐藏层结构", "通过权重参数学习"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "发展历史 ❓",
+        "summary": "深度学习从萌芽到爆发的演进历程",
+        "details": ["经历多次寒冬与复兴", "算力突破推动发展", "大数据时代全面爆发"],
+        "children": [
+          {
+            "title": "早期探索 ❓",
+            "summary": "感知机模型与神经网络的诞生",
+            "details": ["1958年提出感知机", "单层网络能力有限", "曾经历AI寒冬"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "复兴与突破 ❓",
+            "summary": "反向传播和深度网络的重大进展",
+            "details": ["反向传播算法推动训练", "GPU加速大幅提升算力", "深度网络性能超越传统方法"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "现代应用 ❓",
+            "summary": "深度学习在各领域的广泛应用",
+            "details": ["AlphaGo击败围棋冠军", "人脸识别与语音识别", "自动驾驶与医疗诊断"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "开发环境 ❓",
+        "summary": "深度学习模型开发所需的工具和平台",
+        "details": ["Jupyter适合交互式探索", "PyCharm适合工程化开发", "需配置Python虚拟环境"],
+        "children": [
+          {
+            "title": "Jupyter ❓",
+            "summary": "交互式笔记本，适合数据探索和实验",
+            "details": ["逐单元格执行代码", "支持可视化与文档", "适合快速原型开发"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "PyCharm ❓",
+            "summary": "专业Python IDE，适合大型项目开发",
+            "details": ["强大的代码补全与调试", "支持项目管理与重构", "适合工程化开发流程"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "虚拟环境 ❓",
+            "summary": "隔离Python依赖的环境管理方式",
+            "details": ["避免不同项目包冲突", "常用conda或venv创建", "便于复现开发环境"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "典型应用 ❓",
+        "summary": "深度学习在各行业的代表性应用场景",
+        "details": ["计算机视觉处理图像视频", "自然语言处理理解文本", "语音识别与自动翻译"],
+        "children": [
+          {
+            "title": "计算机视觉 ❓",
+            "summary": "让机器理解和分析图像与视频",
+            "details": ["图像分类与目标检测", "人脸识别与视频监控", "自动驾驶视觉感知"],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "自然语言处理 ❓",
+            "summary": "让机器理解和生成人类语言",
+            "details": ["机器翻译与文本摘要", "智能问答与对话系统", "情感分析与文本分类"],
+            "children": [],
+            "extra": null
+          }
+        ]
+      }
+    ]
+  }
+}

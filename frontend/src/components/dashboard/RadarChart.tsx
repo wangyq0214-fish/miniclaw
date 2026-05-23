@@ -14,8 +14,8 @@ function useIsDark() {
   return isDark;
 }
 
-const CENTER = 150;
-const MAX_RADIUS = 110;
+const CENTER = 160;
+const MAX_RADIUS = 95;
 
 interface RadarDimension {
   key: string;
@@ -80,7 +80,7 @@ export function RadarChart({ profile }: RadarChartProps) {
 
   return (
     <div className="w-full flex items-center justify-center">
-      <svg viewBox="0 0 300 300" className="w-full max-w-[340px]">
+      <svg viewBox="0 0 320 320" className="w-full max-w-[340px]">
         {/* Grid rings */}
         {rings.map((ratio) => {
           const points = axes
@@ -143,7 +143,7 @@ export function RadarChart({ profile }: RadarChartProps) {
 
         {/* Labels */}
         {axes.map((axis, i) => {
-          const labelR = MAX_RADIUS + 24;
+          const labelR = MAX_RADIUS + 20;
           const lx = CENTER + labelR * Math.cos(axis.angle);
           const ly = CENTER + labelR * Math.sin(axis.angle);
           // Adjust text anchor based on position

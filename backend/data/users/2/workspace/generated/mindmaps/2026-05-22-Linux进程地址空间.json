@@ -1,0 +1,151 @@
+{
+  "title": "Linux进程地址空间",
+  "topic_slug": "linux-process-address-space",
+  "node_count": 13,
+  "max_depth": 3,
+  "generated_at": "2026-05-15T12:00:00Z",
+  "generated_by": "mindmap_designer",
+  "tree": {
+    "title": "Linux进程地址空间",
+    "summary": "进程视角下的虚拟地址空间及其与物理内存的映射机制",
+    "details": [
+      "每个进程拥有独立的虚拟地址空间",
+      "通过页表映射到物理内存",
+      "由 mm_struct 结构体统一管理"
+    ],
+    "children": [
+      {
+        "title": "内存布局 ❓",
+        "summary": "虚拟地址空间从低到高的区域划分",
+        "details": [
+          "低地址到高地址依次为代码段、数据段、堆、栈",
+          "栈向下增长，堆向上增长",
+          "增长方向相反充分利用空间"
+        ],
+        "children": [
+          {
+            "title": "栈区 ❓",
+            "summary": "存放局部变量和函数调用帧的区域",
+            "details": [
+              "由高地址向低地址增长",
+              "自动分配和释放",
+              "函数返回即回收"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "堆区 ❓",
+            "summary": "动态分配内存的主要区域",
+            "details": [
+              "由低地址向高地址增长",
+              "需手动 malloc/free",
+              "空间大但易碎片化"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "数据段 ❓",
+            "summary": "存放全局变量和静态变量的区域",
+            "details": [
+              "已初始化区存放有初值的变量",
+              "未初始化区（BSS）默认清零",
+              "程序启动时分配"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "代码段 ❓",
+            "summary": "存放可执行指令的只读区域",
+            "details": [
+              "存放 CPU 执行的机器指令",
+              "只读防止代码被篡改",
+              "多进程可共享同一代码段"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "虚拟内存 ❓",
+        "summary": "操作系统为进程提供的假想地址空间",
+        "details": [
+          "并非真实物理内存地址",
+          "每个进程看到独立的连续空间",
+          "实现进程间数据隔离"
+        ],
+        "children": [
+          {
+            "title": "页表映射 ❓",
+            "summary": "将虚拟地址翻译为物理地址的查表机制",
+            "details": [
+              "每个进程维护独立页表",
+              "页表是内核核心数据结构",
+              "CPU 通过 MMU 硬件查表"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "写时复制 ❓",
+            "summary": "fork 后父子共享物理页，写时才独立拷贝",
+            "details": [
+              "fork 时仅复制页表不复制内存",
+              "写操作触发独立物理页分配",
+              "大幅节省 fork 开销"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "物理页框 ❓",
+            "summary": "物理内存被划分为等大的小页框",
+            "details": [
+              "通常每页 4KB",
+              "按需映射而非全部占用",
+              "多个进程可映射同一页框"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      },
+      {
+        "title": "mm_struct ❓",
+        "summary": "内核中描述进程整个虚拟地址空间的核心结构体",
+        "details": [
+          "task_struct 通过 mm 指针引用",
+          "记录代码段、数据段、堆、栈边界",
+          "管理页表指针 pgd"
+        ],
+        "children": [
+          {
+            "title": "VMA管理 ❓",
+            "summary": "用链表和红黑树管理所有虚拟内存区域",
+            "details": [
+              "vm_area_struct 描述一块连续虚拟区域",
+              "mmap 链表遍历所有 VMA",
+              "mm_rb 红黑树加速地址查找"
+            ],
+            "children": [],
+            "extra": null
+          },
+          {
+            "title": "地址边界 ❓",
+            "summary": "记录各内存区域的起止地址",
+            "details": [
+              "start_code/end_code 标定代码段",
+              "start_brk/brk 标定堆范围",
+              "start_stack 标定栈起始"
+            ],
+            "children": [],
+            "extra": null
+          }
+        ]
+      }
+    ]
+  }
+}

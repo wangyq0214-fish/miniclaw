@@ -1,0 +1,216 @@
+{
+  "topic": "深度学习开发环境",
+  "total": 7,
+  "difficulty_distribution": {"基础": 3, "中等": 3, "困难": 1},
+  "generated_at": "2025-07-14T10:30:00",
+  "generated_by": "exercise_composer",
+  "covered_topics": ["深度学习框架", "Miniconda", "虚拟环境", "JupyterLab", "PyCharm远程调试", "d2l库"],
+  "recommended_topics": ["PyTorch基础操作", "GPU与CUDA", "模型训练流程", "数据加载与预处理", "TensorBoard训练监控"],
+  "questions": [
+    {
+      "question_id": "q1",
+      "question_text_md": "以下哪个不是当前广泛使用的深度学习框架？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "TensorFlow",
+          "explanation_md": "TensorFlow 是 Google 开发的深度学习框架，是目前使用最广泛的框架之一，广泛应用于工业界和学术界。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "PyTorch",
+          "explanation_md": "PyTorch 是 Meta（原 Facebook）开发的深度学习框架，以其动态计算图和易用性著称，是当前最流行的框架之一。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "NumPy",
+          "explanation_md": "NumPy 是 Python 的科学计算基础库，主要用于多维数组运算，但它本身不是深度学习框架，不提供网络构建、模型训练等功能。它常作为深度学习框架的底层依赖使用。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "PaddlePaddle",
+          "explanation_md": "PaddlePaddle（飞桨）是百度开发的深度学习框架，也是当前广泛使用的深度学习框架之一，具有良好的中文生态支持。"
+        }
+      ]
+    },
+    {
+      "question_id": "q2",
+      "question_text_md": "选择深度学习开发框架时，以下哪项不是课程中提到的常见考虑因素？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "功能完备，具备数据准备、网络模块、优化算法、训练监控和模型部署等常用功能",
+          "explanation_md": "功能完备是课程中提到的第一个考虑因素，深度学习框架必须覆盖从数据准备到模型部署的完整流程。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "用户广泛，有更多讨论和解决问题的渠道",
+          "explanation_md": "用户广泛是课程中提到的第三个考虑因素，广泛的用户群体意味着更好的社区支持和问题解决渠道。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "框架必须开源且完全免费",
+          "explanation_md": "课程中提到的四个考虑因素是：功能完备、版本友好、用户广泛、资源丰富。并未将「开源且完全免费」列为必要条件。虽然主流框架大多是开源的，但这不是课程强调的选型标准。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "版本友好，不同版本之间保持兼容，兼容不同操作系统平台",
+          "explanation_md": "版本友好是课程中提到的第二个考虑因素，强调版本间的兼容性和跨平台支持，避免不必要的麻烦。"
+        }
+      ]
+    },
+    {
+      "question_id": "q3",
+      "question_text_md": "Miniconda 中的 conda 命令初始化是指将 conda 命令写入哪个配置文件？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "/etc/profile",
+          "explanation_md": "/etc/profile 是系统级的全局配置文件，影响所有用户。conda 初始化是针对当前用户的操作，应写入用户目录下的配置文件，而非系统级配置。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "当前用户目录下的 .bashrc 文件",
+          "explanation_md": "课程明确指出，conda 初始化是将 conda 命令写入当前用户目录下的 .bashrc 配置文件，这样每次打开 shell 时都能自动加载 conda 命令。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "~/.conda/condarc",
+          "explanation_md": ".condarc 是 conda 自身的配置文件，用于配置 conda 的频道、环境路径等参数，但不是用于初始化 conda 命令的文件。conda 初始化写入的是 shell 配置文件 .bashrc。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "~/.bash_history",
+          "explanation_md": ".bash_history 记录用户在 shell 中执行过的命令历史，不是配置文件。conda 初始化需要写入 shell 启动时自动加载的 .bashrc 文件。"
+        }
+      ]
+    },
+    {
+      "question_id": "q4",
+      "question_text_md": "安装 Miniconda 时，Miniconda 自带的 Python 版本必须与后续创建的虚拟环境中的 Python 版本一致。",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "正确",
+          "explanation_md": "课程明确指出「python 版本可以和接下来创建的虚拟环境中的 python 版本不一致」。例如 Miniconda 自带 Python 3.12，但创建虚拟环境时可以指定 Python 3.11。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "错误",
+          "explanation_md": "课程明确说明 Miniconda 的 Python 版本可以与虚拟环境中的 Python 版本不一致。创建虚拟环境时通过参数指定所需版本即可，两者是独立的。"
+        }
+      ]
+    },
+    {
+      "question_id": "q5",
+      "question_text_md": "以下关于 JupyterLab 的描述，哪一项是正确的？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "JupyterLab 只能安装在某个特定的虚拟环境中，不能被多个虚拟环境共用",
+          "explanation_md": "课程指出 JupyterLab 可以安装在 base 虚拟环境中，为所有虚拟环境共用，从而节省存储空间。通过 ipykernel 注册不同的内核，可以在 JupyterLab 中切换不同虚拟环境。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "JupyterLab 是一个本地桌面应用程序，无需浏览器即可运行",
+          "explanation_md": "JupyterLab 启动时会运行一个 tornado web 服务器，用户通过浏览器访问。它本质上是一个基于 Web 的交互式开发环境，而非传统的桌面应用程序。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "JupyterLab 通过 ipykernel 模块将虚拟环境注册为 Jupyter 内核",
+          "explanation_md": "课程明确指出，要在 JupyterLab 中使用某个虚拟环境，需要通过 Python 模块 ipykernel 将该虚拟环境向 Jupyter 注册为内核，之后才能在 JupyterLab 中选择该内核运行代码。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "JupyterLab 只支持 Python 一种编程语言",
+          "explanation_md": "课程提到 Jupyter 通过内核扩展支持 Python、R、Julia 等多种编程语言，并非只支持 Python。"
+        }
+      ]
+    },
+    {
+      "question_id": "q6",
+      "question_text_md": "在 Linux 中使用 screen 工具运行 JupyterLab 的主要目的是什么？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "提高 JupyterLab 的运行速度",
+          "explanation_md": "screen 是一个会话管理工具，用于管理终端会话的挂载和解挂，与程序运行速度无关。它的作用是让服务在后台持续运行。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "使 JupyterLab 服务在终端关闭后仍能持续运行",
+          "explanation_md": "课程指出 screen 可以创建会话并从终端解挂，「当终端关闭时服务进程不会终止」。这样即使用户断开 SSH 连接或关闭终端，JupyterLab 服务仍能在后台持续运行。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "为 JupyterLab 提供图形化界面",
+          "explanation_md": "screen 是一个终端会话管理工具，不提供图形界面。JupyterLab 的图形界面通过 Web 浏览器呈现，与 screen 无关。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "管理 JupyterLab 的 Python 依赖包",
+          "explanation_md": "管理 Python 依赖包是 pip 或 conda 的职责，screen 仅负责终端会话的管理，与依赖包管理毫无关系。"
+        }
+      ]
+    },
+    {
+      "question_id": "q7",
+      "question_text_md": "相比 Jupyter 交互式开发环境，PyCharm 在大规模代码调试方面的主要优势是什么？",
+      "difficulty": "困难",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "PyCharm 支持更多的编程语言",
+          "explanation_md": "PyCharm 是 Python 专用的集成开发环境，而 Jupyter 通过内核扩展支持 Python、R、Julia 等多种语言。在语言支持方面 PyCharm 并不占优。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "PyCharm 可以直接运行在 GPU 上加速代码执行",
+          "explanation_md": "PyCharm 是一个 IDE（集成开发环境），负责代码编写和调试，不直接参与代码的计算执行。代码是否使用 GPU 取决于深度学习框架和硬件配置，与 IDE 无关。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "PyCharm 能显示当前运行范围内所有变量的类型和取值，便于判断程序运行的正确与否",
+          "explanation_md": "课程明确指出 PyCharm 的优势在于「强大的调试功能，它能够显示当前运行范围内所有变量的类型和取值，便于判断程序运行的正确与否」。而 Jupyter 只能通过输出的方式调试，对大规模代码不太友好。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "PyCharm 不需要安装 Python 解释器即可运行代码",
+          "explanation_md": "任何 Python 开发环境都需要配置 Python 解释器。课程中也详细描述了在 PyCharm 中配置远程 Python 解释器的步骤，说明 PyCharm 同样需要解释器支持。"
+        }
+      ]
+    }
+  ]
+}

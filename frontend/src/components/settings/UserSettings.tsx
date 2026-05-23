@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { X, User, BookOpen, Target, Save, Loader2, Sparkles } from 'lucide-react';
 import PetSettings from '@/components/pet/PetSettings';
+import AvatarUpload from '@/components/profile/AvatarUpload';
+import { useAvatar } from '@/hooks/useAvatar';
 import { getUserProfile, updateUserProfile, type UserProfile } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -170,8 +172,19 @@ export function UserSettings({ onClose }: UserSettingsProps) {
 }
 
 function BasicInfoTab({ profile, onChange }: { profile: UserProfile; onChange: (p: UserProfile) => void }) {
+  const { avatar, uploadAvatar, deleteAvatar } = useAvatar();
+
   return (
     <div className="space-y-6">
+      {/* Avatar Section */}
+      <div className="flex justify-center py-4">
+        <AvatarUpload
+          currentAvatar={avatar}
+          onUpload={uploadAvatar}
+          onDelete={deleteAvatar}
+        />
+      </div>
+
       <div>
         <label className="block text-sm font-medium mb-2">用户名</label>
         <input

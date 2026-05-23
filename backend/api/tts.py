@@ -306,3 +306,96 @@ async def serve_audio(user_id: int, animation_name: str, filename: str):
     if not audio_path.exists():
         raise HTTPException(status_code=404, detail="Audio file not found")
     return FileResponse(str(audio_path), media_type="audio/mpeg")
+
+
+# ── Immersive Classroom TTS ──
+
+from pydantic import BaseModel
+from fastapi.responses import Response
+
+
+class ClassroomTTSRequest(BaseModel):
+    text: str
+    voice: str = "冰糖"
+
+
+@router.post("/generate")
+async def generate_classroom_tts(request: ClassroomTTSRequest):
+    """
+    Generate TTS audio for immersive classroom
+    Returns audio/mpeg stream directly
+    Caches audio files to avoid repeated API calls
+    """
+    if not TTS_API_KEY:
+        raise HTTPException(status_code=503, detail="TTS service not configured")
+
+    # Create cache directory
+    cache_dir = get_project_root() / "storage" / "tts_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate cache filename based on text hash
+    text_hash = _text_hash(request.text)
+    cache_file = cache_dir / f"{text_hash}_{request.voice}.mp3"
+
+    # Check if cached
+    if cache_file.exists():
+        logger.info(f"TTS cache hit: {cache_file.name}")
+        return FileResponse(
+            str(cache_file),
+            media_type="audio/mpeg",
+            headers={
+                "Cache-Control": "public, max-age=31536000",  # 1 year
+                "Content-Disposition": "inline"
+            }
+        )
+
+    # Generate new audio
+    url = f"{TTS_API_BASE.rstrip('/')}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {TTS_API_KEY}",
+        "Content-Type": "application/json; charset=utf-8",
+    }
+
+    payload = {
+        "model": TTS_MODEL,
+        "messages": [
+            {"role": "user", "content": "请朗读以下内容"},
+            {"role": "assistant", "content": request.text.strip()},
+        ],
+        "modalities": ["text", "audio"],
+        "audio": {"voice": request.voice, "format": "mp3"},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code != 200:
+                logger.error("TTS API error %d: %s", resp.status_code, resp.text[:200])
+                raise HTTPException(status_code=resp.status_code, detail="TTS API error")
+
+            data = resp.json()
+            audio_data = data.get("choices", [{}])[0].get("message", {}).get("audio", {})
+            if not audio_data or "data" not in audio_data:
+                logger.error("TTS response missing audio data")
+                raise HTTPException(status_code=500, detail="Invalid TTS response")
+
+            raw_bytes = base64.b64decode(audio_data["data"])
+
+            # Save to cache
+            cache_file.write_bytes(raw_bytes)
+            logger.info(f"TTS generated and cached: {cache_file.name} ({len(raw_bytes)} bytes)")
+
+            return Response(
+                content=raw_bytes,
+                media_type="audio/mpeg",
+                headers={
+                    "Cache-Control": "public, max-age=31536000",
+                    "Content-Disposition": "inline"
+                }
+            )
+    except httpx.TimeoutException:
+        logger.error("TTS request timeout (120s)")
+        raise HTTPException(status_code=504, detail="TTS service timeout")
+    except Exception as e:
+        logger.error(f"Error generating classroom TTS: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

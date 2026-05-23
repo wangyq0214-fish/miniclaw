@@ -1,0 +1,216 @@
+{
+  "topic": "深度学习与开发环境",
+  "total": 7,
+  "difficulty_distribution": {"基础": 3, "中等": 3, "困难": 1},
+  "generated_at": "2025-07-14T10:30:00",
+  "generated_by": "exercise_composer",
+  "covered_topics": ["深度学习", "机器学习", "人工智能", "Jupyter", "PyCharm", "开发环境"],
+  "recommended_topics": ["神经网络基础", "反向传播算法", "激活函数", "损失函数", "梯度下降"],
+  "questions": [
+    {
+      "question_id": "q1",
+      "question_text_md": "人工智能（AI）、机器学习（ML）和深度学习（DL）三者之间的包含关系是怎样的？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "AI 包含 ML，ML 包含 DL",
+          "explanation_md": "人工智能是最广泛的概念，机器学习是实现人工智能的一种方法，而深度学习是机器学习中基于深层神经网络的一个子领域。三者是逐层包含的关系。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "DL 包含 ML，ML 包含 AI",
+          "explanation_md": "这个选项把包含关系完全颠倒了。深度学习是机器学习的一个子集，而不是反过来。深度学习只是众多机器学习方法中的一种。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "三者是并列关系，互不包含",
+          "explanation_md": "AI、ML、DL 并非并列关系。机器学习是人工智能的核心实现方式之一，深度学习又是机器学习的一个重要分支，三者存在明确的层级包含关系。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "AI 包含 DL，DL 包含 ML",
+          "explanation_md": "虽然 AI 确实包含 DL，但 DL 并不包含 ML，恰恰相反，ML 包含 DL。深度学习是机器学习的子集，不是机器学习的超集。"
+        }
+      ]
+    },
+    {
+      "question_id": "q2",
+      "question_text_md": "以下哪项不属于课程中提到的深度学习典型应用场景？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "人脸识别",
+          "explanation_md": "人脸识别是课程中明确提到的深度学习应用场景之一，属于计算机视觉领域的经典任务。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "语音识别",
+          "explanation_md": "语音识别是课程中提到的深度学习应用场景，深度学习在该领域取得了突破性进展。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "自动翻译",
+          "explanation_md": "自动翻译（机器翻译）是课程中提到的深度学习应用场景，基于序列到序列模型等技术实现。"
+        },
+        {
+          "id": "D",
+          "is_correct": true,
+          "text_md": "数据库管理",
+          "explanation_md": "数据库管理是传统的计算机系统技术，不属于深度学习的应用范畴。课程中提到的深度学习应用包括 AlphaGo、人脸识别、语音识别和自动翻译。"
+        }
+      ]
+    },
+    {
+      "question_id": "q3",
+      "question_text_md": "课程中提到，大多数时候我们学习「人工智能」时，实际指的是其背后的核心技术，即____。",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "专家系统",
+          "explanation_md": "专家系统是早期人工智能的代表技术，属于符号主义AI的范畴。课程明确指出当前人工智能背后的核心技术是深度学习，而非专家系统。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "决策树",
+          "explanation_md": "决策树是传统机器学习算法的一种，虽然有一定应用，但它不是课程中提到的人工智能背后的核心技术。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "深度学习",
+          "explanation_md": "课程原文明确指出：「当我们学习人工智能时，大多数时候指这些应用背后的核心技术，即深度学习。」深度学习是当前推动人工智能发展的核心技术。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "强化学习",
+          "explanation_md": "强化学习是机器学习的一个重要分支，AlphaGo 中也用到了强化学习技术。但课程明确指出的核心技术是「深度学习」，强化学习只是深度学习框架下的一个方向。"
+        }
+      ]
+    },
+    {
+      "question_id": "q4",
+      "question_text_md": "课程中提到了哪两种深度学习模型的开发环境？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "Jupyter 和 PyCharm",
+          "explanation_md": "课程明确提到「jupyter 和 pycharm 两种深度学习模型的开发环境」。Jupyter 适合交互式探索和数据可视化，PyCharm 适合大型项目开发。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "VS Code 和 Sublime Text",
+          "explanation_md": "VS Code 和 Sublime Text 是通用的代码编辑器，课程中并未提及它们作为深度学习的开发环境。课程指定的是 Jupyter 和 PyCharm。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "Anaconda 和 TensorFlow",
+          "explanation_md": "Anaconda 是 Python 的发行版和包管理工具，TensorFlow 是深度学习框架，它们都不是开发环境（IDE）。开发环境指的是编写和运行代码的工具平台。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "Google Colab 和 Kaggle",
+          "explanation_md": "Google Colab 和 Kaggle 虽然是流行的深度学习在线平台，但课程中提到的两种开发环境是 Jupyter 和 PyCharm。"
+        }
+      ]
+    },
+    {
+      "question_id": "q5",
+      "question_text_md": "AlphaGo 是深度学习在哪个领域的代表性应用？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "自然语言处理",
+          "explanation_md": "自然语言处理涉及文本理解和生成任务，如机器翻译、文本分类等。AlphaGo 是一个棋类博弈程序，不属于自然语言处理领域。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "计算机视觉",
+          "explanation_md": "计算机视觉处理图像和视频数据，如人脸识别、目标检测等。虽然 AlphaGo 的某些版本使用了卷积神经网络来「看」棋盘，但其核心应用领域是博弈决策，而非计算机视觉。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "博弈与决策",
+          "explanation_md": "AlphaGo 是深度学习在博弈与决策领域的里程碑式应用。它通过深度神经网络和强化学习技术，在围棋比赛中击败了人类顶尖选手，展示了AI在复杂决策任务中的能力。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "语音识别",
+          "explanation_md": "语音识别是将语音信号转化为文字的技术，课程中将其列为深度学习的典型应用之一，但与 AlphaGo 无关。AlphaGo 是围棋博弈程序。"
+        }
+      ]
+    },
+    {
+      "question_id": "q6",
+      "question_text_md": "深度学习属于机器学习的一个子领域，它的核心特征是使用深层神经网络来学习数据的表示。",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "正确",
+          "explanation_md": "深度学习确实是机器学习的子领域，其核心特征就是使用多层（深层）神经网络自动从数据中学习层次化的特征表示，这也是「深度」一词的由来。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "错误",
+          "explanation_md": "这个说法是正确的。深度学习的「深度」指的就是神经网络的层数多，通过多层非线性变换来学习数据的复杂表示，这是它区别于传统浅层机器学习方法的关键特征。"
+        }
+      ]
+    },
+    {
+      "question_id": "q7",
+      "question_text_md": "以下关于 Jupyter 和 PyCharm 两种开发环境的说法，哪一项是正确的？",
+      "difficulty": "困难",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "Jupyter 和 PyCharm 只能用于深度学习开发，不能用于其他编程任务",
+          "explanation_md": "Jupyter 和 PyCharm 都是通用的开发工具。Jupyter 支持多种编程语言的交互式笔记本，PyCharm 是功能全面的 Python IDE，它们的应用范围远不限于深度学习。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "深度学习开发只能使用这两种环境，不能使用其他工具",
+          "explanation_md": "课程介绍了 Jupyter 和 PyCharm 作为代表性的开发环境，但并不意味着只能使用它们。VS Code、Google Colab、命令行等工具同样可以用于深度学习开发。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "课程将 Jupyter 和 PyCharm 作为深度学习模型开发环境的两种代表进行介绍",
+          "explanation_md": "课程原文是「jupyter 和 pycharm 两种深度学习模型的开发环境」，这是将它们作为代表性开发工具来介绍，帮助学生了解深度学习开发的基本工具链。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "Jupyter 是深度学习框架，PyCharm 是编程语言",
+          "explanation_md": "这个说法完全错误。Jupyter 是交互式笔记本开发环境，PyCharm 是集成开发环境（IDE），两者都是开发工具，都不是深度学习框架或编程语言。深度学习框架的例子是 TensorFlow 和 PyTorch。"
+        }
+      ]
+    }
+  ]
+}

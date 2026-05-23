@@ -1,30 +1,10 @@
 {
   "schema_version": "2.0",
-  "generated_at": "2026-05-20T08:54:46.489495+00:00",
+  "generated_at": "2026-05-22T08:43:55.008533+00:00",
   "dimensions": {
     "knowledge_foundation": {
-      "score": 65.0,
+      "score": 52.0,
       "concepts": [
-        {
-          "name": "Teacher Forcing",
-          "mastery": 0.3
-        },
-        {
-          "name": "序列到序列模型",
-          "mastery": 0.3
-        },
-        {
-          "name": "暴露偏差（Exposure Bias）",
-          "mastery": 0.2
-        },
-        {
-          "name": "Scheduled Sampling",
-          "mastery": 0.2
-        },
-        {
-          "name": "梯度消失（Vanishing Gradient）",
-          "mastery": 0.2
-        },
         {
           "name": "深度学习基础",
           "mastery": 0.4
@@ -36,9 +16,29 @@
         {
           "name": "解码器",
           "mastery": 0.3
+        },
+        {
+          "name": "序列到序列模型",
+          "mastery": 0.3
+        },
+        {
+          "name": "Teacher Forcing",
+          "mastery": 0.1
+        },
+        {
+          "name": "暴露偏差（Exposure Bias）",
+          "mastery": 0.1
+        },
+        {
+          "name": "Scheduled Sampling",
+          "mastery": 0.1
+        },
+        {
+          "name": "梯度消失（Vanishing Gradient）",
+          "mastery": 0.2
         }
       ],
-      "summary": "对深度学习基础、反向传播等核心概念有初步接触，但在高级主题如Teacher Forcing及其相关概念上存在明显混淆，掌握度较低。",
+      "summary": "正在系统学习深度学习核心概念，对部分基础概念（如反向传播）有初步理解，但对关键进阶概念（如Teacher Forcing及其相关概念）掌握薄弱，需要重点巩固。",
       "style": null,
       "traits": null,
       "patterns": null,
@@ -49,11 +49,14 @@
       "progress": null
     },
     "cognitive_style": {
-      "score": 50.0,
+      "score": 65.0,
       "concepts": null,
       "summary": null,
-      "style": "数据不足，待观察",
-      "traits": [],
+      "style": "偏实用型/问题驱动型，倾向于通过具体定义和操作理解概念。",
+      "traits": [
+        "提问直接（例如：‘讲解一下attention机制’、‘什么是lstm 直接回答’）",
+        "偏好获取清晰的概念定义与结构化解释"
+      ],
       "patterns": null,
       "pace": null,
       "mood": null,
@@ -64,7 +67,7 @@
     "error_patterns": {
       "score": 55.0,
       "concepts": null,
-      "summary": "错误高度集中在Teacher Forcing及其衍生概念上，主要表现为对核心定义、优势及解决方案的理解偏差和混淆，例如将暴露偏差与梯度消失混淆。",
+      "summary": "错误主要集中在‘Teacher Forcing’策略相关的概念上，对策略的核心做法、优势以及相关术语（如暴露偏差）存在混淆和理解偏差。",
       "style": null,
       "traits": null,
       "patterns": [
@@ -75,12 +78,7 @@
         },
         {
           "topic": "Teacher Forcing",
-          "type": "理解偏差",
-          "count": 2
-        },
-        {
-          "topic": "Scheduled Sampling",
-          "type": "理解偏差",
+          "type": "核心概念理解错误",
           "count": 1
         }
       ],
@@ -91,39 +89,41 @@
       "progress": null
     },
     "learning_rhythm": {
-      "score": 60.0,
+      "score": 70.0,
       "concepts": null,
       "summary": null,
       "style": null,
       "traits": [
-        "短期内进行了多次测验",
-        "学习投入度较高"
+        "学习频率较高（7天内有36次测验）",
+        "在持续探索新概念（如从RNN、LSTM到Attention）",
+        "需要时间消化和巩固关键知识点"
       ],
       "patterns": null,
-      "pace": "密集练习型",
+      "pace": "稳步推进型",
       "mood": null,
       "short_term": null,
       "long_term": null,
       "progress": null
     },
     "affective_state": {
-      "score": 70.0,
+      "score": 80.0,
       "concepts": null,
       "summary": null,
       "style": null,
       "traits": [
-        "学习态度积极",
-        "愿意通过测验检验知识"
+        "多次主动询问新概念",
+        "提交简历寻求专业反馈，表现出明确的自我提升意愿",
+        "对学习目标（深度学习）有清晰认知"
       ],
       "patterns": null,
       "pace": null,
-      "mood": "积极尝试",
+      "mood": "积极主动，学习意愿强",
       "short_term": null,
       "long_term": null,
       "progress": null
     },
     "goal_progress": {
-      "score": 50.0,
+      "score": 65.0,
       "concepts": null,
       "summary": null,
       "style": null,
@@ -131,31 +131,31 @@
       "patterns": null,
       "pace": null,
       "mood": null,
-      "short_term": "掌握Teacher Forcing等序列模型关键技术",
-      "long_term": "系统学习深度学习",
-      "progress": "正在接触核心主题，但初次测验效果不理想，需要巩固。"
+      "short_term": "掌握深度学习核心基础概念（如RNN、LSTM、Attention、Seq2Seq）",
+      "long_term": "系统学习深度学习，提升项目实践能力",
+      "progress": "已建立学习框架，正在逐一攻克基础概念，但部分关键概念（如Teacher Forcing）理解不深，影响整体进度。"
     }
   },
   "knowledge_graph": {
     "nodes": [
       {
         "id": "Teacher Forcing",
-        "mastery": 0.3,
+        "mastery": 0.1,
         "category": "进阶"
       },
       {
         "id": "序列到序列模型",
-        "mastery": 0.3,
+        "mastery": 0.35,
         "category": "进阶"
       },
       {
         "id": "暴露偏差（Exposure Bias）",
-        "mastery": 0.2,
+        "mastery": 0.1,
         "category": "进阶"
       },
       {
         "id": "Scheduled Sampling",
-        "mastery": 0.2,
+        "mastery": 0.1,
         "category": "进阶"
       },
       {
@@ -177,6 +177,21 @@
         "id": "反向传播",
         "mastery": 0.4,
         "category": "基础"
+      },
+      {
+        "id": "RNN（循环神经网络）",
+        "mastery": 0.3,
+        "category": "基础"
+      },
+      {
+        "id": "LSTM（长短期记忆网络）",
+        "mastery": 0.3,
+        "category": "进阶"
+      },
+      {
+        "id": "注意力机制（Attention Mechanism）",
+        "mastery": 0.3,
+        "category": "进阶"
       }
     ],
     "edges": [
@@ -204,17 +219,38 @@
         "source": "解码器",
         "target": "Teacher Forcing",
         "relation": "应用"
+      },
+      {
+        "source": "RNN（循环神经网络）",
+        "target": "LSTM（长短期记忆网络）",
+        "relation": "前置"
+      },
+      {
+        "source": "RNN（循环神经网络）",
+        "target": "序列到序列模型",
+        "relation": "应用"
+      },
+      {
+        "source": "LSTM（长短期记忆网络）",
+        "target": "序列到序列模型",
+        "relation": "应用"
+      },
+      {
+        "source": "注意力机制（Attention Mechanism）",
+        "target": "序列到序列模型",
+        "relation": "相关"
       }
     ]
   },
-  "overall_score": 58.0,
-  "insight_text": "根据你的学习记录，你在**知识基础**方面有初步接触，但**易错点**方面需要重点关注。目前你在Teacher Forcing相关概念上存在较多混淆，建议重新梳理这部分知识的逻辑。",
-  "action_item": "针对Teacher Forcing、暴露偏差、Scheduled Sampling这三个易混淆概念，建议重新阅读讲义或教程，并尝试绘制它们的关系图，进行对比理解。",
+  "overall_score": 53.0,
+  "insight_text": "根据你的学习记录，你对学习**深度学习**充满热情且目标明确，在**情感态度**和**学习节奏**上表现很好。目前主要挑战在于**知识基础**，尤其是像‘Teacher Forcing’这类关键概念的掌握不够扎实，这影响了你的**易错点**表现。",
+  "action_item": "建议对‘Teacher Forcing’及其相关概念（暴露偏差、Scheduled Sampling）进行专题复习，可以通过对比总结、绘制概念关系图并做专项练习题来巩固。",
   "highlight_tags": [
-    "需加强概念辨析",
     "学习态度积极",
-    "存在知识混淆点",
-    "密集练习阶段"
+    "目标明确",
+    "需强化核心概念",
+    "易错点集中",
+    "稳步前进"
   ],
   "needs_onboarding": false
 }

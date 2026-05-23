@@ -1,0 +1,228 @@
+{
+  "topic": "注意力机制",
+  "total": 7,
+  "difficulty_distribution": {"基础": 3, "中等": 3, "困难": 1},
+  "generated_at": "2025-07-14T10:30:00",
+  "generated_by": "exercise_composer",
+  "covered_topics": ["注意力机制", "自注意力", "多头注意力", "查询键值框架", "Bahdanau注意力", "Transformer架构"],
+  "recommended_topics": ["缩放点积注意力", "位置编码", "残差连接与层归一化", "Transformer编码器实现", "BLEU评估指标"],
+  "questions": [
+    {
+      "question_id": "q1",
+      "question_text_md": "Transformer 模型的核心思想是什么？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "注意力机制",
+          "explanation_md": "课程明确指出「Transformer 模型背后的核心思想是注意力机制」。Transformer 完全基于注意力机制构建，不包含卷积或循环神经网络层，这是它区别于早期深度学习架构的关键。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "卷积操作",
+          "explanation_md": "卷积操作是卷积神经网络（CNN）的核心，用于提取图像等网格数据的局部特征。Transformer 完全不使用卷积层，它依靠注意力机制来捕捉序列中各位置之间的关系。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "循环结构",
+          "explanation_md": "循环结构是 RNN 及其变体（如 LSTM）的核心特征，通过逐步传递隐状态来处理序列。Transformer 正是为了克服循环结构无法并行计算的缺陷而设计的，它用自注意力替代了循环结构。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "池化操作",
+          "explanation_md": "池化操作主要用于 CNN 中降低特征图的空间维度，如最大池化和平均池化。Transformer 架构中不包含池化层，其信息压缩和聚合是通过注意力权重的加权求和来实现的。"
+        }
+      ]
+    },
+    {
+      "question_id": "q2",
+      "question_text_md": "在注意力机制的「查询、键和值」框架中，「查询」对应的是什么？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "自主性提示（主观想要关注的信息）",
+          "explanation_md": "课程指出「将自主性提示称为查询（query），感官输入被称为值（value），每个值都与一个键（key）配对」。查询代表模型主动发出的「想要查找什么」的信号，类似于你想看书时主动将注意力转向书本。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "非自主性提示（物体本身的突出性）",
+          "explanation_md": "非自主性提示对应的是键（key），它与感官输入本身的结构和突出性有关。例如红色咖啡杯在一堆纸制品中格外显眼，这种突出性就是非自主性提示，用于与查询进行匹配。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "感官输入（实际的信息内容）",
+          "explanation_md": "感官输入对应的是值（value），它是注意力汇聚最终要加权求和的内容。查询不是信息本身，而是用来引导注意力「选择哪些信息」的信号。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "注意力权重（各位置的重要程度）",
+          "explanation_md": "注意力权重是查询与键匹配后经过 softmax 计算得到的结果，不是查询本身。权重表示的是查询与各键的匹配程度，用于对值进行加权求和。"
+        }
+      ]
+    },
+    {
+      "question_id": "q3",
+      "question_text_md": "自注意力（self-attention）机制中，查询、键和值分别来自哪里？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "查询来自输入序列，键来自输出序列，值来自编码器",
+          "explanation_md": "这种描述混淆了自注意力和交叉注意力。在自注意力中，查询、键和值都来自同一组输入。查询来自输出序列、键来自输入序列的情况出现在编码器-解码器的交叉注意力中。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "查询来自解码器，键和值来自编码器",
+          "explanation_md": "这是 Bahdanau 注意力或 Transformer 中编码器-解码器交叉注意力的描述，不是自注意力。在 Bahdanau 注意力中，解码器上一时间步的隐状态作为查询，编码器隐状态作为键和值。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "查询、键和值都来自同一组输入词元",
+          "explanation_md": "课程明确指出「同一组词元同时充当查询、键和值」，这就是自注意力的定义。序列中的每个词元都可以作为查询去关注所有其他词元（键-值对），从而捕捉序列内部的依赖关系。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "查询、键和值分别来自三个不同的网络层",
+          "explanation_md": "虽然查询、键和值会经过不同的线性投影变换，但它们的原始来源都是同一组输入词元。「来自三个不同网络层」的说法不准确，容易让人误以为它们有完全不同的数据来源。"
+        }
+      ]
+    },
+    {
+      "question_id": "q4",
+      "question_text_md": "Bahdanau 注意力模型与传统编码器-解码器模型的关键区别是什么？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "Bahdanau 注意力完全抛弃了编码器，只使用解码器",
+          "explanation_md": "Bahdanau 注意力仍然使用编码器-解码器架构，编码器负责将输入序列编码为隐状态序列。它并没有抛弃编码器，而是改进了编码器与解码器之间的信息传递方式。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "每个解码时间步使用不同的上下文变量，而非固定的上下文变量",
+          "explanation_md": "课程指出传统模型「在每个解码步骤中仍使用编码相同的上下文变量」，而 Bahdanau 注意力通过将解码器当前隐状态作为查询，在编码器隐状态上做注意力汇聚，使每个解码步能动态地关注输入序列的不同部分。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "Bahdanau 注意力使用卷积层替代了循环神经网络",
+          "explanation_md": "Bahdanau 注意力模型是在循环神经网络编码器-解码器的基础上加入注意力机制，它仍然使用 RNN（如 GRU 或 LSTM），并没有引入卷积层。用自注意力替代 RNN 是后来 Transformer 的做法。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "Bahdanau 注意力让编码器和解码器共享参数",
+          "explanation_md": "参数共享不是 Bahdanau 注意力的核心创新。它的关键贡献是引入了注意力机制，使解码器在每个时间步能够动态地「对齐」输入序列的相关部分，而不是被迫使用同一个固定向量。"
+        }
+      ]
+    },
+    {
+      "question_id": "q5",
+      "question_text_md": "多头注意力（multi-head attention）的设计目的是什么？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "减少模型的参数量和计算量",
+          "explanation_md": "多头注意力并不会减少参数量，反而因为引入了多个注意力头和额外的线性投影，增加了可学习参数。课程也提到「为了避免计算代价和参数代价的大幅增长」，需要控制投影维度。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "让模型在不同的表示子空间中学习不同的注意力模式，捕获各种范围的依赖关系",
+          "explanation_md": "课程指出多头注意力的目标是「基于相同的注意力机制学习到不同的汇聚特征」，将查询、键和值「投影到不同的子空间，分别学习在不同子空间的特征表示」，从而捕获序列内各种范围的依赖关系。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "使模型能够处理比单头注意力更长的输入序列",
+          "explanation_md": "多头注意力处理的序列长度与单头注意力相同，它并不扩展模型能处理的最大序列长度。序列长度的限制主要取决于注意力计算的内存复杂度（与序列长度的平方成正比），而非注意力头的数量。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "将多个独立的 Transformer 模型的输出进行集成",
+          "explanation_md": "多头注意力不是模型集成（ensemble）。多个注意力头在同一个模型内部并行计算，共享底层的输入嵌入，最终通过线性投影合并输出。这与训练多个独立模型再投票/平均的集成方法有本质区别。"
+        }
+      ]
+    },
+    {
+      "question_id": "q6",
+      "question_text_md": "在生物学中的注意力框架里，看到红色咖啡杯在一堆纸制品中不由自主地注意到它，这属于哪种注意力提示？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "非自主性提示（基于物体的突出性和易见性）",
+          "explanation_md": "课程用这个例子说明非自主性提示：「咖啡杯在这种视觉环境中是突出和显眼的，会不由自主地引起人们的注意」。非自主性提示基于环境中物体本身的特征，不受主观意识控制。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "自主性提示（基于主观意愿和认知控制）",
+          "explanation_md": "自主性提示是由认知和意识控制的主动选择，如喝完咖啡后想读书而主动看向书本。不由自主地被红色咖啡杯吸引是被动的、不受意识控制的，属于非自主性提示。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "记忆性提示（基于过往经验的联想）",
+          "explanation_md": "课程中没有提到「记忆性提示」这一概念。注意力框架只区分了非自主性提示（基于突出性）和自主性提示（基于主观意愿）两种类型。被咖啡杯吸引是因为它的颜色突出，而非记忆联想。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "社会性提示（基于他人的引导和指示）",
+          "explanation_md": "课程中没有「社会性提示」的概念。注意力框架关注的是个体与环境之间的交互，分为非自主性（被动）和自主性（主动）两种，与他人的引导无关。"
+        }
+      ]
+    },
+    {
+      "question_id": "q7",
+      "question_text_md": "Transformer 模型完全基于注意力机制，不包含任何卷积或循环神经网络层。那么在 Transformer 的编码器中，每一层包含哪两个子层？",
+      "difficulty": "困难",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "多头自注意力汇聚子层和基于位置的前馈网络子层",
+          "explanation_md": "课程明确指出 Transformer 编码器「每个层都有两个子层：多头自注意力汇聚子层和基于位置的前馈网络子层」。自注意力负责捕捉序列内各位置间的关系，前馈网络负责对每个位置的表示进行非线性变换。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "卷积子层和池化子层",
+          "explanation_md": "卷积和池化是 CNN 的经典组件，用于图像特征提取。Transformer 完全不使用卷积和池化，它用注意力机制替代了卷积的局部特征提取功能，用前馈网络替代了池化的信息压缩功能。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "循环子层和归一化子层",
+          "explanation_md": "循环结构是 RNN 的特征，Transformer 明确抛弃了循环结构以实现并行计算。虽然 Transformer 中确实使用了层归一化（Layer Normalization），但它不是与循环子层并列的子层，而是作为残差连接后的辅助操作。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "编码子层和解码子层",
+          "explanation_md": "编码和解码是 Transformer 整体架构的两个部分（编码器和解码器），不是编码器内部单层的子层结构。编码器的每一层内部是多头自注意力子层和前馈网络子层，不包含「解码子层」。"
+        }
+      ]
+    }
+  ]
+}

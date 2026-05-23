@@ -20,6 +20,7 @@ import {
   Layers,
   CheckCircle2,
   XCircle,
+  FileText,
 } from 'lucide-react';
 import { listFiles, deleteFile, writeFile, type FileInfo } from '@/lib/api';
 import { useApp, type GeneratingTask } from '@/lib/store';
@@ -134,8 +135,9 @@ function relativeTime(date: Date): string {
   return `${Math.floor(diffDays / 365)} 年前`;
 }
 
-function buildMetaText(file: FileInfo): string {
-  const parts: string[] = ['AI 生成'];
+function buildMetaText(file: FileInfo, showAiLabel = true): string {
+  const parts: string[] = [];
+  if (showAiLabel) parts.push('AI 生成');
   const date = extractDateFromName(file.name);
   if (date) parts.push(relativeTime(date));
   return parts.join(' · ');
@@ -478,7 +480,7 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
         category: '',
         title: getDisplayName(f.name),
         status: 'completed',
-        metadata: buildMetaText(f),
+        metadata: buildMetaText(f, false),
       }));
     }
     const optimistic = resources.filter(r => r.category === activeCategoryKey);
@@ -501,7 +503,13 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
     } else {
       const parts = currentPath.split('/');
       parts.pop();
-      setCurrentPath(parts.join('/'));
+      const newPath = parts.join('/');
+      // Skip 'workspace' level and go directly to root (avoid redirect loop)
+      if (newPath === 'workspace') {
+        setCurrentPath(null);
+      } else {
+        setCurrentPath(newPath);
+      }
     }
   }, [currentPath]);
 
@@ -983,11 +991,15 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
                     }`}
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                      isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-primary/10'
+                      !item.category
+                        ? 'bg-sky-50 dark:bg-sky-500/10'
+                        : isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-primary/10'
                     }`}>
-                      {isCompleted
-                        ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        : <Sparkles className="w-4 h-4 text-primary" />
+                      {!item.category
+                        ? <FileText className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                        : isCompleted
+                          ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          : <Sparkles className="w-4 h-4 text-primary" />
                       }
                     </div>
                     <div className="flex-1 min-w-0">

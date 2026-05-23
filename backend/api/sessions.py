@@ -8,11 +8,14 @@ Provides:
 - Generate title with AI
 """
 import logging
+import re
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from memory import session_manager, system_prompt_builder
+from auth.security import get_current_user
+from models.complete_models import User
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +194,10 @@ async def delete_session(session_id: str):
 
 
 @router.post("/sessions/{session_id}/generate-title", response_model=TitleResponse)
-async def generate_session_title(session_id: str):
+async def generate_session_title(
+    session_id: str,
+    current_user: User = Depends(get_current_user)
+):
     """
     Generate an AI title for the session based on first message.
 
@@ -221,22 +227,35 @@ async def generate_session_title(session_id: str):
 
     try:
         from langchain_openai import ChatOpenAI
-        from langchain_core.messages import HumanMessage, SystemMessage
+        from langchain_core.messages import HumanMessage
 
         llm = ChatOpenAI(
             model=settings.openai_model,
             api_key=settings.openai_api_key,
             base_url=settings.openai_api_base,
             temperature=0.3,
-            max_tokens=20
+            max_tokens=5000
         )
 
+        # Use clear title generation prompt
         response = await llm.ainvoke([
-            SystemMessage(content="为以下对话生成一个简短的中文标题（不超过10个字），只返回标题文本，不要加引号："),
-            HumanMessage(content=first_user_message)
+            HumanMessage(content=f"为以下内容生成一个10字以内的标题（只输出标题，不要解释）：{first_user_message}")
         ])
 
-        title = response.content.strip()[:10]
+        title = response.content.strip()
+        # Remove markdown formatting
+        title = re.sub(r'\*\*(.+?)\*\*', r'\1', title)  # Remove **bold**
+        # Remove common prefixes
+        title = re.sub(r'^(好的[，,、]?|标题是[：:])?\s*["""\'\']*', '', title)
+        # Take only first line
+        title = title.split('\n')[0].strip()
+        # Remove trailing quotes and punctuation
+        title = re.sub(r'["""\'\'。，、！？：；,.!?:;]*$', '', title)
+        # Limit to 10 chars
+        title = title[:10]
+
+        if not title:
+            title = "新对话"
 
         # Update session title
         session_manager.update_title(session_id, title)

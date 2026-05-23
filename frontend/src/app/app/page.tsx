@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppProvider, useApp } from '@/lib/store';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -12,9 +12,10 @@ import { DashboardView } from '@/components/dashboard/DashboardView';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { UserSettings } from '@/components/settings/UserSettings';
 import { useGlobalHotkeys } from '@/hooks/useHotkeys';
+import { useAvatar } from '@/hooks/useAvatar';
 import { tokenManager, authApi } from '@/lib/auth';
 import { toast } from 'sonner';
-import { LogOut, Settings, Menu, X, PanelRightOpen } from 'lucide-react';
+import { LogOut, Menu, X, PanelRightOpen } from 'lucide-react';
 import FloatingPet from '@/components/pet/FloatingPet';
 import useAgentSync from '@/components/pet/useAgentSync';
 
@@ -65,10 +66,12 @@ function Resizer({
 function MainContent() {
   const { state, actions } = useApp();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showSettings, setShowSettings] = useState(false);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const [mobileInspector, setMobileInspector] = useState(false);
   useAgentSync();
+  const { avatar } = useAvatar();
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -76,6 +79,17 @@ function MainContent() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  // Handle file parameter from classroom return
+  useEffect(() => {
+    const fileParam = searchParams.get('file');
+    if (fileParam) {
+      // Select the file in the inspector
+      actions.setActiveFile(fileParam);
+      // Clean up the URL parameter using window.history to avoid re-render
+      window.history.replaceState({}, '', '/app');
+    }
+  }, []); // Only run once on mount
 
   // Mobile: auto-open inspector when a file is selected or content tab is activated
   useEffect(() => {
@@ -173,14 +187,19 @@ function MainContent() {
               <PanelRightOpen className="w-5 h-5" />
             </motion.button>
           )}
+          {/* User Avatar - opens settings */}
           <motion.button
             onClick={() => setShowSettings(true)}
-            className="p-2 hover:bg-muted rounded-md transition-colors"
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden border-2 border-transparent hover:border-indigo-300 transition-all"
             title="设置"
-            whileHover={{ rotate: 90 }}
-            transition={{ type: 'spring', stiffness: 300 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
           >
-            <Settings className="w-5 h-5" />
+            {avatar ? (
+              <img src={avatar} alt="用户头像" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-sm">👤</span>
+            )}
           </motion.button>
           <motion.button
             onClick={handleLogout}
@@ -197,7 +216,7 @@ function MainContent() {
 
       {/* Main Content */}
       <motion.div
-        className="flex-1 flex overflow-hidden relative"
+        className="flex-1 flex overflow-hidden relative min-h-0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.1 }}
@@ -206,7 +225,7 @@ function MainContent() {
           {state.activeTab === 'dashboard' ? (
             <motion.div
               key="dashboard"
-              className="w-full"
+              className="w-full h-full flex flex-col min-h-0"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
@@ -318,8 +337,7 @@ function MainContent() {
               {!isMobile && (
                 <>
                   <motion.div
-                    style={{ width: state.sidebarWidth }}
-                    className="hidden md:block"
+                    className="hidden md:block shrink-0"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 }}

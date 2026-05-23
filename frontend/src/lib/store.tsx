@@ -768,6 +768,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               retrievals: currentRetrievals,
             });
           } else if (eventType === 'title') {
+            console.log('[Title Event] Received title event:', event);
             loadSessions();
           } else if (eventType === 'error') {
             const error = (event as Record<string, unknown>).error as string;

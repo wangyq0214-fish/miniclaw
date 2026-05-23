@@ -1,0 +1,123 @@
+{
+  "topic": "注意力机制",
+  "total": 14,
+  "difficulty_distribution": {"基础": 5, "中等": 6, "困难": 3},
+  "generated_at": "2025-01-15T10:30:00",
+  "generated_by": "flashcard_composer",
+  "covered_topics": ["注意力机制", "Transformer", "Bahdanau注意力", "多头注意力", "自注意力", "编码器-解码器"],
+  "recommended_topics": ["查询键值", "注意力评分函数", "位置编码", "层归一化", "视觉Transformer"],
+  "cards": [
+    {
+      "id": "fc1",
+      "front": "当前NLP领域的主流模型架构是什么？",
+      "back": "基于Transformer架构的模型。给定NLP新任务，默认做法是获取一个基于Transformer的大型预训练模型，调整输出层后在下游任务数据上微调。",
+      "difficulty": "基础",
+      "category": "概念",
+      "tags": ["Transformer", "NLP", "预训练"]
+    },
+    {
+      "id": "fc2",
+      "front": "Transformer模型背后的核心思想是什么？",
+      "back": "注意力机制（Attention Mechanism）。它允许模型在处理输入时动态地关注最相关的部分，而非平等对待所有输入信息。",
+      "difficulty": "基础",
+      "category": "概念",
+      "tags": ["注意力机制", "Transformer"]
+    },
+    {
+      "id": "fc3",
+      "front": "注意力机制的生物启发来源是什么？",
+      "back": "灵长类动物的视觉系统。大脑无法完全处理海量感官输入，因此通过意识的聚集和专注，将注意力引向感兴趣的物体（如猎物和天敌），只关注一小部分关键信息。",
+      "difficulty": "基础",
+      "category": "原理",
+      "tags": ["注意力机制", "生物启发"]
+    },
+    {
+      "id": "fc4",
+      "front": "注意力机制最初应用于哪种深度学习任务？",
+      "back": "机器翻译等序列到序列（Seq2Seq）任务。最初用于增强基于编码器-解码器RNN的序列到序列模型，使其能够关注输入序列中最相关的部分。",
+      "difficulty": "基础",
+      "category": "应用",
+      "tags": ["注意力机制", "Seq2Seq", "机器翻译"]
+    },
+    {
+      "id": "fc5",
+      "front": "视觉Transformer（ViT）可用于哪些视觉任务？",
+      "back": "图像识别、对象检测、语义分割和超分辨率等。视觉Transformer已成为各种视觉任务的默认模型之一。",
+      "difficulty": "基础",
+      "category": "应用",
+      "tags": ["视觉Transformer", "计算机视觉"]
+    },
+    {
+      "id": "fc6",
+      "front": "Nadaraya-Waston核回归模型的贡献是什么？",
+      "back": "1964年提出，是首个能够利用注意力提示的模型。受视觉场景中注意力提示的启发，通过核函数对输入进行加权，为后续注意力机制奠定了基础。",
+      "difficulty": "中等",
+      "category": "原理",
+      "tags": ["Nadaraya-Waston", "核回归", "注意力提示"]
+    },
+    {
+      "id": "fc7",
+      "front": "Bahdanau注意力的历史意义是什么？",
+      "back": "深度学习中具有突破性价值的注意力模型。它首次将注意力函数引入编码器-解码器框架，使解码器在每一步可以动态关注输入序列的不同部分，解决了长序列信息瓶颈问题。",
+      "difficulty": "中等",
+      "category": "概念",
+      "tags": ["Bahdanau注意力", "编码器-解码器"]
+    },
+    {
+      "id": "fc8",
+      "front": "Transformer架构与传统RNN的核心区别是什么？",
+      "back": "Transformer仅基于注意力机制，完全摒弃了循环结构。这使其能够并行处理整个序列，大幅提高训练效率，并更好地捕捉长距离依赖关系。",
+      "difficulty": "中等",
+      "category": "对比",
+      "tags": ["Transformer", "RNN", "注意力机制"]
+    },
+    {
+      "id": "fc9",
+      "front": "什么是多头注意力？",
+      "back": "Transformer中的关键组件。通过多个独立的注意力头并行计算，每个头学习不同的注意力模式，然后将结果拼接，使模型能同时关注不同子空间中的信息。",
+      "difficulty": "中等",
+      "category": "概念",
+      "tags": ["多头注意力", "Transformer"]
+    },
+    {
+      "id": "fc10",
+      "front": "什么是自注意力（Self-Attention）？",
+      "back": "一种注意力机制，其中查询、键和值均来自同一序列。它使序列中每个位置都能关注该序列的所有其他位置，从而捕捉序列内部的依赖关系。",
+      "difficulty": "中等",
+      "category": "概念",
+      "tags": ["自注意力", "Transformer"]
+    },
+    {
+      "id": "fc11",
+      "front": "传统Seq2Seq模型的「信息瓶颈」问题是什么？",
+      "back": "编码器将整个输入序列压缩为固定长度的向量，当输入序列较长时，早期信息容易丢失。Bahdanau注意力通过让解码器直接访问编码器各时刻的输出来解决此问题。",
+      "difficulty": "中等",
+      "category": "原理",
+      "tags": ["Seq2Seq", "信息瓶颈", "Bahdanau注意力"]
+    },
+    {
+      "id": "fc12",
+      "front": "注意力机制中查询、键、值分别对应什么角色？",
+      "back": "查询（Query）表示当前需要关注的位置；键（Key）表示可被关注的候选位置；值（Value）表示候选位置的实际内容。通过查询与键的相似度计算权重，再对值加权求和得到输出。",
+      "difficulty": "困难",
+      "category": "原理",
+      "tags": ["查询", "键", "值", "注意力机制"]
+    },
+    {
+      "id": "fc13",
+      "front": "自注意力如何解决长距离依赖问题？",
+      "back": "自注意力允许序列中任意两个位置直接交互，路径长度为O(1)，不受距离限制。相比RNN需要O(n)步传递信息，自注意力能更有效地捕捉远距离元素之间的关系。",
+      "difficulty": "困难",
+      "category": "原理",
+      "tags": ["自注意力", "长距离依赖", "Transformer"]
+    },
+    {
+      "id": "fc14",
+      "front": "Transformer中多头注意力为何优于单头注意力？",
+      "back": "单头注意力只能学习一种注意力模式。多头注意力通过多个独立头并行计算，每个头关注不同的语义子空间（如语法关系、语义相似性等），拼接后能捕捉更丰富多样的依赖关系。",
+      "difficulty": "困难",
+      "category": "对比",
+      "tags": ["多头注意力", "单头注意力", "Transformer"]
+    }
+  ]
+}

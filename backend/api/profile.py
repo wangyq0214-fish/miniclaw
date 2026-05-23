@@ -5,6 +5,8 @@ Provides:
 - POST /api/profile/generate — Generate 6-dimension student profile from learning data
 - POST /api/profile/init — Cold-start initialization with basic info
 - POST /api/profile/mistakes — Append mistake to mistakes.json
+- GET /api/profile/avatar — Get current user's avatar
+- POST /api/profile/avatar — Upload/update current user's avatar
 """
 import asyncio
 import json
@@ -394,6 +396,61 @@ async def append_mistake(
     return {"ok": True}
 
 
+# ── Avatar Endpoints ──
+
+class AvatarUploadRequest(BaseModel):
+    avatar_data: str  # Base64 encoded image
+    avatar_type: str  # MIME type, e.g., 'image/png'
+
+
+@router.get("/profile/avatar")
+async def get_avatar(
+    current_user: User = Depends(get_current_user),
+):
+    """Get current user's avatar."""
+    if not current_user.avatar_data:
+        return {"avatar_data": None, "avatar_type": None}
+
+    return {
+        "avatar_data": current_user.avatar_data,
+        "avatar_type": current_user.avatar_type
+    }
+
+
+@router.post("/profile/avatar")
+async def upload_avatar(
+    request: AvatarUploadRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload/update current user's avatar."""
+    # Validate base64 data
+    if not request.avatar_data.startswith('data:image/'):
+        # Add data URI prefix if missing
+        if ',' in request.avatar_data:
+            request.avatar_data = f"data:{request.avatar_type};base64,{request.avatar_data.split(',')[-1]}"
+
+    # Update user avatar
+    current_user.avatar_data = request.avatar_data
+    current_user.avatar_type = request.avatar_type
+    await db.commit()
+
+    return {"ok": True, "message": "Avatar updated successfully"}
+
+
+@router.delete("/profile/avatar")
+async def delete_avatar(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete current user's avatar."""
+    current_user.avatar_data = None
+    current_user.avatar_type = None
+    await db.commit()
+
+    return {"ok": True, "message": "Avatar deleted successfully"}
+
+
 # ── Internal Helpers ──
 
 def _read_memory_highlights(memory_dir: Path) -> List[str]:
@@ -447,7 +504,7 @@ def _read_mistakes(memory_dir: Path) -> List[Dict[str, Any]]:
 
 
 async def _compute_learning_stats(db: AsyncSession, user_id: int) -> Dict[str, Any]:
-    """Compute learning statistics from LearningEvent table."""
+    """Compute learning statistics from LearningEvent table and ImmersiveLectureProgress."""
     try:
         cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         result = await db.execute(
@@ -479,15 +536,38 @@ async def _compute_learning_stats(db: AsyncSession, user_id: int) -> Dict[str, A
             if e.created_at:
                 days.add(e.created_at.strftime("%Y-%m-%d"))
 
+        # Get immersive lecture progress
+        from models.immersive_lecture import ImmersiveLectureProgress
+        lecture_result = await db.execute(
+            select(ImmersiveLectureProgress).where(
+                ImmersiveLectureProgress.user_id == user_id
+            )
+        )
+        lecture_progress = lecture_result.scalars().all()
+
+        total_lectures = len(lecture_progress)
+        completed_lectures = sum(1 for p in lecture_progress if p.completed)
+        total_sections_viewed = sum(p.current_section + 1 for p in lecture_progress)
+
+        # Add lecture study days
+        for p in lecture_progress:
+            if p.last_accessed:
+                days.add(p.last_accessed.strftime("%Y-%m-%d"))
+
         return {
             "total_quizzes": quiz_count,
             "avg_score": round(total_score / quiz_count, 1) if quiz_count > 0 else 0,
             "topics_covered": list(topics)[:20],
             "study_days": len(days),
+            "immersive_lectures": {
+                "total": total_lectures,
+                "completed": completed_lectures,
+                "total_sections_viewed": total_sections_viewed,
+            }
         }
     except Exception as e:
         logger.warning(f"Failed to compute learning stats: {e}")
-        return {"total_quizzes": 0, "avg_score": 0, "topics_covered": [], "study_days": 0}
+        return {"total_quizzes": 0, "avg_score": 0, "topics_covered": [], "study_days": 0, "immersive_lectures": {"total": 0, "completed": 0, "total_sections_viewed": 0}}
 
 
 async def _generate_via_llm(data_slice: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -578,6 +658,12 @@ def _fix_json_string(s: str) -> str:
     # Remove single-line comments (// ...)
     s = re.sub(r'//[^\n]*', '', s)
 
+    # Remove multi-line comments (/* ... */)
+    s = re.sub(r'/\*[\s\S]*?\*/', '', s)
+
+    # Fix escaped newlines in strings (replace literal \n with space)
+    s = s.replace('\\n', ' ').replace('\\r', '').replace('\\t', ' ')
+
     # Remove trailing commas before } or ]
     s = re.sub(r',\s*([}\]])', r'\1', s)
 
@@ -605,6 +691,10 @@ def _fix_json_string(s: str) -> str:
     s = re.sub(r'\b(true|false|null)\s+(\[|\{|")', r'\1, \2', s)
     # Missing comma between ] or } and number
     s = re.sub(r'(\]|\})\s+(\d)', r'\1, \2', s)
+    # Missing comma between ] or } and string
+    s = re.sub(r'(\]|\})\s+(")', r'\1, \2', s)
+    # Missing comma between ] or } and true/false/null
+    s = re.sub(r'(\]|\})\s+(true|false|null)', r'\1, \2', s)
 
     # Remove trailing text after the last }
     last_brace = s.rfind('}')

@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { Message, ToolCall, RetrievalResult, StatusEntry, PipelineStage, useApp } from '@/lib/store';
 import { streamSubagent } from '@/lib/api';
+import { useAvatar } from '@/hooks/useAvatar';
+import usePetStore from '@/components/pet/usePetStore';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { ComposerInput } from '@/components/chat/ComposerInput';
 import { MessageActions } from '@/components/chat/MessageActions';
@@ -372,18 +374,46 @@ function MessageBubble({
   isLast: boolean;
 }) {
   const isUser = message.role === 'user';
+  const { avatar } = useAvatar();
+  const { skin } = usePetStore();
+
+  // Generate AI avatar from pet spritesheet (first frame of idle)
+  const getPetAvatarStyle = () => {
+    if (!skin) return null;
+    const { frameWidth, frameHeight, cols, rows } = skin.grid;
+    const displaySize = 32; // Match the w-8 h-8 size
+    const displayH = Math.round(displaySize * (frameHeight / frameWidth));
+    return {
+      width: displaySize,
+      height: displayH,
+      backgroundImage: `url(${skin.src})`,
+      backgroundSize: `${displaySize * cols}px ${displayH * rows}px`,
+      backgroundPosition: '0px 0px',
+      backgroundRepeat: 'no-repeat',
+    };
+  };
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       <div
-        className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center ${
+        className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center overflow-hidden ${
           isUser
             ? 'bg-secondary text-foreground'
-            : 'bg-foreground text-background'
+            : 'bg-foreground/10'
         }`}
         aria-hidden
       >
-        {isUser ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+        {isUser ? (
+          avatar ? (
+            <img src={avatar} alt="用户头像" className="w-full h-full object-cover" />
+          ) : (
+            <User className="w-4 h-4" />
+          )
+        ) : skin ? (
+          <div style={getPetAvatarStyle() || undefined} title={skin.name} />
+        ) : (
+          <Sparkles className="w-4 h-4" />
+        )}
       </div>
 
       <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} min-w-0 group`}>

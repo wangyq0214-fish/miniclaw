@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
-import { generateProfile, initProfile, type StudentProfile } from '@/lib/api';
+import { generateProfile, initProfile, type StudentProfile, DIMENSION_LABELS } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { StatCards } from './StatCards';
 import { RadarChart } from './RadarChart';
@@ -169,14 +169,6 @@ export function DashboardView() {
             <h3 className="text-base font-bold text-gray-800 dark:text-zinc-200 mb-4">维度详情</h3>
             <div className="flex-1 space-y-3 overflow-y-auto">
               {Object.entries(profile.dimensions).map(([key, dim]) => {
-                const DIMENSION_LABELS: Record<string, string> = {
-                  knowledge_foundation: '知识基础',
-                  cognitive_style: '认知风格',
-                  error_patterns: '易错分析',
-                  learning_rhythm: '学习节奏',
-                  affective_state: '情感态度',
-                  goal_progress: '目标达成',
-                };
                 const label = DIMENSION_LABELS[key] || key;
                 const detail = dim.summary || dim.style || dim.mood || dim.pace || dim.progress || '';
                 return (

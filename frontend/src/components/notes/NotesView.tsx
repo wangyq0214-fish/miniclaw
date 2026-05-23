@@ -22,6 +22,7 @@ import {
   Loader2,
   Minimize2,
   ExternalLink,
+  Brain,
 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { ExerciseViewer } from '@/components/exercise/ExerciseViewer';
@@ -322,6 +323,31 @@ function SourceDiscoveryPanel({ data, onImport, onClose }: SourceDiscoveryPanelP
     </div>
   );
 }
+
+// ── Note type detection ──
+
+type NoteType = 'exercise' | 'flashcard' | 'mindmap' | 'lecture';
+
+function detectNoteType(content: string): NoteType {
+  const trimmed = content.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed.questions && Array.isArray(parsed.questions)) return 'exercise';
+      if (parsed.cards && Array.isArray(parsed.cards)) return 'flashcard';
+      const tree = parsed.tree || parsed;
+      if (tree && typeof tree === 'object' && typeof tree.title === 'string' && Array.isArray(tree.children)) return 'mindmap';
+    } catch { /* not JSON */ }
+  }
+  return 'lecture';
+}
+
+const NOTE_TYPE_CONFIG: Record<NoteType, { icon: typeof FileText; color: string; bgColor: string; label: string }> = {
+  exercise:  { icon: List,     color: 'text-purple-600 dark:text-purple-400',    bgColor: 'bg-purple-50 dark:bg-purple-500/10',  label: '练习题' },
+  flashcard: { icon: Layers,   color: 'text-cyan-600 dark:text-cyan-400',        bgColor: 'bg-cyan-50 dark:bg-cyan-500/10',      label: '抽认卡' },
+  mindmap:   { icon: Brain,    color: 'text-emerald-600 dark:text-emerald-400',  bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',label: '思维导图' },
+  lecture:   { icon: BookOpen, color: 'text-blue-600 dark:text-blue-400',        bgColor: 'bg-blue-50 dark:bg-blue-500/10',      label: '讲义' },
+};
 
 // ── Main Component ──
 
@@ -965,14 +991,23 @@ export function NotesView() {
                       <p className="text-sm font-medium text-gray-400 dark:text-zinc-400">暂无笔记</p>
                       <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">点击快速操作生成，或在对话中保存</p>
                     </div>
-                  ) : state.notes.map(note => (
-                    <div
-                      key={note.id}
-                      className="group relative p-4 rounded-xl bg-white dark:bg-zinc-900/50 border border-gray-100 dark:border-white/10 hover:border-gray-200 dark:hover:border-white/20 hover:shadow-md dark:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all cursor-pointer"
-                      onClick={() => setViewingNote(note)}
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-1.5">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-200 line-clamp-1">{note.title}</h3>
+                  ) : state.notes.map(note => {
+                    const noteType = detectNoteType(note.content);
+                    const cfg = NOTE_TYPE_CONFIG[noteType];
+                    const Icon = cfg.icon;
+                    return (
+                      <div
+                        key={note.id}
+                        className="group relative flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-zinc-900/50 border border-gray-100 dark:border-white/10 hover:border-gray-200 dark:hover:border-white/20 hover:shadow-md dark:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all cursor-pointer"
+                        onClick={() => setViewingNote(note)}
+                      >
+                        <div className={`w-9 h-9 rounded-lg ${cfg.bgColor} flex items-center justify-center shrink-0`}>
+                          <Icon className={`w-4 h-4 ${cfg.color}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-200 truncate">{note.title}</h3>
+                          <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-0.5">{cfg.label} · {note.created_at}</p>
+                        </div>
                         <button
                           onClick={e => { e.stopPropagation(); handleDeleteNote(note.id); }}
                           className="p-1 rounded-lg text-gray-300 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0 opacity-0 group-hover:opacity-100"
@@ -980,12 +1015,8 @@ export function NotesView() {
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-                        {note.content.slice(0, 120)}
-                      </div>
-                      <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-2">{note.created_at}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

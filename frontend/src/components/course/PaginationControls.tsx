@@ -8,7 +8,7 @@ interface PaginationControlsProps {
   onNextPage: () => void;
   isFirstPage: boolean;
   isLastPage: boolean;
-  scrollContainerRef?: RefObject<HTMLElement>;
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 }
 
 export function PaginationControls({

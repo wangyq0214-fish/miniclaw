@@ -1,0 +1,228 @@
+{
+  "topic": "深度学习概述",
+  "total": 7,
+  "difficulty_distribution": {"基础": 3, "中等": 3, "困难": 1},
+  "generated_at": "2025-07-15T11:00:00",
+  "generated_by": "exercise_composer",
+  "covered_topics": ["人工神经元模型", "感知机", "梯度消失", "ImageNet项目", "LSTM与GRU", "Transformer架构", "注意力机制"],
+  "recommended_topics": ["反向传播算法原理", "卷积神经网络结构详解", "循环神经网络基础", "自注意力机制与位置编码", "GPU与深度学习训练加速"],
+  "questions": [
+    {
+      "question_id": "q1",
+      "question_text_md": "首次提出人工神经元模型的是哪两位学者？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "沃伦·麦卡洛克（Warren McCulloch）和沃尔特·皮茨（Walter Pitts）",
+          "explanation_md": "课程明确指出：1943年，美国神经生理学家沃伦·麦卡洛克和数学家沃尔特·皮茨通过对生物神经元建模，第一次提出了人工神经元模型。这是深度学习基础——人工神经网络的最早起源。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "弗兰克·罗森布拉特（Frank Rosenblatt）和马文·明斯基（Marvin Minsky）",
+          "explanation_md": "罗森布拉特提出的是感知机模型（1958年），明斯基则是指出感知机局限性的人（1969年）。两人都对神经网络研究有重要贡献，但并非人工神经元模型的首次提出者。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "杰弗里·辛顿（Geoffrey Hinton）和杨立昆（Yann LeCun）",
+          "explanation_md": "辛顿和杨立昆是深度学习领域的奠基人物，但他们的主要贡献在BP算法（1986年）和卷积神经网络（1989年）方面，远晚于人工神经元模型的提出时间。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "李飞飞和Kyunghyun Cho",
+          "explanation_md": "李飞飞发起的是ImageNet项目（2007年），Kyunghyun Cho提出的是GRU模型（2014年），两人均非人工神经元模型的提出者。"
+        }
+      ]
+    },
+    {
+      "question_id": "q2",
+      "question_text_md": "1958年弗兰克·罗森布拉特提出的感知机模型带来了什么影响？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "使神经网络研究陷入低谷",
+          "explanation_md": "使神经网络研究陷入低谷的是1969年明斯基等人指出单层感知机无法解决线性不可分问题，而非感知机模型本身的提出。感知机的提出反而带来了第一次研究热潮。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "使神经网络迎来了第一次研究热潮",
+          "explanation_md": "课程明确指出：「1958年，弗兰克·罗森布拉特提出了感知机模型，这使得神经网络迎来了第一次研究热潮」。感知机是最早可以学习的神经网络模型，引起了学术界的广泛关注。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "首次解决了线性不可分问题",
+          "explanation_md": "感知机恰恰无法解决线性不可分问题，这是它后来被批评的核心缺陷。线性不可分问题直到多层网络和BP算法出现后才得到解决。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "提出了反向传播训练算法",
+          "explanation_md": "反向传播（BP）算法是1986年由辛顿团队提出的，比感知机晚了近30年。感知机使用的是更简单的学习规则，与BP算法无关。"
+        }
+      ]
+    },
+    {
+      "question_id": "q3",
+      "question_text_md": "以下哪项不是LeNet模型之后CNN一度未能流行的原因？",
+      "difficulty": "基础",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "BP算法被指出存在梯度消失问题",
+          "explanation_md": "梯度消失确实是CNN未能流行的原因之一。课程提到BP算法被指出存在梯度消失问题，这限制了深层网络的有效训练。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "当时的计算资源跟不上",
+          "explanation_md": "计算资源不足确实是原因之一。课程明确提到「当时的计算资源跟不上」，这是硬件层面的制约因素。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "支持向量机（SVM）等算法也能达到类似效果甚至更好",
+          "explanation_md": "SVM的竞争也是原因之一。课程指出「其他算法如支持向量机也能达到类似的效果甚至更好」，使得CNN缺乏竞争优势。"
+        },
+        {
+          "id": "D",
+          "is_correct": true,
+          "text_md": "ImageNet数据集尚未发布，缺少大规模训练数据",
+          "explanation_md": "ImageNet项目是2007年才发起的，虽然大规模数据集的缺失确实是深度学习整体发展的一个障碍，但课程中列举的LeNet未能流行的三个具体原因中并不包含此项。课程中列出的原因是梯度消失、计算资源不足和SVM的竞争。"
+        }
+      ]
+    },
+    {
+      "question_id": "q4",
+      "question_text_md": "ImageNet项目是由哪位科学家发起的，其主要目的是什么？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": true,
+          "text_md": "李飞飞发起，目的是构造大规模、高精度、多标签的图像数据库用于训练深度学习模型",
+          "explanation_md": "课程明确指出：「2007年，华人科学家李飞飞教授发起了ImageNet项目，从网络上收集了2万多种物体的超过1400万张图像并进行标注，目的是构造出一个大规模、高精度、多标签的图像数据库，用来训练分类和定位等计算机视觉任务的深度学习模型。」"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "辛顿发起，目的是验证深层网络的分类准确率",
+          "explanation_md": "辛顿确实一直坚持深度神经网络的研究，也参加了ImageNet竞赛，但ImageNet项目本身是由李飞飞发起的。辛顿的贡献在于用AlexNet在ImageNet竞赛中取得突破。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "杨立昆发起，目的是推动卷积神经网络的实用化",
+          "explanation_md": "杨立昆是CNN的先驱人物，提出了LeNet模型，但ImageNet项目并非他发起。杨立昆对CNN的贡献主要体现在模型架构设计上。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "谷歌团队发起，目的是构建通用的图像识别系统",
+          "explanation_md": "谷歌确实在ImageNet竞赛中有出色表现（如GoogLeNet），但ImageNet项目是由斯坦福大学的李飞飞教授发起的学术项目，并非谷歌主导。"
+        }
+      ]
+    },
+    {
+      "question_id": "q5",
+      "question_text_md": "LSTM（长短期记忆网络）通过引入什么机制来缓解梯度消失和爆炸问题？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "自注意力机制和位置编码",
+          "explanation_md": "自注意力机制和位置编码是Transformer架构（2017年）的核心组件，与LSTM无关。LSTM是循环神经网络的改进，使用的是门控机制而非注意力机制。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "卷积操作和池化操作",
+          "explanation_md": "卷积和池化是卷积神经网络（CNN）的操作，用于处理图像等网格数据。LSTM处理的是序列数据，使用门控机制而非卷积操作。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "遗忘门、输入门和输出门等门控机制",
+          "explanation_md": "课程明确指出：「1997年，Hochreiter和Schmidhuber提出长短期记忆网络LSTM，引入遗忘门、输入门和输出门等门控机制以缓解梯度问题，显著提升了长序列建模能力。」门控机制让网络可以选择性地保留或遗忘信息，有效控制梯度流动。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "反向传播和随机梯度下降",
+          "explanation_md": "反向传播和随机梯度下降是通用的训练方法，几乎所有神经网络都会使用，不是LSTM特有的创新。LSTM的独特贡献在于门控结构的设计。"
+        }
+      ]
+    },
+    {
+      "question_id": "q6",
+      "question_text_md": "2017年Vaswani等人提出的Transformer架构与传统循环神经网络（如LSTM）的根本区别是什么？",
+      "difficulty": "中等",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "Transformer使用了更深的网络层数",
+          "explanation_md": "网络深度不是Transformer与RNN的根本区别。两者都可以设计为不同深度。Transformer的核心创新在于计算方式的改变，而非简单地增加层数。"
+        },
+        {
+          "id": "B",
+          "is_correct": false,
+          "text_md": "Transformer使用了卷积操作替代循环操作",
+          "explanation_md": "Transformer并未使用卷积操作。它使用的是自注意力机制（Self-Attention），与卷积操作是完全不同的计算方式。使用卷积替代循环的是一维CNN等模型。"
+        },
+        {
+          "id": "C",
+          "is_correct": true,
+          "text_md": "Transformer完全摒弃循环结构，采用自注意力机制和位置编码，实现并行计算",
+          "explanation_md": "课程明确指出：「Transformer架构完全摒弃循环结构，采用自注意力机制（Self-Attention）和位置编码，实现并行计算并显著提升长序列处理能力。」RNN必须按时间步逐步处理序列，而Transformer可以同时处理所有位置，这是本质性的架构差异。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "Transformer只适用于自然语言处理，不适用于图像任务",
+          "explanation_md": "Transformer最初确实用于NLP，但后来也被广泛应用于计算机视觉（如ViT模型）。适用范围不是它与RNN的根本区别，计算机制才是。"
+        }
+      ]
+    },
+    {
+      "question_id": "q7",
+      "question_text_md": "以下关于深度学习发展历史的描述，哪一项是正确的？",
+      "difficulty": "困难",
+      "options": [
+        {
+          "id": "A",
+          "is_correct": false,
+          "text_md": "人工智能诞生于1943年人工神经元模型的提出",
+          "explanation_md": "1943年提出的是人工神经元模型，这是人工神经网络的起源，但人工智能作为一个领域诞生于1956年的达特茅斯会议。两者是不同的里程碑事件，不可混淆。"
+        },
+        {
+          "id": "B",
+          "is_correct": true,
+          "text_md": "GRU是对LSTM的简化，在减少参数量的同时保持相近性能",
+          "explanation_md": "课程明确指出：「2014年，Kyunghyun Cho等人提出门控循环单元GRU，简化了LSTM结构，减少参数量的同时保持相近性能。」GRU将LSTM的三个门简化为两个门（重置门和更新门），参数更少但效果接近。"
+        },
+        {
+          "id": "C",
+          "is_correct": false,
+          "text_md": "注意力机制最早由Vaswani等人在Transformer中提出",
+          "explanation_md": "注意力机制最早是2014年由Bengio团队在Seq2Seq模型中引入的，而Transformer是2017年才提出的。Transformer使用的是自注意力机制（Self-Attention），是注意力机制的一种变体，但并非注意力机制的首次提出。"
+        },
+        {
+          "id": "D",
+          "is_correct": false,
+          "text_md": "神经网络研究只经历过一次低谷，即1969年明斯基的批评",
+          "explanation_md": "课程描述了至少两次低谷：第一次是1969年明斯基指出单层感知机的局限性，第二次是LeNet之后因梯度消失、计算资源不足和SVM竞争导致的低潮。神经网络的发展历程是波浪式的，并非只有一次挫折。"
+        }
+      ]
+    }
+  ]
+}
