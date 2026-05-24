@@ -150,6 +150,7 @@ export function FlashcardViewer({ content, onClose, nodeId, filePath }: Flashcar
     setIsFlipped(false);
     setMastered({});
     setHidePreviousResult(false);
+    setCompletionDismissed(false);
     setParseError(null);
   }, [content]);
 
@@ -201,6 +202,7 @@ export function FlashcardViewer({ content, onClose, nodeId, filePath }: Flashcar
     setIsFlipped(false);
     setMastered({});
     setHidePreviousResult(true);
+    setCompletionDismissed(false);
   }, []);
 
   // Stats
@@ -212,7 +214,8 @@ export function FlashcardViewer({ content, onClose, nodeId, filePath }: Flashcar
   }, [mastered, cards.length]);
 
   const allReviewed = cards.length > 0 && cards.every(c => mastered[c.id] !== undefined);
-  const showCompletion = allReviewed && currentIndex === cards.length - 1 && mastered[currentCard?.id] !== undefined;
+  const [completionDismissed, setCompletionDismissed] = useState(false);
+  const showCompletion = allReviewed && !completionDismissed;
 
   // Persist flashcard completion to learning map (localStorage + backend)
   useEffect(() => {
@@ -437,7 +440,7 @@ export function FlashcardViewer({ content, onClose, nodeId, filePath }: Flashcar
         {/* Bottom actions */}
         <div className="flex items-center justify-end gap-3 mt-4 w-full max-w-2xl">
           <button
-            onClick={() => setCurrentIndex(0)}
+            onClick={() => { setCurrentIndex(0); setCompletionDismissed(true); }}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 bg-gray-100 dark:bg-zinc-800/50 border border-gray-200 dark:border-white/10 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-800 transition-colors"
           >
             <Eye className="w-4 h-4" />
@@ -533,6 +536,18 @@ export function FlashcardViewer({ content, onClose, nodeId, filePath }: Flashcar
 
       {/* Action Buttons */}
       <div className="px-6 pb-6 space-y-4">
+        {/* View completion report button when all reviewed but dismissed */}
+        {allReviewed && completionDismissed && (
+          <div className="flex justify-center">
+            <button
+              onClick={() => setCompletionDismissed(false)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+            >
+              <Check className="w-4 h-4" />
+              查看完成报告
+            </button>
+          </div>
+        )}
         {/* Mastered / Unmastered */}
         <div className="flex items-center justify-center gap-4">
           <button

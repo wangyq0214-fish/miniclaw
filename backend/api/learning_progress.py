@@ -146,4 +146,23 @@ async def save_progress(
         db.add(row)
 
     # get_db auto-commits
+
+    # Trigger profile update after quiz or flashcard completion
+    if is_completed and req.action in ("quiz", "flashcard"):
+        try:
+            import asyncio
+            from services.profile_updater import update_profile_after_event
+            asyncio.create_task(update_profile_after_event(
+                user_id=current_user.id,
+                event_type=f"{req.action}_complete",
+                event_data={
+                    "node_id": req.node_id,
+                    "score": req.score,
+                    "total": req.total,
+                    "correct": req.correct,
+                }
+            ))
+        except Exception as e:
+            logger.warning(f"Failed to trigger profile update: {e}")
+
     return {"ok": True}

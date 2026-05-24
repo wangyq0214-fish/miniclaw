@@ -2,20 +2,14 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Lock,
-  Circle,
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
   BookOpen,
-  Sparkles,
-  Brain,
   GraduationCap,
   X,
   Loader2,
   Play,
   Check,
-  Trophy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef, createContext, useContext } from 'react';
@@ -57,17 +51,6 @@ function getEffectiveStatus(nodeId: string, localStatus: Record<string, NodeStat
   return localStatus[nodeId] ?? 'locked';
 }
 
-function StatusIcon({ status, className }: { status: NodeStatus; className?: string }) {
-  switch (status) {
-    case 'locked':
-      return <Lock className={cn('w-3.5 h-3.5', className)} />;
-    case 'active':
-      return <Circle className={cn('w-3.5 h-3.5 fill-current', className)} />;
-    case 'completed':
-      return <CheckCircle2 className={cn('w-3.5 h-3.5 fill-current', className)} />;
-  }
-}
-
 const ACTION_DEFS: Array<{
   key: NodeActionType;
   label: string;
@@ -83,22 +66,6 @@ const ACTION_DEFS: Array<{
     color: 'text-blue-600 dark:text-blue-400',
     bgColor: 'bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-950/60',
     readyLabel: '开始学习',
-  },
-  {
-    key: 'quiz',
-    label: '生成测验',
-    icon: Brain,
-    color: 'text-violet-600 dark:text-violet-400',
-    bgColor: 'bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-950/60',
-    readyLabel: '开始测验',
-  },
-  {
-    key: 'flashcard',
-    label: '生成闪卡',
-    icon: Sparkles,
-    color: 'text-amber-600 dark:text-amber-400',
-    bgColor: 'bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/60',
-    readyLabel: '开始复习',
   },
 ];
 
@@ -116,7 +83,7 @@ function NodeActionPopover({
   const { actions, results, setPhase, onAction } = useMapCtx();
   const state = actions[node.id] || emptyActionState();
   const completed = isAllCompleted(state);
-  const doneCount = [state.learn, state.quiz, state.flashcard].filter((p) => p === 'completed').length;
+  const doneCount = [state.learn].filter((p) => p === 'completed').length;
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -235,11 +202,11 @@ function NodeActionPopover({
                 <motion.div
                   className="h-full rounded-full bg-primary"
                   initial={false}
-                  animate={{ width: `${(doneCount / 3) * 100}%` }}
+                  animate={{ width: `${(doneCount / 1) * 100}%` }}
                   transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
                 />
               </div>
-              <span className="text-[11px] text-muted-foreground tabular-nums">{doneCount}/3</span>
+              <span className="text-[11px] text-muted-foreground tabular-nums">{doneCount}/1</span>
             </div>
           )}
         </div>
@@ -284,234 +251,198 @@ function NodeActionPopover({
   );
 }
 
-/* ── SVG Connector ── */
+/* ── SVG Status Icons ── */
 
-function AnimatedConnector({
-  completed,
-  direction,
-  length,
-}: {
-  completed: boolean;
-  direction: 'vertical' | 'horizontal';
-  length: number;
-}) {
-  const isVert = direction === 'vertical';
-  const w = isVert ? 2 : length;
-  const h = isVert ? length : 2;
-  const clipId = useRef(`clip-${Math.random().toString(36).slice(2, 9)}`).current;
-
+function CompletedIcon({ className }: { className?: string }) {
   return (
-    <motion.svg
-      width={w}
-      height={h}
-      viewBox={`0 0 ${w} ${h}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
-      className="shrink-0"
-    >
-      <defs>
-        <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
-          <motion.rect
-            x={0}
-            y={0}
-            width={w}
-            height={0}
-            animate={{ height: completed ? h : 0 }}
-            transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-            initial={false}
-          />
-        </clipPath>
-      </defs>
-      <rect width={w} height={h} className="fill-muted-foreground/20" />
-      <rect width={w} height={h} className="fill-primary" clipPath={`url(#${clipId})`} />
-    </motion.svg>
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
   );
 }
 
-/* ── Node Card ── */
+function ActiveIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
+    </svg>
+  );
+}
 
-function NodeCard({
-  node,
-  anchorRef,
-  onOpen,
-}: {
-  node: LearningMapNode;
-  anchorRef: React.RefObject<HTMLElement | null>;
-  onOpen: () => void;
-}) {
+function LockedIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  );
+}
+
+/* ── Sub Knowledge Item ── */
+
+function SubKnowledgeItem({ child }: { child: LearningMapNode }) {
+  const { localStatus } = useMapCtx();
+  const childStatus = getEffectiveStatus(child.id, localStatus);
+  const childDone = childStatus === 'completed';
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <>
+      <div
+        ref={anchorRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          setPopoverOpen(true);
+        }}
+        className={cn(
+          'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer hover:shadow-sm',
+          childDone
+            ? 'bg-emerald-50/50 border border-emerald-200/60 text-emerald-700 hover:bg-emerald-50'
+            : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100',
+        )}
+      >
+        <div
+          className={cn(
+            'w-1.5 h-1.5 rounded-full shrink-0',
+            childDone ? 'bg-emerald-500' : 'bg-slate-300',
+          )}
+        />
+        <span className="truncate">{child.title}</span>
+      </div>
+      <AnimatePresence>
+        {popoverOpen && (
+          <NodeActionPopover node={child} anchorRef={anchorRef} onClose={() => setPopoverOpen(false)} />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/* ── Timeline Node ── */
+
+function TimelineNode({ node }: { node: LearningMapNode }) {
   const { actions, results, localStatus } = useMapCtx();
   const status = getEffectiveStatus(node.id, localStatus);
   const isActive = status === 'active';
   const isCompleted = status === 'completed';
   const isLocked = status === 'locked';
   const state = actions[node.id] || emptyActionState();
-  const doneCount = [state.learn, state.quiz, state.flashcard].filter((p) => p === 'completed').length;
+  const children = node.children || [];
+  const doneCount = [state.learn].filter((p) => p === 'completed').length;
 
-  // Check if there are quiz/flashcard results to show score
-  const quizResult = results[`${node.id}:quiz`];
-  const flashcardResult = results[`${node.id}:flashcard`];
+  // Calculate children progress
+  const childrenDone = children.filter((c) => getEffectiveStatus(c.id, localStatus) === 'completed').length;
 
   return (
     <motion.div
-      ref={anchorRef as React.RefObject<HTMLDivElement>}
-      className={cn(
-        'relative flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-colors select-none',
-        'max-w-[280px]',
-        isLocked && 'border-muted-foreground/15 opacity-50 cursor-default',
-        isActive && 'border-primary/40 bg-primary/[0.04] cursor-pointer',
-        isCompleted &&
-          'border-emerald-300/40 dark:border-emerald-700/30 bg-emerald-50/50 dark:bg-emerald-950/20 cursor-pointer',
-      )}
-      onClick={() => !isLocked && onOpen()}
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: isLocked ? 0.5 : 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-      whileHover={!isLocked ? { scale: 1.02, y: -1 } : undefined}
+      className={cn('node-item relative', {
+        'completed': isCompleted,
+        'current active': isActive,
+        'locked': isLocked,
+      })}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: isLocked ? 0.6 : 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
     >
-      {isActive && (
-        <motion.div
-          className="absolute inset-0 rounded-lg border-2 border-primary/30 pointer-events-none"
-          animate={{ opacity: [0.3, 0.7, 0.3], scale: [1, 1.015, 1] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      )}
-
-      <div
-        className={cn(
-          'shrink-0 w-6 h-6 rounded-full flex items-center justify-center',
-          isLocked && 'bg-muted text-muted-foreground/40',
-          isActive && 'bg-primary/10 text-primary',
-          isCompleted && 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
-        )}
-      >
-        <StatusIcon status={status} className="w-3.5 h-3.5" />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div
-          className={cn(
-            'text-[13px] font-medium leading-tight truncate',
-            isLocked && 'text-muted-foreground/50',
-            isActive && 'text-foreground',
-            isCompleted && 'text-foreground/80',
-          )}
-        >
-          {node.title}
-        </div>
-        {node.description && (
-          <div className="text-[11px] text-muted-foreground/70 leading-tight mt-0.5 truncate">
-            {node.description}
-          </div>
-        )}
-        {/* Progress dots + score badges */}
+      {/* Timeline dot */}
+      <div className="absolute -left-[47px] top-1 w-[22px] h-[22px] rounded-full bg-background flex items-center justify-center z-10">
+        {isCompleted && <CompletedIcon className="w-5 h-5 text-emerald-500" />}
         {isActive && (
-          <div className="flex items-center gap-1.5 mt-1">
-            {([state.learn, state.quiz, state.flashcard] as ActionPhase[]).map((p, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'w-1.5 h-1.5 rounded-full transition-colors',
-                  p === 'completed' ? 'bg-primary' : p !== 'idle' ? 'bg-primary/40' : 'bg-muted-foreground/20',
-                )}
-              />
-            ))}
-            <span className="text-[10px] text-muted-foreground ml-0.5">{doneCount}/3</span>
-          </div>
-        )}
-        {isCompleted && (quizResult || flashcardResult) && (
-          <div className="flex items-center gap-2 mt-1">
-            {quizResult && (
-              <div className="flex items-center gap-0.5 text-[10px] text-emerald-600/80 dark:text-emerald-400/80">
-                <Trophy className="w-3 h-3" />
-                <span className="tabular-nums">{quizResult.score}分</span>
-              </div>
-            )}
-            {flashcardResult && (
-              <div className="flex items-center gap-0.5 text-[10px] text-emerald-600/80 dark:text-emerald-400/80">
-                <Trophy className="w-3 h-3" />
-                <span className="tabular-nums">{flashcardResult.score}分</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-/* ── Map Node (recursive) ── */
-
-function MapNode({ node, depth }: { node: LearningMapNode; depth: number }) {
-  const { localStatus } = useMapCtx();
-  const [expanded, setExpanded] = useState(true);
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const anchorRef = useRef<HTMLDivElement>(null);
-  const hasChildren = node.children && node.children.length > 0;
-  const status = getEffectiveStatus(node.id, localStatus);
-
-  return (
-    <motion.div
-      className="flex flex-col"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3, delay: depth * 0.05 }}
-    >
-      <div className="flex items-stretch">
-        {hasChildren && (
-          <div className="flex flex-col items-center w-5 shrink-0 mr-1">
-            <div className="flex-1" />
-            <AnimatedConnector completed={status === 'completed'} direction="vertical" length={18} />
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="w-4 h-4 flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
-            >
-              {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            </button>
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <NodeCard node={node} anchorRef={anchorRef} onOpen={() => setPopoverOpen(true)} />
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {popoverOpen && (
-          <NodeActionPopover node={node} anchorRef={anchorRef} onClose={() => setPopoverOpen(false)} />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence initial={false}>
-        {hasChildren && expanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            className="overflow-hidden"
+            animate={{ scale: [1, 1.15, 1], opacity: [0.9, 1, 0.9] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <div className="relative flex">
-              <div className="flex flex-col items-center w-5 shrink-0 mr-1">
-                <AnimatedConnector completed={status === 'completed'} direction="vertical" length={8} />
-                <div className="flex-1 w-px bg-muted-foreground/15" />
-              </div>
-              <div className="flex-1 flex flex-col gap-1.5 pl-2">
-                {node.children!.map((child) => (
-                  <div key={child.id} className="flex items-stretch">
-                    <div className="flex items-center w-5 shrink-0 mr-1">
-                      <div className="w-full h-px bg-muted-foreground/15" />
-                      <AnimatedConnector completed={status === 'completed'} direction="horizontal" length={8} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <MapNode node={child} depth={depth + 1} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ActiveIcon className="w-5 h-5 text-blue-600" />
           </motion.div>
         )}
-      </AnimatePresence>
+        {isLocked && <LockedIcon className="w-5 h-5 text-slate-300" />}
+      </div>
+
+      {/* Card */}
+      <motion.div
+        className={cn(
+          'rounded-xl border p-5 transition-all duration-200',
+          isLocked && 'border-slate-100 bg-slate-50/50 cursor-not-allowed',
+          isActive && 'border-blue-200 bg-white shadow-sm shadow-blue-50',
+          isCompleted && 'border-emerald-200 bg-emerald-50/30',
+        )}
+        whileHover={!isLocked ? { y: -2, boxShadow: '0 6px 20px rgba(0,0,0,0.04)' } : undefined}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {node.phase && (
+              <span
+                className={cn(
+                  'text-[11px] font-bold px-1.5 py-0.5 rounded tracking-wide uppercase',
+                  isActive && 'bg-blue-50 text-blue-600',
+                  isCompleted && 'bg-emerald-100 text-emerald-700',
+                  isLocked && 'bg-slate-100 text-slate-400',
+                )}
+              >
+                {node.phase}
+              </span>
+            )}
+            <span
+              className={cn(
+                'text-sm font-semibold',
+                isLocked && 'text-slate-400',
+                isActive && 'text-slate-900',
+                isCompleted && 'text-emerald-800',
+              )}
+            >
+              {node.title}
+            </span>
+          </div>
+          <span className={cn(
+            'text-[11px] font-mono',
+            isCompleted ? 'text-emerald-600' : 'text-slate-400',
+          )}>
+            {isLocked ? `${childrenDone}/${children.length} 未解锁` : isCompleted ? `✓ ${childrenDone}/${children.length} 已完成` : `${childrenDone}/${children.length} 已修`}
+          </span>
+        </div>
+
+        {/* Description */}
+        {node.description && (
+          <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{node.description}</p>
+        )}
+
+        {/* Children grid (expandable) */}
+        {children.length > 0 && (
+          <AnimatePresence>
+            {(isActive || isCompleted) && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 pt-4 border-t border-slate-100">
+                  {children.map((child) => (
+                    <SubKnowledgeItem key={child.id} child={child} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
+
+        {/* Progress dots for active node */}
+        {isActive && (
+          <div className="flex items-center gap-1.5 mt-3">
+            <div
+              className={cn(
+                'w-1.5 h-1.5 rounded-full transition-colors',
+                state.learn === 'completed' ? 'bg-blue-600' : state.learn !== 'idle' ? 'bg-blue-300' : 'bg-slate-200',
+              )}
+            />
+            <span className="text-[10px] text-slate-400 ml-0.5">{doneCount}/1</span>
+          </div>
+        )}
+      </motion.div>
     </motion.div>
   );
 }
@@ -541,43 +472,36 @@ export function LearningMap({
     onAction: onAction || (() => {}),
   };
 
-  const phases = (data.nodes ?? []).reduce<Array<{ phase: string; nodes: LearningMapNode[] }>>((acc, node) => {
-    const phase = node.phase || '';
-    const last = acc[acc.length - 1];
-    if (last && last.phase === phase) {
-      last.nodes.push(node);
-    } else {
-      acc.push({ phase, nodes: [node] });
-    }
-    return acc;
-  }, []);
+  // All nodes in data.nodes are top-level (children are nested inside)
+  const topLevelNodes = data.nodes ?? [];
 
   return (
     <MapContext.Provider value={ctx}>
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col bg-[#f8fafc]">
         {data.subtitle && (
-          <div className="px-4 pt-3 pb-1">
-            <p className="text-xs text-muted-foreground">{data.subtitle}</p>
+          <div className="px-6 pt-4 pb-2">
+            <p className="text-xs text-slate-400">{data.subtitle}</p>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3">
-          <div className="flex flex-col gap-5">
-            {phases.map((group) => (
-              <div key={group.phase || 'default'} className="flex flex-col gap-2">
-                {group.phase && (
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider shrink-0">
-                      {group.phase}
-                    </span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                )}
-                {group.nodes.map((node) => (
-                  <MapNode key={node.id} node={node} depth={0} />
-                ))}
-              </div>
-            ))}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
+          <div className="relative pl-[36px] ml-3">
+            {/* Timeline vertical dashed line */}
+            <div
+              className="absolute left-0 top-2.5 bottom-2.5 w-0.5"
+              style={{
+                backgroundImage: 'linear-gradient(to bottom, #cbd5e1 60%, rgba(255,255,255,0) 0%)',
+                backgroundPosition: 'left',
+                backgroundSize: '2px 10px',
+                backgroundRepeat: 'repeat-y',
+              }}
+            />
+
+            {/* Timeline nodes */}
+            <div className="flex flex-col gap-8">
+              {topLevelNodes.map((node) => (
+                <TimelineNode key={node.id} node={node} />
+              ))}
+            </div>
           </div>
         </div>
       </div>

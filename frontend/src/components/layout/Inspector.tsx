@@ -10,6 +10,7 @@ import { ExerciseViewer } from '@/components/exercise/ExerciseViewer';
 import { MistakeBook } from '@/components/exercise/MistakeBook';
 import { SelectionToolbar } from '@/components/inspector/SelectionToolbar';
 import { HtmlAnimationViewer } from '@/components/media/HtmlAnimationViewer';
+import { PptxViewer } from '@/components/media/PptxViewer';
 import { KnowledgeGraph } from '@/components/graph/KnowledgeGraph';
 import { readFile, writeFile } from '@/lib/api';
 import { useApp } from '@/lib/store';
@@ -157,6 +158,11 @@ export function Inspector({ activeTab }: InspectorProps) {
         setContent('');
         setLoadError(null);
         setIsLoading(false);
+      } else if (isPptFile(state.activeFilePath)) {
+        setCurrentFile(state.activeFilePath);
+        setContent('');
+        setLoadError(null);
+        setIsLoading(false);
       } else {
         setEditMode(false);
         loadFileContent(state.activeFilePath);
@@ -215,6 +221,11 @@ export function Inspector({ activeTab }: InspectorProps) {
     return path.endsWith('.py') && (path.includes('/code-cases/') || path.includes('/code_cases/'));
   };
 
+  // 检测是否是 PPT 文件
+  const isPptFile = (path: string) => {
+    return /\.pptx?$/i.test(path);
+  };
+
   const meta = currentFile === '__code_playground__'
     ? { icon: Code, label: '代码环境' }
     : currentFile
@@ -261,6 +272,8 @@ export function Inspector({ activeTab }: InspectorProps) {
             <ExerciseViewer content={content} nodeId={findNodeIdForFile(currentFile)} filePath={currentFile} />
           ) : isHtmlAnimationFile(currentFile) && !editMode ? (
             <HtmlAnimationViewer content={content} />
+          ) : isPptFile(currentFile) && !editMode ? (
+            <PptxViewer filePath={currentFile} />
           ) : !editMode && (currentFile.endsWith('.md') || currentFile.endsWith('.json')) ? (
             <ContentCard
               path={currentFile}

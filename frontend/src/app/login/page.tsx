@@ -26,6 +26,17 @@ export default function LoginPage() {
         // 登录
         const data = await authApi.login(formData.username, formData.password);
         tokenManager.setToken(data.access_token);
+
+        // 获取用户信息并保存用户 ID
+        try {
+          const user = await authApi.getCurrentUser(data.access_token);
+          if (user?.id) {
+            localStorage.setItem('miniclaw_user_id', String(user.id));
+          }
+        } catch (e) {
+          console.error('Failed to get user info:', e);
+        }
+
         toast.success('登录成功');
         router.push('/');
       } else {

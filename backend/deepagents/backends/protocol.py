@@ -493,9 +493,10 @@ class BackendProtocol(abc.ABC):  # noqa: B024
         self,
         file_path: str,
         content: str,
+        overwrite: bool = False,
     ) -> WriteResult:
         """Async version of write."""
-        return await asyncio.to_thread(self.write, file_path, content)
+        return await asyncio.to_thread(self.write, file_path, content, overwrite)
 
     def edit(
         self,

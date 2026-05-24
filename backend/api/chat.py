@@ -104,6 +104,7 @@ async def _append_to_history(
     """
     Append conversation record to memory/history.json (non-blocking).
     When history exceeds HISTORY_MAX, summarize old entries and migrate to memory.md.
+    Also triggers profile update every 5 conversations.
     """
     try:
         memory_dir = get_user_memory_dir(user_id)
@@ -148,6 +149,17 @@ async def _append_to_history(
             json.dumps(history, ensure_ascii=False, indent=2),
             encoding="utf-8"
         )
+
+        # Trigger profile update every 5 conversations
+        if len(history) % 5 == 0:
+            try:
+                from services.profile_updater import update_profile_from_data
+                from config import get_user_workspace_dir
+                workspace_dir = get_user_workspace_dir(user_id)
+                asyncio.create_task(update_profile_from_data(user_id, memory_dir, workspace_dir))
+                logger.info(f"Triggered profile update for user {user_id} after {len(history)} conversations")
+            except Exception as e:
+                logger.warning(f"Failed to trigger profile update: {e}")
 
     except Exception as e:
         logger.warning(f"Failed to append to history.json: {e}")
@@ -292,7 +304,9 @@ async def stream_chat_response(
         )
 
         # Now create tools with backend
-        tools = get_all_tools(base_dir=get_project_root(), user_id=user_id, backend=agent_manager._backend)
+        _path_mappings = [(str(k), str(v)) for k, v in (agent_manager._backend.path_mappings or [])] if hasattr(agent_manager._backend, 'path_mappings') else None
+        _cwd = str(agent_manager._backend.cwd) if hasattr(agent_manager._backend, 'cwd') else None
+        tools = get_all_tools(base_dir=get_project_root(), user_id=user_id, backend=agent_manager._backend, path_mappings=_path_mappings, cwd=_cwd)
         agent_manager.tools = tools
 
         # Build system prompt

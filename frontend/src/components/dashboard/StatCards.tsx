@@ -24,27 +24,52 @@ function formatDuration(totalSeconds: number): string {
 const ONLINE_KEY = 'online_start';
 
 function useOnlineDuration() {
-  const [seconds, setSeconds] = useState(() => {
-    if (typeof window === 'undefined') return 0;
-    const stored = getUserItem(ONLINE_KEY);
-    if (stored) {
-      const start = parseInt(stored, 10);
-      return Math.floor((Date.now() - start) / 1000);
-    }
-    const now = Date.now();
-    setUserItem(ONLINE_KEY, String(now));
-    return 0;
-  });
+  const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (typeof window === 'undefined') return;
+
+    let interval: NodeJS.Timeout | null = null;
+
+    const startTracking = () => {
       const stored = getUserItem(ONLINE_KEY);
       if (stored) {
         const start = parseInt(stored, 10);
         setSeconds(Math.floor((Date.now() - start) / 1000));
+      } else {
+        setUserItem(ONLINE_KEY, String(Date.now()));
       }
-    }, 1000);
-    return () => clearInterval(interval);
+
+      interval = setInterval(() => {
+        const stored = getUserItem(ONLINE_KEY);
+        if (stored) {
+          const start = parseInt(stored, 10);
+          setSeconds(Math.floor((Date.now() - start) / 1000));
+        }
+      }, 1000);
+    };
+
+    // 检查 miniclaw_user_id 是否已设置
+    if (localStorage.getItem('miniclaw_user_id')) {
+      startTracking();
+    } else {
+      // 轮询等待 user id 设置
+      const waitTimer = setInterval(() => {
+        if (localStorage.getItem('miniclaw_user_id')) {
+          clearInterval(waitTimer);
+          startTracking();
+        }
+      }, 200);
+
+      return () => {
+        clearInterval(waitTimer);
+        if (interval) clearInterval(interval);
+      };
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   return seconds;

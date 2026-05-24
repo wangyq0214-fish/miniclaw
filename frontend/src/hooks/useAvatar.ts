@@ -25,6 +25,9 @@ export function useAvatar(userId?: number): UseAvatarReturn {
   }, []);
 
   const refreshAvatar = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -34,7 +37,7 @@ export function useAvatar(userId?: number): UseAvatarReturn {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch avatar');
+        return;
       }
 
       const data = await response.json();

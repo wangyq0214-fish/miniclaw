@@ -8,6 +8,7 @@ on the host machine with full system access.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import uuid
 import warnings
@@ -110,6 +111,7 @@ class LocalShellBackend(FilesystemBackend, SandboxBackendProtocol):
         max_output_bytes: int = 100_000,
         env: dict[str, str] | None = None,
         inherit_env: bool = False,
+        path_mappings: dict[str, str | Path] | None = None,
     ) -> None:
         """Initialize local shell backend with filesystem access.
 
@@ -184,6 +186,7 @@ class LocalShellBackend(FilesystemBackend, SandboxBackendProtocol):
             root_dir=root_dir,
             virtual_mode=virtual_mode,
             max_file_size_mb=10,
+            path_mappings=path_mappings,
         )
 
         # Store execution parameters
@@ -209,6 +212,43 @@ class LocalShellBackend(FilesystemBackend, SandboxBackendProtocol):
             String identifier in format "local-{random_hex}".
         """
         return self._sandbox_id
+
+    def _resolve_command_paths(self, command: str) -> str:
+        """Replace virtual paths in a shell command with physical paths.
+
+        Scans the command for virtual path patterns (e.g. /skills/...,
+        /workspace/...) and replaces them with their physical filesystem
+        equivalents using the backend's path_mappings.
+
+        Args:
+            command: Shell command string that may contain virtual paths.
+
+        Returns:
+            Command string with virtual paths replaced by physical paths.
+        """
+        if not self.path_mappings:
+            return command
+
+        def _replace(match: re.Match) -> str:
+            vpath = match.group(0)
+            # Try each mapping, longest prefix first (sorted in path_mappings)
+            for virt_prefix, phys_root in self.path_mappings:
+                if vpath.startswith(virt_prefix):
+                    relative_part = vpath[len(virt_prefix):]
+                    # Resolve to absolute path so shell can find it regardless of cwd
+                    base = phys_root.resolve() if hasattr(phys_root, 'resolve') else phys_root
+                    physical = str(base / relative_part) if relative_part else str(base)
+                    # Normalize path separators for the OS
+                    return physical.replace("\\", "/")
+            return vpath
+
+        # Match virtual paths: /skills/..., /workspace/..., /memory/..., etc.
+        # Pattern: /<known-prefix>/<rest-of-path> (non-whitespace, non-quote chars)
+        prefixes = [p.rstrip("/").lstrip("/") for p, _ in self.path_mappings if p.startswith("/")]
+        if not prefixes:
+            return command
+        pattern = r"/(?:" + "|".join(re.escape(p) for p in prefixes) + r")/[^\s\"'`]+"
+        return re.sub(pattern, _replace, command)
 
     def execute(
         self,
@@ -295,9 +335,12 @@ class LocalShellBackend(FilesystemBackend, SandboxBackendProtocol):
             msg = f"timeout must be positive, got {effective_timeout}"
             raise ValueError(msg)
 
+        # Resolve virtual paths to physical paths for shell execution
+        resolved_command = self._resolve_command_paths(command)
+
         try:
             result = subprocess.run(  # noqa: S602
-                command,
+                resolved_command,
                 check=False,
                 shell=True,  # Intentional: designed for LLM-controlled shell execution
                 capture_output=True,

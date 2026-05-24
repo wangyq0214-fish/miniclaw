@@ -26,14 +26,10 @@ function loadActions(): Record<string, NodeActionState> {
       if (typeof v.learn === 'boolean') {
         raw[k] = {
           learn: v.learn ? 'completed' : 'idle',
-          quiz: v.quiz ? 'completed' : 'idle',
-          flashcard: v.flashcard ? 'completed' : 'idle',
         };
       } else {
-        for (const key of ['learn', 'quiz', 'flashcard'] as const) {
-          if (v[key] === 'ready' || v[key] === 'generating') {
-            v[key] = 'idle';
-          }
+        if (v.learn === 'ready' || v.learn === 'generating') {
+          v.learn = 'idle';
         }
       }
     }
@@ -87,7 +83,7 @@ export function useLearningProgress(nodes: LearningMapNode[]) {
           for (const item of items) {
             const current = { ...(next[item.node_id] || emptyActionState()) };
             if ((item.phase === 'completed' || item.phase === 'idle') &&
-                (item.action === 'learn' || item.action === 'quiz' || item.action === 'flashcard')) {
+                item.action === 'learn') {
               current[item.action] = item.phase;
             }
             next[item.node_id] = current;
@@ -198,8 +194,7 @@ export function useLearningProgress(nodes: LearningMapNode[]) {
   };
 }
 
-/* ── Compute node status with bottom-up derivation ── */
-/* Top-down for siblings (sequential unlock), then bottom-up for parents (derived from children) */
+/* ── Compute node status — all nodes open, no locking ── */
 
 function computeLocalStatus(
   nodes: LearningMapNode[],
@@ -208,55 +203,16 @@ function computeLocalStatus(
   const status: Record<string, 'locked' | 'active' | 'completed'> = {};
   if (!nodes) return status;
 
-  // Phase 1: Top-down — process top-level nodes, then their children in order
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    const state = actions[node.id] || emptyActionState();
+  // All nodes are open — only distinguish between completed and active
+  const setNodeStatus = (nodeId: string) => {
+    const state = actions[nodeId] || emptyActionState();
+    status[nodeId] = isAllCompleted(state) ? 'completed' : 'active';
+  };
 
-    // Top-level node: derive status from own actions + previous sibling
-    if (isAllCompleted(state)) {
-      status[node.id] = 'completed';
-    } else {
-      const prevCompleted = i === 0 || status[nodes[i - 1].id] === 'completed';
-      status[node.id] = prevCompleted ? 'active' : 'locked';
-    }
-
-    // Process children (sections within this day)
-    const children = node.children ?? [];
-    for (let j = 0; j < children.length; j++) {
-      const child = children[j];
-      const childState = actions[child.id] || emptyActionState();
-
-      if (isAllCompleted(childState)) {
-        // Already completed — preserve regardless of parent
-        status[child.id] = 'completed';
-      } else if (j === 0) {
-        // First section: active only if previous day is completed (or this is the first day)
-        const prevTopNode = i > 0 ? nodes[i - 1] : undefined;
-        status[child.id] = !prevTopNode || status[prevTopNode.id] === 'completed' ? 'active' : 'locked';
-      } else {
-        // Subsequent sections: active only if previous section is completed
-        status[child.id] = status[children[j - 1].id] === 'completed' ? 'active' : 'locked';
-      }
-    }
-  }
-
-  // Phase 2: Bottom-up — derive parent status from children
   for (const node of nodes) {
-    const children = node.children ?? [];
-    if (children.length === 0) continue;
-
-    const allCompleted = children.every(c => status[c.id] === 'completed');
-    const anyActive = children.some(c => status[c.id] === 'active' || status[c.id] === 'completed');
-
-    if (allCompleted) {
-      // Re-check parent's own actions — all three must also be completed
-      const parentState = actions[node.id] || emptyActionState();
-      status[node.id] = isAllCompleted(parentState) ? 'completed' : 'active';
-    } else if (anyActive) {
-      status[node.id] = 'active';
-    } else {
-      status[node.id] = 'locked';
+    setNodeStatus(node.id);
+    for (const child of node.children ?? []) {
+      setNodeStatus(child.id);
     }
   }
 

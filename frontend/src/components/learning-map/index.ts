@@ -1,7 +1,7 @@
 export { LearningMap } from './LearningMap';
 export { LearningMapView } from './LearningMapView';
 export { useLearningProgress } from './useLearningProgress';
-export { emitActionComplete, LEARNING_MAP_EVENT, emptyActionState, isAllCompleted } from './types';
+export { LEARNING_MAP_EVENT, emptyActionState, isAllCompleted } from './types';
 export type {
   LearningMapNode,
   LearningMapData,

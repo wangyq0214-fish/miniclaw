@@ -17,19 +17,11 @@ type ViewMode = 'map' | 'markdown';
 
 const GENERATE_PROMPTS: Record<NodeActionType, (node: LearningMapNode) => string> = {
   learn: (n) => `请为我详细讲解「${n.title}」的知识点，包括核心概念、原理和实际应用场景。`,
-  quiz: (n) => `请生成练习题，主题：${n.title}。输出 JSON 文件到 workspace/generated/exercises/ 目录。`,
-  flashcard: (n) => `请生成抽认卡，主题：${n.title}。输出 JSON 文件到 workspace/generated/flashcards/ 目录。`,
 };
 
-const SUBAGENT_MAP: Partial<Record<NodeActionType, string>> = {
-  quiz: 'exercise_composer',
-  flashcard: 'flashcard_composer',
-};
+const SUBAGENT_MAP: Partial<Record<NodeActionType, string>> = {};
 
-const DIR_MAP: Partial<Record<NodeActionType, string>> = {
-  quiz: 'workspace/generated/exercises',
-  flashcard: 'workspace/generated/flashcards',
-};
+const DIR_MAP: Partial<Record<NodeActionType, string>> = {};
 
 const PATHS_KEY = 'miniclaw_gen_paths';
 
@@ -52,17 +44,62 @@ function getPath(nodeId: string, action: NodeActionType): string | null {
   return loadPaths()[`${nodeId}:${action}`] || null;
 }
 
+/** Find a resource file by its learning_node_id metadata field */
+async function findFileByNodeId(dir: string, nodeId: string): Promise<string | null> {
+  try {
+    const { files } = await listFiles(dir);
+    for (const file of files) {
+      if (file.type !== 'file') continue;
+      try {
+        const result = await readFile(file.path);
+        const data = JSON.parse(result.content);
+        if (data.learning_node_id === nodeId) {
+          return file.path;
+        }
+      } catch {
+        // Skip files that can't be parsed
+      }
+    }
+  } catch {
+    // Directory doesn't exist or can't be listed
+  }
+  return null;
+}
+
 async function findFileByTitle(dir: string, title: string): Promise<string | null> {
   try {
     const { files } = await listFiles(dir);
-    const keywords = title
-      .replace(/Day\s*\d+\s*[:：]?\s*/i, '')
+    const cleanTitle = title.replace(/Day\s*\d+\s*[:：]?\s*/i, '').trim();
+    const keywords = cleanTitle
       .split(/[\s、，,]+/)
-      .filter((w) => w.length >= 2);
-    const matched = files
+      .filter((w) => w.length >= 2)
+      .sort((a, b) => b.length - a.length); // Longer keywords first
+
+    if (keywords.length === 0) return null;
+
+    // Score each file by keyword matches
+    const scored = files
       .filter((f) => f.type === 'file')
-      .find((f) => keywords.some((kw) => f.name.includes(kw)));
-    return matched?.path ?? null;
+      .map((f) => {
+        const name = f.name.toLowerCase();
+        let score = 0;
+        let matchedCount = 0;
+        for (const kw of keywords) {
+          if (name.includes(kw.toLowerCase())) {
+            score += kw.length; // Longer matches score higher
+            matchedCount++;
+          }
+        }
+        // Bonus for matching more keywords
+        if (matchedCount > 1) score += matchedCount * 5;
+        // Bonus for matching the full title
+        if (name.includes(cleanTitle.toLowerCase())) score += 100;
+        return { file: f, score, matchedCount };
+      })
+      .filter((item) => item.matchedCount > 0)
+      .sort((a, b) => b.score - a.score);
+
+    return scored[0]?.file.path ?? null;
   } catch {
     return null;
   }
@@ -118,35 +155,7 @@ export function LearningMapView({
     };
   }, [mapDataPath]);
 
-  // On load: check if generated files already exist for each node
-  useEffect(() => {
-    if (!mapData) return;
-    let cancelled = false;
-
-    const checkExisting = async () => {
-      if (!mapData.nodes) return;
-      for (const node of mapData.nodes) {
-        if (cancelled) break;
-        for (const action of ['quiz', 'flashcard'] as const) {
-          const dir = DIR_MAP[action];
-          if (!dir) continue;
-          const filePath = await findFileByTitle(dir, node.title);
-          if (cancelled) break;
-          if (filePath) {
-            savePath(node.id, action, filePath);
-            // Only set to 'ready' if currently 'idle'
-            const currentPhase = progress.actions[node.id]?.[action];
-            if (!currentPhase || currentPhase === 'idle') {
-              progress.setPhase(node.id, action, 'ready');
-            }
-          }
-        }
-      }
-    };
-
-    checkExisting();
-    return () => { cancelled = true; };
-  }, [mapData]); // eslint-disable-line react-hooks/exhaustive-deps
+  // No file-based actions to check for learn-only mode
 
   const handleAction = useCallback(
     async (node: LearningMapNode, action: NodeActionType, trigger: ActionTrigger) => {
@@ -164,7 +173,12 @@ export function LearningMapView({
         if (subagent && dir) {
           try {
             await invoke({ subagent, message: GENERATE_PROMPTS[action](node) });
-            const filePath = await findFileByTitle(dir, node.title);
+            // First try to find by learning_node_id (strong binding)
+            let filePath = await findFileByNodeId(dir, node.id);
+            // Fallback to title-based matching
+            if (!filePath) {
+              filePath = await findFileByTitle(dir, node.title);
+            }
             if (filePath) {
               savePath(node.id, action, filePath);
               progress.setPhase(node.id, action, 'ready');

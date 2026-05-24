@@ -2,6 +2,7 @@
 # ruff: noqa: E501
 
 import asyncio
+import logging
 import concurrent.futures
 import contextvars
 import mimetypes
@@ -55,6 +56,7 @@ from deepagents.backends.utils import (
 from deepagents.middleware._utils import append_to_system_message
 
 EMPTY_CONTENT_WARNING = "System reminder: File exists but has empty contents"
+logger = logging.getLogger(__name__)
 GLOB_TIMEOUT = 20.0  # seconds
 LINE_NUMBER_WIDTH = 6
 DEFAULT_READ_OFFSET = 0
@@ -143,6 +145,7 @@ class WriteFileSchema(BaseModel):
 
     file_path: str = Field(description="Absolute path where the file should be created. Must be absolute, not relative.")
     content: str = Field(description="The text content to write to the file. This parameter is required.")
+    overwrite: bool = Field(default=False, description="If True, overwrite existing file. Defaults to False.")
 
 
 class EditFileSchema(BaseModel):
@@ -815,12 +818,11 @@ class FilesystemMiddleware(AgentMiddleware[FilesystemState, ContextT, ResponseT]
         def sync_write_file(
             file_path: Annotated[str, "Absolute path where the file should be created. Must be absolute, not relative."],
             content: Annotated[str, "The text content to write to the file. This parameter is required."],
-            runtime: ToolRuntime[None, FilesystemState],
+            overwrite: Annotated[bool, "If True, overwrite existing file"] = False,
+            runtime: ToolRuntime[None, FilesystemState] = None,
         ) -> str:
             """Synchronous wrapper for write_file tool."""
             from tools.utils import inject_date
-            import logging
-            logger = logging.getLogger(__name__)
             resolved_backend = self._get_backend(runtime)
             dated_path = inject_date(file_path.lstrip("/"))
             logger.info("write_file: original=%s, dated=%s", file_path, dated_path)
@@ -829,7 +831,7 @@ class FilesystemMiddleware(AgentMiddleware[FilesystemState, ContextT, ResponseT]
             except ValueError as e:
                 return f"Error: {e}"
 
-            res: WriteResult = resolved_backend.write(validated_path, content)
+            res: WriteResult = resolved_backend.write(validated_path, content, overwrite=overwrite)
             logger.info("write_file result: path=%s, error=%s", res.path, res.error)
             if res.error:
                 return res.error
@@ -838,7 +840,8 @@ class FilesystemMiddleware(AgentMiddleware[FilesystemState, ContextT, ResponseT]
         async def async_write_file(
             file_path: Annotated[str, "Absolute path where the file should be created. Must be absolute, not relative."],
             content: Annotated[str, "The text content to write to the file. This parameter is required."],
-            runtime: ToolRuntime[None, FilesystemState],
+            overwrite: Annotated[bool, "If True, overwrite existing file"] = False,
+            runtime: ToolRuntime[None, FilesystemState] = None,
         ) -> str:
             """Asynchronous wrapper for write_file tool."""
             from tools.utils import inject_date
@@ -848,10 +851,82 @@ class FilesystemMiddleware(AgentMiddleware[FilesystemState, ContextT, ResponseT]
             except ValueError as e:
                 return f"Error: {e}"
 
-            res: WriteResult = await resolved_backend.awrite(validated_path, content)
+            res: WriteResult = await resolved_backend.awrite(validated_path, content, overwrite=overwrite)
             if res.error:
                 return res.error
-            return f"Updated file {res.path}"
+
+            result_msg = f"Updated file {res.path}"
+
+            # Auto-execute .py files written to generated/presentations/
+            if validated_path.endswith(".py") and "generated/presentations/" in validated_path:
+                logger.info("async_write_file: auto-execute triggered for %s", validated_path)
+                try:
+                    phys = resolved_backend._resolve_path("/" + validated_path.lstrip("/"))
+                    physical_path = str(phys)
+                except Exception as e:
+                    logger.warning("async_write_file: _resolve_path failed: %s", e)
+                    physical_path = validated_path
+                _cwd = str(getattr(resolved_backend, 'cwd', None) or "")
+                logger.info("async_write_file: physical_path=%s, cwd=%s", physical_path, _cwd or None)
+
+                def _run_and_delete():
+                    import subprocess as _sp
+                    import sys
+                    import os as _os
+                    import tempfile
+                    temp_script = None
+                    try:
+                        # Copy script to temp dir to avoid triggering uvicorn reload
+                        # Replace __file__-based output dir with actual workspace path
+                        with open(physical_path, 'r', encoding='utf-8') as f:
+                            script_content = f.read()
+                        output_dir = _os.path.dirname(physical_path)
+                        inject = f"import os as _os; _output_dir = r'{output_dir}'\n"
+                        script_content = inject + script_content
+                        script_content = script_content.replace(
+                            "os.path.dirname(os.path.abspath(__file__))",
+                            "_output_dir"
+                        )
+                        temp_dir = tempfile.gettempdir()
+                        temp_script = _os.path.join(temp_dir, _os.path.basename(physical_path))
+                        with open(temp_script, 'w', encoding='utf-8') as f:
+                            f.write(script_content)
+                        logger.info("Auto-execute: copied to temp %s, output_dir=%s", temp_script, output_dir)
+                        proc = _sp.run(
+                            [sys.executable, temp_script],
+                            capture_output=True, text=True, timeout=60, cwd=_cwd or None,
+                        )
+                        out = proc.stdout.strip() if proc.stdout else ""
+                        if proc.returncode != 0:
+                            out += f"\n[stderr] {proc.stderr.strip()}" if proc.stderr else ""
+                            out += f"\nExit code: {proc.returncode}"
+                        logger.info("Auto-execute: returncode=%d, output_len=%d", proc.returncode, len(out))
+                    except Exception as e:
+                        logger.error("Auto-execute error: %s", e, exc_info=True)
+                        out = f"[Auto-execute error] {e}"
+                    # Always delete the original script after execution
+                    try:
+                        _os.remove(physical_path)
+                        logger.info("Auto-execute: deleted script %s", physical_path)
+                    except Exception as del_err:
+                        logger.warning("Auto-execute: delete failed: %s", del_err)
+                    # Clean up temp script
+                    if temp_script:
+                        try:
+                            _os.remove(temp_script)
+                        except Exception:
+                            pass
+                    return out
+
+                try:
+                    loop = asyncio.get_running_loop()
+                    exec_output = await loop.run_in_executor(None, _run_and_delete)
+                    result_msg += f"\n\n[Auto-execute]\n{exec_output}"
+                except Exception as e:
+                    logger.error("async_write_file: auto-execute failed: %s", e, exc_info=True)
+                    result_msg += f"\n\n[Auto-execute error] {e}"
+
+            return result_msg
 
         return StructuredTool.from_function(
             name="write_file",

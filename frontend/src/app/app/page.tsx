@@ -105,6 +105,16 @@ function MainContent() {
     const token = tokenManager.getToken();
     if (!token) {
       router.push('/login');
+      return;
+    }
+
+    // 确保 miniclaw_user_id 已设置（处理页面刷新的情况）
+    if (!localStorage.getItem('miniclaw_user_id')) {
+      authApi.getCurrentUser(token).then(user => {
+        if (user?.id) {
+          localStorage.setItem('miniclaw_user_id', String(user.id));
+        }
+      }).catch(() => {});
     }
   }, [router]);
 
@@ -115,6 +125,7 @@ function MainContent() {
       try {
         await authApi.logout(token);
         tokenManager.removeToken();
+        localStorage.removeItem('miniclaw_user_id');
         toast.success('已登出');
         router.push('/login');
       } catch (error) {

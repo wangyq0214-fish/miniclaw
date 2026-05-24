@@ -12,7 +12,6 @@ import {
   FileCode,
   Network,
   List,
-  BarChart3,
   Code,
   FolderOpen,
   Library,
@@ -21,6 +20,7 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
+  Presentation,
 } from 'lucide-react';
 import { listFiles, deleteFile, writeFile, type FileInfo } from '@/lib/api';
 import { useApp, type GeneratingTask } from '@/lib/store';
@@ -35,7 +35,7 @@ const agentRouters: Record<string, string> = {
   '阅读清单': 'reading_curator',
   '动画脚本': 'media_script_writer',
   '抽认卡': 'flashcard_composer',
-  '评估': 'evaluation_analyst',
+  'PPT': 'ppt_generator',
 };
 
 // ── Resource categories ──
@@ -55,9 +55,9 @@ const RESOURCE_CATEGORIES: ResourceCategory[] = [
   { key: 'lectures', icon: BookOpen, label: '讲义', color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-50 dark:bg-blue-500/10', description: '深度讲解文档，涵盖核心概念与原理', generateLabel: '讲义' },
   { key: 'mindmaps', icon: Network, label: '思维导图', color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-50 dark:bg-emerald-500/10', description: '可视化知识结构，梳理概念关系', generateLabel: '思维导图' },
   { key: 'reading-lists', icon: List, label: '阅读清单', color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-50 dark:bg-amber-500/10', description: '精选阅读材料与推荐书单', generateLabel: '阅读清单' },
-  { key: 'evaluations', icon: BarChart3, label: '评估', color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-50 dark:bg-rose-500/10', description: '学习效果评估与能力分析', generateLabel: '评估' },
   { key: 'code-cases', icon: Code, label: '代码案例', color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-50 dark:bg-violet-500/10', description: '可运行的分级代码示例', generateLabel: '代码案例' },
   { key: 'media-scripts', icon: FileCode, label: '动画脚本', color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-50 dark:bg-pink-500/10', description: '场景分镜动画脚本，含视觉元素与旁白', generateLabel: '动画脚本' },
+  { key: 'presentations', icon: Presentation, label: 'PPT', color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-500/10', description: 'AI 生成的专业演示文稿', generateLabel: 'PPT' },
 ];
 
 // ── Roots ──
@@ -99,15 +99,15 @@ function getPlaceholder(categoryLabel: string): string {
     '讲义': '例如：卷积神经网络、循环神经网络...',
     '思维导图': '例如：深度学习、机器学习算法...',
     '阅读清单': '例如：强化学习、自然语言处理...',
-    '评估': '例如：深度学习基础掌握情况...',
     '代码案例': '例如：冒泡排序、二分查找、链表反转...',
     '动画脚本': '例如：神经网络前向传播过程...',
+    'PPT': '例如：深度学习基础、机器学习概论...',
   };
   return placeholders[categoryLabel] || '请输入主题...';
 }
 
 function getDisplayName(fileName: string): string {
-  const nameWithoutExt = fileName.replace(/\.(md|json|txt|pdf|html|docx?)$/i, '');
+  const nameWithoutExt = fileName.replace(/\.(md|json|txt|pdf|html|docx?|pptx?)$/i, '');
   return nameWithoutExt
     .replace(/^\d{4}-\d{2}-\d{2}-/, '')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -443,34 +443,6 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
     );
   }, [state.generatingTasks, activeCategoryKey]);
 
-  // Build a set of file paths that have been completed (from learning map progress)
-  const completedPaths = useMemo(() => {
-    if (typeof window === 'undefined') return new Set<string>();
-    try {
-      const paths: Record<string, string> = JSON.parse(getUserItem('miniclaw_gen_paths') || '{}');
-      const results: Record<string, { completed: boolean }> = JSON.parse(getUserItem('miniclaw_learning_results') || '{}');
-      const set = new Set<string>();
-      // Check learning map entries: {nodeId}:{action} → filePath
-      for (const [key, filePath] of Object.entries(paths)) {
-        if (results[key]?.completed) {
-          set.add(filePath);
-        }
-      }
-      // Check direct file entries: file:{filePath}:{action} → filePath
-      for (const key of Object.keys(results)) {
-        if (key.startsWith('file:') && results[key]?.completed) {
-          // key format: "file:{filePath}:{action}" — strip prefix and ":action" suffix
-          const withoutPrefix = key.slice(5); // remove "file:"
-          const lastColon = withoutPrefix.lastIndexOf(':');
-          set.add(lastColon > 0 ? withoutPrefix.slice(0, lastColon) : withoutPrefix);
-        }
-      }
-      return set;
-    } catch {
-      return new Set<string>();
-    }
-  }, [files]); // re-check when file list changes
-
   // Merge real files + optimistic resources
   const displayItems = useMemo(() => {
     if (!activeCategoryKey) {
@@ -608,9 +580,9 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
       '讲义': `请生成讲义，主题：${prompt}。输出 Markdown 文件到 ${categoryPath}/ 目录。`,
       '思维导图': `请生成思维导图，主题：${prompt}。输出 JSON 文件到 ${categoryPath}/ 目录。`,
       '阅读清单': `请生成阅读清单，主题：${prompt}。输出 Markdown 文件到 ${categoryPath}/ 目录。`,
-      '评估': `请生成学习评估，主题：${prompt}。输出 JSON 文件到 ${categoryPath}/ 目录。`,
       '代码案例': `请生成编程挑战题，主题：${prompt}。输出 JSON 文件到 ${categoryPath}/ 目录。`,
       '动画脚本': `请生成动画脚本，主题：${prompt}。输出 Markdown 文件到 ${categoryPath}/ 目录。`,
+      'PPT': `请生成PPT演示文稿，主题：${prompt}。用 python-pptx 生成脚本并执行，输出 PPTX 文件到 ${categoryPath}/ 目录。`,
     };
     const message = messages[category.generateLabel] || `请生成${category.label}，主题：${prompt}。输出到 ${categoryPath}/ 目录。`;
 
@@ -978,7 +950,6 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
                   return <GeneratingListItem key={item.id} title={item.title} metadata={item.metadata} />;
                 }
                 const isActive = activePath === item.id;
-                const isCompleted = completedPaths.has(item.id);
                 return (
                   <div
                     key={item.id}
@@ -993,23 +964,21 @@ export function WorkspaceBrowser({ activePath, onSelect }: WorkspaceBrowserProps
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                       !item.category
                         ? 'bg-sky-50 dark:bg-sky-500/10'
-                        : isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-primary/10'
+                        : 'bg-primary/10'
                     }`}>
                       {!item.category
                         ? <FileText className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                        : isCompleted
-                          ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                          : <Sparkles className="w-4 h-4 text-primary" />
+                        : <Sparkles className="w-4 h-4 text-primary" />
                       }
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${
-                        isCompleted ? 'text-emerald-700 dark:text-emerald-400' : isActive ? 'text-primary' : 'text-foreground'
+                        isActive ? 'text-primary' : 'text-foreground'
                       }`}>
                         {item.title}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {isCompleted ? '已完成' : item.metadata}
+                        {item.metadata}
                       </p>
                     </div>
                     <button

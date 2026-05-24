@@ -226,6 +226,31 @@ class FilesystemBackend(BackendProtocol):
         """
         return "/" + path.resolve().relative_to(self.cwd).as_posix()
 
+    def _reverse_map_path(self, path: Path) -> str | None:
+        """Reverse-map a physical path to a virtual path using path_mappings.
+
+        When a path is outside cwd (so _to_virtual_path fails), this method
+        checks if it falls under any configured path mapping and reconstructs
+        the virtual path.
+
+        Args:
+            path: Physical filesystem path.
+
+        Returns:
+            Virtual path string (e.g. "/skills/ppt-master/"), or None if no
+            mapping covers this path.
+        """
+        if not self.path_mappings:
+            return None
+        resolved = path.resolve()
+        for virt_prefix, phys_root in self.path_mappings:
+            try:
+                relative = resolved.relative_to(phys_root)
+                return virt_prefix.rstrip("/") + "/" + relative.as_posix()
+            except ValueError:
+                continue
+        return None
+
     def ls(self, path: str) -> LsResult:  # noqa: C901, PLR0912, PLR0915  # Complex virtual_mode logic
         """List files and directories in the specified directory (non-recursive).
 
@@ -292,8 +317,11 @@ class FilesystemBackend(BackendProtocol):
                     try:
                         virt_path = self._to_virtual_path(child_path)
                     except ValueError:
-                        logger.debug("Skipping path outside root: %s", child_path)
-                        continue
+                        # Path is outside cwd — try reversing path_mappings
+                        virt_path = self._reverse_map_path(child_path)
+                        if virt_path is None:
+                            logger.debug("Skipping path outside root: %s", child_path)
+                            continue
                     except OSError:
                         logger.warning("Could not resolve path: %s", child_path, exc_info=True)
                         continue
@@ -384,20 +412,22 @@ class FilesystemBackend(BackendProtocol):
         self,
         file_path: str,
         content: str,
+        overwrite: bool = False,
     ) -> WriteResult:
         """Create a new file with content.
 
         Args:
             file_path: Path where the new file will be created.
             content: Text content to write to the file.
+            overwrite: If True, overwrite existing files. Defaults to False.
 
         Returns:
             `WriteResult` with path on success, or error message if the file
-                already exists or write fails.
+                already exists (and overwrite=False) or write fails.
         """
         resolved_path = self._resolve_path(file_path)
 
-        if resolved_path.exists():
+        if resolved_path.exists() and not overwrite:
             return WriteResult(error=f"Cannot write to {file_path} because it already exists. Read and then make an edit, or write to a new path.")
 
         try:

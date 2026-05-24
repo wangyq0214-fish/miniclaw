@@ -40,6 +40,23 @@ function getAuthHeaders(): HeadersInit {
       };
 }
 
+// Fetch with timeout support
+async function fetchWithTimeout(url: string, options: RequestInit & { timeout?: number } = {}): Promise<Response> {
+  const { timeout = 30000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // Types
 export interface ChatRequest {
   message: string;
@@ -1189,12 +1206,14 @@ export async function generateProfile(forceRefresh: boolean = false): Promise<St
   const headers: HeadersInit = token
     ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
     : { 'Content-Type': 'application/json' };
-  const response = await fetch(
-    `${getApiBase()}/api/profile/generate`,
+  // Bypass Next.js proxy for long-running requests (proxy has default timeout)
+  const response = await fetchWithTimeout(
+    `${getStreamingApiBase()}/api/profile/generate`,
     {
       method: 'POST',
       headers,
       body: JSON.stringify({ force_refresh: forceRefresh }),
+      timeout: 300000, // 5 minutes timeout for profile generation
     },
   );
   if (!response.ok) {
@@ -1227,6 +1246,78 @@ export async function initProfile(major: string, goal: string, grade?: string): 
     }
     throw new Error(`API error: ${response.statusText}`);
   }
+}
+
+export async function autoUpdateProfile(): Promise<StudentProfile> {
+  const token = tokenManager.getToken();
+  const headers: HeadersInit = token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
+
+  const response = await fetchWithTimeout(
+    `${getStreamingApiBase()}/api/profile/auto-update`,
+    {
+      method: 'POST',
+      headers,
+      timeout: 180000, // 3 minutes timeout for LLM processing
+    },
+  );
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    throw new Error(`API error: ${response.statusText}`);
+  }
+
+  // Handle streaming response - wait for completion then fetch profile
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('No response body');
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  // Read stream until done
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.type === 'error') {
+            throw new Error(data.error);
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    }
+  }
+
+  // After stream completes, fetch the updated profile
+  const profileResponse = await fetch(
+    `${getStreamingApiBase()}/api/profile/generate`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ force_refresh: false }),
+    },
+  );
+
+  if (!profileResponse.ok) {
+    throw new Error('Failed to fetch updated profile');
+  }
+
+  return profileResponse.json();
 }
 
 export async function appendMistake(mistake: {

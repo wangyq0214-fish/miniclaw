@@ -11,6 +11,7 @@ import logging
 from pathlib import Path
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from config import (
@@ -197,6 +198,209 @@ async def read_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/files/download")
+async def download_file(
+    path: str = Query(..., description="Relative path to the file"),
+    current_user: User = Depends(get_current_user)
+):
+    """Download a file from the project directory."""
+    file_path = resolve_path(path, current_user.id)
+
+    valid, reason = validate_path(file_path, path)
+    if not valid:
+        raise HTTPException(status_code=403, detail=f"Access denied: {reason}")
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(
+        path=str(file_path),
+        filename=file_path.name,
+        media_type="application/octet-stream",
+    )
+
+
+@router.get("/files/pptx")
+async def read_pptx(
+    path: str = Query(..., description="Relative path to the PPTX file"),
+    current_user: User = Depends(get_current_user)
+):
+    """Read a PPTX file and return slide data for browser rendering."""
+    file_path = resolve_path(path, current_user.id)
+
+    valid, reason = validate_path(file_path, path)
+    if not valid:
+        raise HTTPException(status_code=403, detail=f"Access denied: {reason}")
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if not file_path.suffix.lower() in ('.pptx', '.ppt'):
+        raise HTTPException(status_code=400, detail="Not a PPT file")
+
+    try:
+        from pptx import Presentation
+        from pptx.util import Emu
+        from pptx.enum.shapes import MSO_SHAPE_TYPE
+        from pptx.dml.color import RGBColor
+        import base64
+        import io
+
+        def _safe_color(color_obj) -> str | None:
+            """Safely extract hex color from a color object."""
+            try:
+                if color_obj and color_obj.type is not None:
+                    return f"#{color_obj.rgb}"
+            except Exception:
+                pass
+            return None
+
+        def _extract_fill(fill) -> dict | None:
+            """Extract fill info from a shape's fill object."""
+            try:
+                if fill.type is not None:
+                    from pptx.enum.dml import MSO_FILL_TYPE
+                    if fill.type == MSO_FILL_TYPE.SOLID:
+                        c = _safe_color(fill.fore_color)
+                        if c:
+                            return {"type": "solid", "color": c}
+                    elif fill.type == MSO_FILL_TYPE.GRADIENT:
+                        colors = []
+                        for stop in fill.gradient_stops:
+                            c = _safe_color(stop.color)
+                            if c:
+                                colors.append(c)
+                        if colors:
+                            return {"type": "gradient", "colors": colors}
+            except Exception:
+                pass
+            return None
+
+        def _extract_line(line) -> dict | None:
+            """Extract border/outline info."""
+            try:
+                if line.fill.type is not None:
+                    c = _safe_color(line.color)
+                    w = int(line.width) if line.width else None
+                    return {"color": c, "width": w}
+            except Exception:
+                pass
+            return None
+
+        def _extract_image(shape) -> str | None:
+            """Extract embedded image as base64 data URI."""
+            try:
+                if hasattr(shape, "image") and shape.image:
+                    blob = shape.image.blob
+                    content_type = shape.image.content_type or "image/png"
+                    b64 = base64.b64encode(blob).decode("ascii")
+                    return f"data:{content_type};base64,{b64}"
+            except Exception:
+                pass
+            return None
+
+        prs = Presentation(str(file_path))
+        slide_w = prs.slide_width
+        slide_h = prs.slide_height
+
+        slides = []
+        for idx, slide in enumerate(prs.slides):
+            # Extract slide background
+            bg = None
+            try:
+                bg_fill = slide.background.fill
+                if bg_fill.type is not None:
+                    bg = _extract_fill(bg_fill)
+            except Exception:
+                pass
+
+            shapes = []
+            for shape in slide.shapes:
+                s = {
+                    "left": shape.left,
+                    "top": shape.top,
+                    "width": shape.width,
+                    "height": shape.height,
+                    "type": str(shape.shape_type),
+                }
+
+                # Shape fill (background color of the shape)
+                try:
+                    if hasattr(shape, "fill"):
+                        fill_info = _extract_fill(shape.fill)
+                        if fill_info:
+                            s["fill"] = fill_info
+                except Exception:
+                    pass
+
+                # Shape outline/border
+                try:
+                    if hasattr(shape, "line"):
+                        line_info = _extract_line(shape.line)
+                        if line_info:
+                            s["line"] = line_info
+                except Exception:
+                    pass
+
+                # Image
+                img_data = _extract_image(shape)
+                if img_data:
+                    s["imageSrc"] = img_data
+
+                # Text
+                if shape.has_text_frame:
+                    paragraphs = []
+                    for para in shape.text_frame.paragraphs:
+                        runs = []
+                        for run in para.runs:
+                            r = {"text": run.text}
+                            if run.font.size:
+                                r["size"] = run.font.size.pt
+                            if run.font.bold:
+                                r["bold"] = True
+                            if run.font.italic:
+                                r["italic"] = True
+                            if run.font.underline:
+                                r["underline"] = True
+                            c = _safe_color(run.font.color)
+                            if c:
+                                r["color"] = c
+                            if run.font.name:
+                                r["font"] = run.font.name
+                            runs.append(r)
+                        paragraphs.append({
+                            "runs": runs,
+                            "alignment": str(para.alignment) if para.alignment else None,
+                        })
+                    s["paragraphs"] = paragraphs
+                    s["text"] = shape.text_frame.text
+
+                shapes.append(s)
+
+            # Extract notes
+            notes_text = ""
+            if slide.has_notes_slide:
+                notes_frame = slide.notes_slide.notes_text_frame
+                if notes_frame:
+                    notes_text = notes_frame.text
+
+            slides.append({
+                "index": idx,
+                "background": bg,
+                "shapes": shapes,
+                "notes": notes_text,
+            })
+
+        return {
+            "slideWidth": slide_w,
+            "slideHeight": slide_h,
+            "slides": slides,
+        }
+    except Exception as e:
+        logger.error(f"Error reading PPTX {path}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/files")
 async def write_file(
     request: FileWriteRequest,
@@ -254,7 +458,10 @@ def should_include_resource(path: Path, relative_path: str) -> bool:
     # Include agent-generated resources from workspace
     if rel.startswith("workspace/"):
         # Exclude system/config files
-        if name.startswith(".") or name in ["readme.md", "claude.md"]:
+        if name.startswith(".") or name.startswith("~$") or name in ["readme.md", "claude.md"]:
+            return False
+        # Exclude .py scripts in presentations (auto-deleted after execution, but skip if still present)
+        if rel.startswith("workspace/generated/presentations/") and name.endswith(".py"):
             return False
         return True
 
@@ -296,6 +503,8 @@ def categorize_resource(relative_path: str) -> Optional[str]:
         return "视频脚本"
     elif any(kw in name for kw in ["case", "案例"]):
         return "代码案例"
+    elif any(kw in name for kw in ["ppt", "演示", "presentation"]):
+        return "PPT"
 
     return "其他资源"
 
@@ -383,7 +592,7 @@ async def list_files(
 
             # For files, apply filtering
             if item.is_file():
-                if directory in ["workspace", "memory", "knowledge/source"] or directory.startswith("knowledge/source/"):
+                if directory.startswith("workspace") or directory in ["memory", "knowledge/source"] or directory.startswith("knowledge/source/"):
                     if not should_include_resource(item, rel_str):
                         continue
 

@@ -53,23 +53,102 @@ def _create_fs_tools(backend) -> list:
     from typing import Annotated
     from tools.utils import inject_date
 
+    def _get_physical_path(validated_path: str) -> str:
+        try:
+            phys = backend._resolve_path("/" + validated_path.lstrip("/"))
+            return str(phys)
+        except Exception:
+            return validated_path
+
+    def _should_auto_execute(validated_path: str) -> bool:
+        return validated_path.endswith(".py") and "generated/presentations/" in validated_path
+
+    def _do_auto_execute(physical_path: str, result_msg: str) -> str:
+        import subprocess as _sp
+        import sys
+        import os as _os
+        import tempfile
+        _cwd = str(getattr(backend, 'cwd', None) or "")
+        # Copy script to temp dir to avoid triggering uvicorn reload
+        # Replace __file__-based output dir with actual workspace path
+        temp_script = None
+        try:
+            with open(physical_path, 'r', encoding='utf-8') as f:
+                script_content = f.read()
+            # Inject output_dir override at the top of the script
+            output_dir = _os.path.dirname(physical_path)
+            inject = f"import os as _os; _output_dir = r'{output_dir}'\n"
+            script_content = inject + script_content
+            # Replace __file__-based output_dir with the injected one
+            script_content = script_content.replace(
+                "os.path.dirname(os.path.abspath(__file__))",
+                "_output_dir"
+            )
+            temp_dir = tempfile.gettempdir()
+            temp_script = _os.path.join(temp_dir, _os.path.basename(physical_path))
+            with open(temp_script, 'w', encoding='utf-8') as f:
+                f.write(script_content)
+            logger.info("Auto-execute: copied to temp %s, output_dir=%s", temp_script, output_dir)
+            proc = _sp.run(
+                [sys.executable, temp_script],
+                capture_output=True, text=True, timeout=60, cwd=_cwd or None,
+            )
+            exec_output = proc.stdout.strip() if proc.stdout else ""
+            if proc.returncode != 0:
+                exec_output += f"\n[stderr] {proc.stderr.strip()}" if proc.stderr else ""
+                exec_output += f"\nExit code: {proc.returncode}"
+            result_msg += f"\n\n[Auto-execute]\n{exec_output}"
+            logger.info("Auto-execute: returncode=%d, output_len=%d", proc.returncode, len(exec_output))
+        except Exception as e:
+            logger.error("Auto-execute error: %s", e, exc_info=True)
+            result_msg += f"\n\n[Auto-execute error] {e}"
+        # Always delete the original script after execution
+        try:
+            _os.remove(physical_path)
+            logger.info("Auto-execute: deleted script %s", physical_path)
+        except Exception as del_err:
+            logger.warning("Auto-execute: delete failed: %s", del_err)
+        # Clean up temp script
+        if temp_script:
+            try:
+                _os.remove(temp_script)
+            except Exception:
+                pass
+        return result_msg
+
     def write_file(
         file_path: Annotated[str, "Absolute path where the file should be created"],
         content: Annotated[str, "The text content to write to the file"],
+        overwrite: Annotated[bool, "If True, overwrite existing file"] = False,
     ) -> str:
-        res = backend.write(inject_date(file_path.lstrip("/")), content)
+        validated = inject_date(file_path.lstrip("/"))
+        logger.info("write_file: original=%s, validated=%s, should_auto_execute=%s", file_path, validated, _should_auto_execute(validated))
+        res = backend.write("/" + validated, content, overwrite=overwrite)
         if res.error:
             return res.error
-        return f"Updated file {res.path}"
+        result_msg = f"Updated file {res.path}"
+        if _should_auto_execute(validated):
+            result_msg = _do_auto_execute(_get_physical_path(validated), result_msg)
+        return result_msg
 
     async def awrite_file(
         file_path: Annotated[str, "Absolute path where the file should be created"],
         content: Annotated[str, "The text content to write to the file"],
+        overwrite: Annotated[bool, "If True, overwrite existing file"] = False,
     ) -> str:
-        res = await backend.awrite(inject_date(file_path.lstrip("/")), content)
+        validated = inject_date(file_path.lstrip("/"))
+        logger.info("awrite_file: original=%s, validated=%s, should_auto_execute=%s", file_path, validated, _should_auto_execute(validated))
+        res = await backend.awrite("/" + validated, content, overwrite=overwrite)
         if res.error:
             return res.error
-        return f"Updated file {res.path}"
+        result_msg = f"Updated file {res.path}"
+        if _should_auto_execute(validated):
+            import asyncio
+            loop = asyncio.get_running_loop()
+            result_msg = await loop.run_in_executor(
+                None, _do_auto_execute, _get_physical_path(validated), result_msg
+            )
+        return result_msg
 
     def read_file(
         file_path: Annotated[str, "Absolute path to the file to read"],
@@ -152,7 +231,13 @@ async def invoke_subagent(
         memory_indexer=None,
         user_id=current_user.id,
     )
-    tools = get_all_tools(base_dir=get_project_root(), user_id=current_user.id, backend=agent_manager._backend)
+    _path_mappings = [(str(k), str(v)) for k, v in (agent_manager._backend.path_mappings or [])] if hasattr(agent_manager._backend, 'path_mappings') else None
+    _cwd = str(agent_manager._backend.cwd) if hasattr(agent_manager._backend, 'cwd') else None
+    tools = get_all_tools(base_dir=get_project_root(), user_id=current_user.id, backend=agent_manager._backend, path_mappings=_path_mappings, cwd=_cwd)
+    # Disable knowledge_search for specific subagents that don't need it
+    DISABLE_KNOWLEDGE_SEARCH = {"media-script-writer", "ppt-generator", "slides-writer"}
+    if request.subagent in DISABLE_KNOWLEDGE_SEARCH:
+        tools = [t for t in tools if t.name != "knowledge_search"]
     # Add filesystem tools (write_file, read_file) so subagent can write to user workspace
     fs_tools = _create_fs_tools(agent_manager._backend)
     tools = fs_tools + tools
@@ -220,9 +305,12 @@ async def invoke_subagent(
                         tool = tool_map.get(tool_name)
                         if tool:
                             try:
+                                logger.info("Invoking tool %s (has_ainvoke=%s)", tool_name, hasattr(tool, 'ainvoke'))
                                 result = await tool.ainvoke(tool_args) if hasattr(tool, 'ainvoke') else tool.invoke(tool_args)
                                 output = str(result)[:15000]  # Truncate to prevent token overflow
+                                logger.info("Tool %s completed, output_len=%d", tool_name, len(output))
                             except Exception as e:
+                                logger.error("Tool %s error: %s", tool_name, e, exc_info=True)
                                 output = f"Tool error: {e}"
                         else:
                             output = f"Unknown tool: {tool_name}"

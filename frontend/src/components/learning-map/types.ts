@@ -1,6 +1,6 @@
 export type NodeStatus = 'locked' | 'active' | 'completed';
 
-export type NodeActionType = 'learn' | 'quiz' | 'flashcard';
+export type NodeActionType = 'learn';
 
 /** idle → generating → ready → completed */
 export type ActionPhase = 'idle' | 'generating' | 'ready' | 'completed';
@@ -9,16 +9,14 @@ export type ActionTrigger = 'generate' | 'start';
 
 export interface NodeActionState {
   learn: ActionPhase;
-  quiz: ActionPhase;
-  flashcard: ActionPhase;
 }
 
 export function emptyActionState(): NodeActionState {
-  return { learn: 'idle', quiz: 'idle', flashcard: 'idle' };
+  return { learn: 'idle' };
 }
 
 export function isAllCompleted(s: NodeActionState): boolean {
-  return s.learn === 'completed' && s.quiz === 'completed' && s.flashcard === 'completed';
+  return s.learn === 'completed';
 }
 
 export interface LearningMapNode {
@@ -38,7 +36,7 @@ export interface LearningMapData {
   nodes: LearningMapNode[];
 }
 
-/* ── Quiz / Flashcard result ── */
+/* ── Learning result ── */
 
 export interface ActionResult {
   completed: boolean;
@@ -53,7 +51,7 @@ export interface ActionResult {
 
 export type LearningMapEventDetail = {
   nodeId: string;
-  action: 'quiz' | 'flashcard';
+  action: 'learn';
   score: number;
   total: number;
   correct: number;
@@ -61,18 +59,3 @@ export type LearningMapEventDetail = {
 };
 
 export const LEARNING_MAP_EVENT = 'miniclaw:learning-action-complete';
-
-export function emitActionComplete(
-  nodeId: string,
-  action: 'quiz' | 'flashcard',
-  score: number,
-  total: number,
-  correct: number,
-  filePath: string,
-) {
-  window.dispatchEvent(
-    new CustomEvent<LearningMapEventDetail>(LEARNING_MAP_EVENT, {
-      detail: { nodeId, action, score, total, correct, filePath },
-    }),
-  );
-}

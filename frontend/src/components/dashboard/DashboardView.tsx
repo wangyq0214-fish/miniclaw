@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
-import { generateProfile, initProfile, type StudentProfile, DIMENSION_LABELS } from '@/lib/api';
+import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles } from 'lucide-react';
+import { generateProfile, initProfile, autoUpdateProfile, type StudentProfile, DIMENSION_LABELS } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import { StatCards } from './StatCards';
 import { RadarChart } from './RadarChart';
@@ -33,7 +33,13 @@ export function DashboardView() {
       if (forceRefresh) setIsRefreshing(true);
       else setLoading(true);
 
-      const result = await generateProfile(forceRefresh);
+      let result: StudentProfile;
+      if (forceRefresh) {
+        // Use auto-update to recompute profile from learning data
+        result = await autoUpdateProfile();
+      } else {
+        result = await generateProfile(false);
+      }
       setProfile(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败');
@@ -131,10 +137,11 @@ export function DashboardView() {
             <button
               onClick={() => fetchProfile(true)}
               disabled={isRefreshing}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-200"
-              title="刷新画像"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors text-blue-600 dark:text-blue-400"
+              title="根据学习数据自动更新画像"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <Sparkles className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="text-sm font-medium">{isRefreshing ? '更新中...' : '智能更新'}</span>
             </button>
           </div>
         </motion.header>

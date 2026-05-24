@@ -35,13 +35,14 @@ function getKind(path: string) {
   if (p.startsWith('memory/evaluation/')) return 'evaluation';
   if (p.startsWith('memory/profile_history')) return 'profile-history';
   if (p.includes('/mindmap') || p.includes('/mindmaps/')) return 'mindmap';
-  if (p.includes('knowledge/source/') || p.includes('深度学习')) return 'course-chapter';
-  if (p.includes('/lectures/')) return 'lecture';
-  if (p.includes('/exercises/')) return 'exercise';
+  // Check specific generated content directories before generic name matching
   if (p.includes('/flashcards/')) return 'flashcard';
+  if (p.includes('/exercises/')) return 'exercise';
+  if (p.includes('/lectures/')) return 'lecture';
   if (p.includes('/code_cases/') || p.includes('/code-cases/')) return 'code-case';
   if (p.includes('/reading_lists/') || p.includes('/reading-lists/')) return 'reading-list';
   if (p.includes('/media_scripts/') || p.includes('/media-scripts/')) return 'media-script';
+  if (p.includes('knowledge/source/') || p.includes('深度学习')) return 'course-chapter';
   if (p.endsWith('.md')) return 'markdown';
   return 'other';
 }
@@ -147,17 +148,24 @@ export function ContentCard({ path, content, onOpenInEditor }: ContentCardProps)
       );
     case 'flashcard': {
       const nodeId = findNodeIdForFile(path);
+      // Try to parse with LaTeX repair (same logic as FlashcardViewer)
+      let flashcardData: any = null;
       try {
-        const flashcardData = JSON.parse(content);
-        if (flashcardData.cards && Array.isArray(flashcardData.cards)) {
-          return (
-            <div className="h-full min-h-[400px]">
-              <FlashcardViewer content={content} nodeId={nodeId} filePath={path} />
-            </div>
-          );
-        }
+        flashcardData = JSON.parse(content);
       } catch {
-        // Not valid JSON, show as markdown doc
+        try {
+          const repaired = content.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+          flashcardData = JSON.parse(repaired);
+        } catch {
+          // Still not valid JSON
+        }
+      }
+      if (flashcardData?.cards && Array.isArray(flashcardData.cards)) {
+        return (
+          <div className="h-full min-h-[400px]">
+            <FlashcardViewer content={content} nodeId={nodeId} filePath={path} />
+          </div>
+        );
       }
       return (
         <DocCard

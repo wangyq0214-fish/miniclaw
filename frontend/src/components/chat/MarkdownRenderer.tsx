@@ -12,6 +12,7 @@ import type { Components } from 'react-markdown';
 import { CodeBlock } from './CodeBlock';
 import { MermaidBlock } from './MermaidBlock';
 import { AnimationBlock } from './AnimationBlock';
+import { VideoCard } from './VideoCard';
 
 // Extend sanitize schema to allow KaTeX's className attribute on common elements.
 const sanitizeSchema = {
@@ -109,17 +110,29 @@ const components: Components = {
       />
     );
   },
-  a: ({ href, children, ...rest }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-primary underline underline-offset-2 hover:text-primary/80"
-      {...rest}
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children, ...rest }) => {
+    const hrefStr = typeof href === 'string' ? href : '';
+
+    // Detect Bilibili video URLs
+    const bilibiliMatch = hrefStr.match(/bilibili\.com\/video\/(BV\w+)/);
+    if (bilibiliMatch) {
+      const bvid = bilibiliMatch[1];
+      const title = typeof children === 'string' ? children : undefined;
+      return <VideoCard bvid={bvid} title={title} />;
+    }
+
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary underline underline-offset-2 hover:text-primary/80"
+        {...rest}
+      >
+        {children}
+      </a>
+    );
+  },
   h1: ({ children }) => (
     <h1 className="mt-6 mb-2 text-2xl font-semibold text-foreground border-b border-border pb-1">
       {children}

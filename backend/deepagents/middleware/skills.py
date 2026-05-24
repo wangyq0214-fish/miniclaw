@@ -578,6 +578,12 @@ Skills follow a **progressive disclosure** pattern - you see their name and desc
 3. **Follow the skill's instructions**: SKILL.md contains step-by-step workflows, best practices, and examples
 4. **Access supporting files**: Skills may include helper scripts, configs, or reference docs - use absolute paths
 
+**IMPORTANT - Efficiency Rules:**
+- Each skill file (SKILL.md) only needs to be read ONCE per conversation. The content stays in context.
+- Do NOT re-read a file you already read earlier in the same conversation.
+- Do NOT explain the skill's workflow to the user — just execute it.
+- When the user says "continue" or "继续", resume from where you left off, do not restart.
+
 **When to Use Skills:**
 - User's request matches a skill's domain (e.g., "research X" -> web-research skill)
 - You need specialized knowledge or structured workflows

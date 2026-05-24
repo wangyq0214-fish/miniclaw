@@ -2,17 +2,16 @@
 Student Profile API
 
 Provides:
-- POST /api/profile/generate — Generate 6-dimension student profile from learning data
+- POST /api/profile/generate — Get or create student profile from JSON file
+- POST /api/profile/update — Update specific fields in profile
 - POST /api/profile/init — Cold-start initialization with basic info
 - POST /api/profile/mistakes — Append mistake to mistakes.json
 - GET /api/profile/avatar — Get current user's avatar
 - POST /api/profile/avatar — Upload/update current user's avatar
 """
-import asyncio
 import json
 import logging
-import re
-from datetime import datetime, timedelta, timezone, date
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
@@ -20,8 +19,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
 
 from database import get_db
 from config import settings, get_user_memory_dir, get_user_workspace_dir
@@ -31,25 +28,78 @@ from auth.security import get_current_user
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Role prompt cache
-_profile_role_prompt: Optional[str] = None
 
-PROFILE_CACHE_TTL = timedelta(hours=12)
-MAX_RECENT_CONVERSATIONS = 20
-MAX_MEMORY_HIGHLIGHTS = 20
-MAX_MISTAKE_ENTRIES = 50  # Sliding window for mistakes.json
+def _get_profile_path(user_id: int) -> Path:
+    """Get the profile JSON file path for a user."""
+    workspace_dir = get_user_workspace_dir(user_id)
+    return workspace_dir / "profile.json"
 
 
-def _load_profile_role_prompt() -> str:
-    global _profile_role_prompt
-    if _profile_role_prompt is not None:
-        return _profile_role_prompt
-    role_file = Path(__file__).parent.parent / "workspace" / "roles" / "profile_generator.md"
-    if role_file.exists():
-        _profile_role_prompt = role_file.read_text(encoding="utf-8")
-    else:
-        _profile_role_prompt = ""
-    return _profile_role_prompt
+def _create_default_profile() -> Dict[str, Any]:
+    """Create a default empty profile."""
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "dimensions": {
+            "knowledge_foundation": {
+                "score": 50,
+                "concepts": [],
+                "summary": "数据不足，待观察"
+            },
+            "cognitive_style": {
+                "score": 50,
+                "style": "待观察",
+                "traits": []
+            },
+            "error_patterns": {
+                "score": 50,
+                "patterns": [],
+                "summary": "数据不足，待观察"
+            },
+            "learning_rhythm": {
+                "score": 50,
+                "pace": "待观察",
+                "traits": []
+            },
+            "affective_state": {
+                "score": 50,
+                "mood": "待观察",
+                "traits": []
+            },
+            "goal_progress": {
+                "score": 50,
+                "short_term": "待设定",
+                "long_term": "待设定",
+                "progress": "待观察"
+            }
+        },
+        "knowledge_graph": {
+            "nodes": [],
+            "edges": []
+        },
+        "overall_score": 50,
+        "insight_text": "暂无学习数据，请先开始对话或完成测验后再来查看画像。",
+        "action_item": "开始一次对话或完成一次测验，系统将自动为你生成学习画像。",
+        "highlight_tags": ["暂无数据"],
+        "needs_onboarding": True
+    }
+
+
+def _load_or_create_profile(user_id: int) -> Dict[str, Any]:
+    """Load profile from JSON file, or create default if not exists."""
+    profile_path = _get_profile_path(user_id)
+    if profile_path.exists():
+        try:
+            return json.loads(profile_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning(f"Failed to read profile.json for user {user_id}: {e}")
+    return _create_default_profile()
+
+
+def _save_profile(user_id: int, profile: Dict[str, Any]) -> None:
+    """Save profile to JSON file."""
+    profile_path = _get_profile_path(user_id)
+    profile_path.parent.mkdir(parents=True, exist_ok=True)
+    profile_path.write_text(json.dumps(profile, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 # ── Request / Response Models ──
@@ -70,6 +120,17 @@ class AppendMistakeRequest(BaseModel):
     user_answer: str
     correct_answer: str
     error_type: str = "unknown"
+
+
+class UpdateProfileRequest(BaseModel):
+    """Partial update request - only include fields you want to update."""
+    dimensions: Optional[Dict[str, Any]] = None
+    knowledge_graph: Optional[Dict[str, Any]] = None
+    overall_score: Optional[float] = None
+    insight_text: Optional[str] = None
+    action_item: Optional[str] = None
+    highlight_tags: Optional[List[str]] = None
+    needs_onboarding: Optional[bool] = None
 
 
 class DimensionDetail(BaseModel):
@@ -115,195 +176,153 @@ class StudentProfile(BaseModel):
     needs_onboarding: bool = False
 
 
-# ── Profile Generation Endpoint ──
-
-
-async def _regenerate_profile(user_id: int, db: AsyncSession):
-    """Background task: read data sources, call LLM, save cache."""
-    try:
-        memory_dir = get_user_memory_dir(user_id)
-        workspace_dir = get_user_workspace_dir(user_id)
-        cache_file = workspace_dir / "profile_cache.json"
-
-        memory_highlights = _read_memory_highlights(memory_dir)
-        recent_conversations = _read_history(memory_dir)
-        mistakes = _read_mistakes(memory_dir)
-        learning_stats = await _compute_learning_stats(db, user_id)
-
-        has_data = (
-            len(memory_highlights) > 0
-            or len(recent_conversations) > 0
-            or len(mistakes) > 0
-            or learning_stats.get("total_quizzes", 0) > 0
-        )
-        if not has_data:
-            return
-
-        data_slice = {
-            "memory_highlights": memory_highlights[:MAX_MEMORY_HIGHLIGHTS],
-            "recent_conversations": recent_conversations[:MAX_RECENT_CONVERSATIONS],
-            "mistakes": mistakes[:20],
-            "learning_stats": learning_stats,
-        }
-
-        mastery_file = memory_dir / "mastery.json"
-        if mastery_file.exists():
-            try:
-                existing_mastery = json.loads(mastery_file.read_text(encoding="utf-8"))
-                data_slice["existing_graph"] = existing_mastery
-            except (json.JSONDecodeError, Exception):
-                pass
-
-        profile_json = await _generate_via_llm(data_slice)
-        if profile_json is None:
-            logger.warning(f"Background profile generation failed for user {user_id}")
-            return
-
-        profile = _build_profile(profile_json)
-
-        # Save cache
-        try:
-            cache_data = profile.model_dump()
-            cache_file.parent.mkdir(parents=True, exist_ok=True)
-            cache_file.write_text(json.dumps(cache_data, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception as e:
-            logger.warning(f"Failed to cache profile: {e}")
-
-        # Save mastery.json
-        try:
-            mastery_data = {
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-                "nodes": [n.model_dump() for n in profile.knowledge_graph.nodes],
-                "edges": [e.model_dump() for e in profile.knowledge_graph.edges],
-            }
-            mastery_file.write_text(json.dumps(mastery_data, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception as e:
-            logger.warning(f"Failed to save mastery.json: {e}")
-
-        logger.info(f"Background profile regeneration completed for user {user_id}")
-    except Exception as e:
-        logger.error(f"Background profile regeneration error for user {user_id}: {e}")
+# ── Profile Endpoints ──
 
 
 @router.post("/profile/generate", response_model=StudentProfile)
 async def generate_profile(
     request: GenerateProfileRequest = GenerateProfileRequest(),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """
-    Generate a 6-dimension student profile from learning data sources.
-
-    Strategy:
-    - Cache fresh → return immediately
-    - Cache stale → return stale + trigger async regeneration
-    - No cache (cold start) → generate synchronously
-    - force_refresh → regenerate synchronously
+    Get or create student profile from JSON file.
+    - If profile.json exists, return it
+    - If not, create default profile and save
+    - If force_refresh=True, auto-update profile from learning data
     """
+    user_id = current_user.id
+
+    if request.force_refresh:
+        # Auto-update profile from learning data
+        from services.profile_updater import update_profile_from_data
+        memory_dir = get_user_memory_dir(user_id)
+        workspace_dir = get_user_workspace_dir(user_id)
+        profile = await update_profile_from_data(user_id, memory_dir, workspace_dir)
+        return StudentProfile(**profile)
+
+    profile = _load_or_create_profile(user_id)
+    return StudentProfile(**profile)
+
+
+@router.post("/profile/auto-update")
+async def auto_update_profile(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Trigger profile update via subagent with learning data injected.
+    """
+    from api.subagent import invoke_subagent, SubAgentRequest
+
     user_id = current_user.id
     memory_dir = get_user_memory_dir(user_id)
     workspace_dir = get_user_workspace_dir(user_id)
-    cache_file = workspace_dir / "profile_cache.json"
 
-    # Check cache
-    if not request.force_refresh and cache_file.exists():
+    # Read learning data
+    def read_json(path):
+        if path.exists():
+            try:
+                return json.loads(path.read_text(encoding="utf-8"))
+            except:
+                pass
+        return None
+
+    history = read_json(memory_dir / "history.json") or []
+    mistakes = read_json(memory_dir / "mistakes.json") or []
+    profile = read_json(workspace_dir / "profile.json") or {}
+
+    # Read memory.md highlights
+    memory_file = memory_dir / "memory.md"
+    memory_text = ""
+    if memory_file.exists():
         try:
-            cached = json.loads(cache_file.read_text(encoding="utf-8"))
-            cached_time = datetime.fromisoformat(cached.get("generated_at", ""))
-            age = datetime.now(timezone.utc) - cached_time
-
-            if age < PROFILE_CACHE_TTL:
-                # Cache is fresh, return directly
-                return StudentProfile(**cached)
-
-            # Cache is stale — return stale data and regenerate in background
-            logger.info(f"Profile cache stale (age={age}), triggering background refresh for user {user_id}")
-            asyncio.create_task(_regenerate_profile(user_id, db))
-            return StudentProfile(**cached)
-        except (json.JSONDecodeError, ValueError):
-            pass  # Cache invalid, fall through to synchronous generation
-
-    # No cache exists (cold start) or force_refresh — generate synchronously
-    memory_highlights = _read_memory_highlights(memory_dir)
-    recent_conversations = _read_history(memory_dir)
-    mistakes = _read_mistakes(memory_dir)
-    learning_stats = await _compute_learning_stats(db, user_id)
-
-    has_data = (
-        len(memory_highlights) > 0
-        or len(recent_conversations) > 0
-        or len(mistakes) > 0
-        or learning_stats.get("total_quizzes", 0) > 0
-    )
-
-    if not has_data:
-        return StudentProfile(
-            generated_at=datetime.now(timezone.utc).isoformat(),
-            dimensions=_empty_dimensions(),
-            overall_score=0,
-            insight_text="暂无学习数据，请先开始对话或完成测验后再来查看画像。",
-            action_item="开始一次对话或完成一次测验，系统将自动为你生成学习画像。",
-            highlight_tags=["暂无数据"],
-            needs_onboarding=True,
-        )
-
-    data_slice = {
-        "memory_highlights": memory_highlights[:MAX_MEMORY_HIGHLIGHTS],
-        "recent_conversations": recent_conversations[:MAX_RECENT_CONVERSATIONS],
-        "mistakes": mistakes[:20],
-        "learning_stats": learning_stats,
-    }
-
-    mastery_file = memory_dir / "mastery.json"
-    if mastery_file.exists():
-        try:
-            existing_mastery = json.loads(mastery_file.read_text(encoding="utf-8"))
-            data_slice["existing_graph"] = existing_mastery
-        except (json.JSONDecodeError, Exception):
+            memory_text = memory_file.read_text(encoding="utf-8")[:2000]
+        except:
             pass
 
-    profile_json = await _generate_via_llm(data_slice)
+    # Build message with all data injected
+    message = f"""请根据以下学习数据更新画像，然后用 write_file 写入 workspace/profile.json。
 
-    if profile_json is None:
-        # LLM failed — try returning stale cache if available
-        if cache_file.exists():
-            try:
-                cached = json.loads(cache_file.read_text(encoding="utf-8"))
-                return StudentProfile(**cached)
-            except (json.JSONDecodeError, ValueError):
-                pass
-        return StudentProfile(
-            generated_at=datetime.now(timezone.utc).isoformat(),
-            dimensions=_empty_dimensions(),
-            overall_score=0,
-            insight_text="画像生成暂时不可用，请稍后再试。",
-            action_item="请稍后重试",
-            highlight_tags=["生成失败"],
-        )
+## 对话历史（最近20条）
+{json.dumps(history[-20:], ensure_ascii=False, indent=2)}
 
-    profile = _build_profile(profile_json)
+## 错题记录
+{json.dumps(mistakes[-20:], ensure_ascii=False, indent=2)}
 
-    # Save cache
-    try:
-        cache_data = profile.model_dump()
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        cache_file.write_text(json.dumps(cache_data, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception as e:
-        logger.warning(f"Failed to cache profile: {e}")
+## 学习记忆
+{memory_text[:1000]}
 
-    # Save mastery.json
-    try:
-        mastery_file = memory_dir / "mastery.json"
-        mastery_data = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "nodes": [n.model_dump() for n in profile.knowledge_graph.nodes],
-            "edges": [e.model_dump() for e in profile.knowledge_graph.edges],
-        }
-        mastery_file.write_text(json.dumps(mastery_data, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception as e:
-        logger.warning(f"Failed to save mastery.json: {e}")
+## 当前画像
+{json.dumps(profile, ensure_ascii=False, indent=2)}
 
-    return profile
+请分析以上数据，更新画像后写入 workspace/profile.json。"""
+
+    request = SubAgentRequest(
+        subagent="profile_generator",
+        message=message,
+        stream=True
+    )
+
+    return await invoke_subagent(request, current_user)
+
+
+@router.post("/profile/update", response_model=StudentProfile)
+async def update_profile(
+    request: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Partially update student profile.
+    Only provided fields will be updated, others remain unchanged.
+    """
+    user_id = current_user.id
+    profile = _load_or_create_profile(user_id)
+
+    # Update dimensions (merge, not replace)
+    if request.dimensions is not None:
+        for key, value in request.dimensions.items():
+            if key in profile.get("dimensions", {}):
+                profile["dimensions"][key].update(value)
+            else:
+                profile["dimensions"][key] = value
+
+    # Update knowledge graph (merge nodes/edges)
+    if request.knowledge_graph is not None:
+        kg = profile.get("knowledge_graph", {"nodes": [], "edges": []})
+        if "nodes" in request.knowledge_graph:
+            existing_nodes = {n["id"]: n for n in kg.get("nodes", [])}
+            for node in request.knowledge_graph["nodes"]:
+                existing_nodes[node["id"]] = node
+            kg["nodes"] = list(existing_nodes.values())
+        if "edges" in request.knowledge_graph:
+            existing_edges = kg.get("edges", [])
+            existing_keys = {(e["source"], e["target"]) for e in existing_edges}
+            for edge in request.knowledge_graph["edges"]:
+                key = (edge["source"], edge["target"])
+                if key not in existing_keys:
+                    existing_edges.append(edge)
+                    existing_keys.add(key)
+            kg["edges"] = existing_edges
+        profile["knowledge_graph"] = kg
+
+    # Update simple fields
+    if request.overall_score is not None:
+        profile["overall_score"] = max(0, min(100, request.overall_score))
+    if request.insight_text is not None:
+        profile["insight_text"] = request.insight_text
+    if request.action_item is not None:
+        profile["action_item"] = request.action_item
+    if request.highlight_tags is not None:
+        profile["highlight_tags"] = request.highlight_tags
+    if request.needs_onboarding is not None:
+        profile["needs_onboarding"] = request.needs_onboarding
+
+    # Update timestamp
+    profile["generated_at"] = datetime.now(timezone.utc).isoformat()
+
+    # Save
+    _save_profile(user_id, profile)
+
+    return StudentProfile(**profile)
 
 
 # ── Cold Start Initialization Endpoint ──
@@ -338,10 +357,11 @@ async def init_profile(
     content = existing + entry if existing else f"# 学习记忆\n{entry}"
     memory_file.write_text(content, encoding="utf-8")
 
-    # Invalidate cache
-    cache_file = get_user_workspace_dir(user_id) / "profile_cache.json"
-    if cache_file.exists():
-        cache_file.unlink()
+    # Update profile with onboarding info
+    profile = _load_or_create_profile(user_id)
+    profile["needs_onboarding"] = False
+    profile["dimensions"]["goal_progress"]["long_term"] = request.goal
+    _save_profile(user_id, profile)
 
     return {"ok": True}
 
@@ -384,9 +404,9 @@ async def append_mistake(
 
     mistakes.append(record)
 
-    # Sliding window: keep last MAX_MISTAKE_ENTRIES
-    if len(mistakes) > MAX_MISTAKE_ENTRIES:
-        mistakes = mistakes[-MAX_MISTAKE_ENTRIES:]
+    # Sliding window: keep last 100 entries
+    if len(mistakes) > 100:
+        mistakes = mistakes[-100:]
 
     mistakes_file.write_text(
         json.dumps(mistakes, ensure_ascii=False, indent=2),
@@ -501,257 +521,3 @@ def _read_mistakes(memory_dir: Path) -> List[Dict[str, Any]]:
     except (json.JSONDecodeError, Exception) as e:
         logger.warning(f"Failed to read mistakes.json: {e}")
         return []
-
-
-async def _compute_learning_stats(db: AsyncSession, user_id: int) -> Dict[str, Any]:
-    """Compute learning statistics from LearningEvent table and ImmersiveLectureProgress."""
-    try:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-        result = await db.execute(
-            select(LearningEvent).where(
-                and_(
-                    LearningEvent.user_id == user_id,
-                    LearningEvent.created_at >= cutoff,
-                )
-            )
-        )
-        events = result.scalars().all()
-
-        quiz_count = 0
-        total_score = 0
-        topics = set()
-        days = set()
-
-        for e in events:
-            data = e.event_data or {}
-            if e.event_type == "quiz_complete":
-                quiz_count += 1
-                if data.get("total", 0) > 0:
-                    total_score += data.get("score", 0) / data["total"] * 100
-                if data.get("topic"):
-                    topics.add(data["topic"])
-            elif e.event_type == "flashcard_review":
-                if data.get("category"):
-                    topics.add(data["category"])
-            if e.created_at:
-                days.add(e.created_at.strftime("%Y-%m-%d"))
-
-        # Get immersive lecture progress
-        from models.immersive_lecture import ImmersiveLectureProgress
-        lecture_result = await db.execute(
-            select(ImmersiveLectureProgress).where(
-                ImmersiveLectureProgress.user_id == user_id
-            )
-        )
-        lecture_progress = lecture_result.scalars().all()
-
-        total_lectures = len(lecture_progress)
-        completed_lectures = sum(1 for p in lecture_progress if p.completed)
-        total_sections_viewed = sum(p.current_section + 1 for p in lecture_progress)
-
-        # Add lecture study days
-        for p in lecture_progress:
-            if p.last_accessed:
-                days.add(p.last_accessed.strftime("%Y-%m-%d"))
-
-        return {
-            "total_quizzes": quiz_count,
-            "avg_score": round(total_score / quiz_count, 1) if quiz_count > 0 else 0,
-            "topics_covered": list(topics)[:20],
-            "study_days": len(days),
-            "immersive_lectures": {
-                "total": total_lectures,
-                "completed": completed_lectures,
-                "total_sections_viewed": total_sections_viewed,
-            }
-        }
-    except Exception as e:
-        logger.warning(f"Failed to compute learning stats: {e}")
-        return {"total_quizzes": 0, "avg_score": 0, "topics_covered": [], "study_days": 0, "immersive_lectures": {"total": 0, "completed": 0, "total_sections_viewed": 0}}
-
-
-async def _generate_via_llm(data_slice: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Generate student profile JSON via LLM."""
-    role_prompt = _load_profile_role_prompt()
-    if not role_prompt:
-        logger.error("Profile generator role prompt not found")
-        return None
-
-    model = ChatOpenAI(
-        model=settings.openai_model,
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_api_base,
-        temperature=0.3,
-        max_tokens=2000,
-    )
-
-    user_message = json.dumps(data_slice, ensure_ascii=False, indent=2)
-    messages = [
-        SystemMessage(content=role_prompt),
-        HumanMessage(content=user_message),
-    ]
-
-    # Retry up to 2 times on failure
-    for attempt in range(3):
-        try:
-            response = await model.ainvoke(messages)
-            content = response.content.strip()
-
-            if not content:
-                logger.warning(f"Empty LLM response (attempt {attempt + 1})")
-                continue
-
-            # Debug: log raw response (first 1000 chars)
-            logger.debug(f"LLM response (attempt {attempt + 1}): {content[:1000]}...")
-
-            # Try to extract JSON from markdown code blocks first
-            if "```" in content:
-                parts = content.split("```")
-                for part in parts:
-                    part = part.strip()
-                    if part.startswith("json"):
-                        part = part[4:].strip()
-                    if not part.startswith('{'):
-                        continue
-                    fixed = _fix_json_string(part)
-                    try:
-                        result = json.loads(fixed)
-                        logger.info(f"Successfully parsed JSON from code block (attempt {attempt + 1})")
-                        return result
-                    except json.JSONDecodeError:
-                        continue
-
-            # Try to parse the entire content as JSON
-            try:
-                result = json.loads(content)
-                logger.info(f"Successfully parsed JSON from full content (attempt {attempt + 1})")
-                return result
-            except json.JSONDecodeError:
-                pass
-
-            # Try to find JSON object in the content
-            start = content.find('{')
-            end = content.rfind('}')
-            if start != -1 and end != -1 and end > start:
-                json_str = content[start:end + 1]
-                # Fix common LLM JSON issues
-                json_str = _fix_json_string(json_str)
-                try:
-                    result = json.loads(json_str)
-                    logger.info(f"Successfully parsed JSON after fixes (attempt {attempt + 1})")
-                    return result
-                except json.JSONDecodeError as e:
-                    logger.warning(f"Failed to parse extracted JSON (attempt {attempt + 1}): {e}")
-                    logger.debug(f"Extracted JSON: {json_str[:500]}...")
-
-            logger.warning(f"No valid JSON found in LLM response (attempt {attempt + 1})")
-
-        except Exception as e:
-            logger.warning(f"LLM call failed (attempt {attempt + 1}): {e}")
-
-    logger.error("LLM profile generation failed after 3 attempts")
-    return None
-
-
-def _fix_json_string(s: str) -> str:
-    """Fix common JSON formatting issues from LLM output."""
-    # Remove single-line comments (// ...)
-    s = re.sub(r'//[^\n]*', '', s)
-
-    # Remove multi-line comments (/* ... */)
-    s = re.sub(r'/\*[\s\S]*?\*/', '', s)
-
-    # Fix escaped newlines in strings (replace literal \n with space)
-    s = s.replace('\\n', ' ').replace('\\r', '').replace('\\t', ' ')
-
-    # Remove trailing commas before } or ]
-    s = re.sub(r',\s*([}\]])', r'\1', s)
-
-    # Fix single quotes to double quotes (but not within strings)
-    # This is a simplified approach - works for most cases
-    s = s.replace("'", '"')
-
-    # Fix common issues with boolean/null values
-    s = s.replace(': True', ': true').replace(': False', ': false').replace(': None', ': null')
-
-    # Fix Python-style True/False/None in values
-    s = re.sub(r'\bTrue\b', 'true', s)
-    s = re.sub(r'\bFalse\b', 'false', s)
-    s = re.sub(r'\bNone\b', 'null', s)
-
-    # Fix missing commas between JSON elements
-    # Pattern: ] or } or " followed by [ or { or " on same/next line (missing comma)
-    s = re.sub(r'(\]|\}|"[^"]*")\s*(\[[\s\n])', r'\1,\2', s)
-    s = re.sub(r'(\]|\}|"[^"]*")\s*(\{)', r'\1,\2', s)
-    # Missing comma between string value and next key: "value" "key": → "value", "key":
-    s = re.sub(r'("[^"]*")\s+("(?:[^"]*)"\s*:)', r'\1, \2', s)
-    # Missing comma between number and next key/element
-    s = re.sub(r'(\d+(?:\.\d+)?)\s+("(?:[^"]*)"\s*:)', r'\1, \2', s)
-    # Missing comma between true/false/null and next element
-    s = re.sub(r'\b(true|false|null)\s+(\[|\{|")', r'\1, \2', s)
-    # Missing comma between ] or } and number
-    s = re.sub(r'(\]|\})\s+(\d)', r'\1, \2', s)
-    # Missing comma between ] or } and string
-    s = re.sub(r'(\]|\})\s+(")', r'\1, \2', s)
-    # Missing comma between ] or } and true/false/null
-    s = re.sub(r'(\]|\})\s+(true|false|null)', r'\1, \2', s)
-
-    # Remove trailing text after the last }
-    last_brace = s.rfind('}')
-    if last_brace != -1 and last_brace < len(s) - 1:
-        # Check if there's significant text after the last }
-        trailing = s[last_brace + 1:].strip()
-        if trailing and not trailing.startswith(','):
-            s = s[:last_brace + 1]
-
-    return s
-
-
-def _build_profile(profile_json: Dict[str, Any]) -> StudentProfile:
-    """Build StudentProfile from LLM output with validation."""
-    dimensions = {}
-    dim_keys = [
-        "knowledge_foundation", "cognitive_style", "error_patterns",
-        "learning_rhythm", "affective_state", "goal_progress"
-    ]
-
-    for key in dim_keys:
-        dim_data = profile_json.get("dimensions", {}).get(key, {})
-        # Ensure score is in range
-        score = dim_data.get("score", 50)
-        score = max(0, min(100, score))
-        dim_data["score"] = score
-        dimensions[key] = DimensionDetail(**dim_data)
-
-    # Build knowledge graph
-    kg_data = profile_json.get("knowledge_graph", {})
-    knowledge_graph = KnowledgeGraph(
-        nodes=[KnowledgeGraphNode(**n) for n in kg_data.get("nodes", [])],
-        edges=[KnowledgeGraphEdge(**e) for e in kg_data.get("edges", [])],
-    )
-
-    # Validate overall_score
-    overall = profile_json.get("overall_score", 50)
-    overall = max(0, min(100, overall))
-
-    return StudentProfile(
-        generated_at=datetime.now(timezone.utc).isoformat(),
-        dimensions=dimensions,
-        knowledge_graph=knowledge_graph,
-        overall_score=overall,
-        insight_text=profile_json.get("insight_text", ""),
-        action_item=profile_json.get("action_item", ""),
-        highlight_tags=profile_json.get("highlight_tags", []),
-    )
-
-
-def _empty_dimensions() -> Dict[str, DimensionDetail]:
-    """Return empty dimensions for cold start."""
-    return {
-        "knowledge_foundation": DimensionDetail(score=0, concepts=[], summary="暂无数据"),
-        "cognitive_style": DimensionDetail(score=0, style="待观察", traits=[]),
-        "error_patterns": DimensionDetail(score=0, patterns=[], summary="暂无数据"),
-        "learning_rhythm": DimensionDetail(score=0, pace="待观察", traits=[]),
-        "affective_state": DimensionDetail(score=0, mood="待观察", traits=[]),
-        "goal_progress": DimensionDetail(score=0, short_term="", long_term="", progress="暂无数据"),
-    }

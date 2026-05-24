@@ -204,6 +204,7 @@ from api.fetch_url import router as fetch_url_router
 from api.execute import router as execute_router
 from api.learning_progress import router as learning_progress_router
 from api.immersive_lecture import router as immersive_lecture_router
+from api.video_search import router as video_search_router
 
 app.include_router(chat_router, prefix="/api", tags=["chat"])
 app.include_router(sessions_v2_router, tags=["sessions_v2"])
@@ -229,6 +230,7 @@ app.include_router(fetch_url_router, prefix="/api", tags=["fetch-url"])
 app.include_router(execute_router, prefix="/api", tags=["execute"])
 app.include_router(learning_progress_router, prefix="/api", tags=["learning-progress"])
 app.include_router(immersive_lecture_router, prefix="/api", tags=["immersive"])
+app.include_router(video_search_router, prefix="/api", tags=["video-search"])
 
 # Mount static files for knowledge assets (images, etc.)
 # Images should be stored in knowledge/assets/ folder
